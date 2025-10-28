@@ -19,9 +19,11 @@ provider:
 
 functions:
   api:
-    handler: handler.handler
+    handler: src/app.handler
     events:
       - httpApi: "*"
       # - httpApi:
       #     path: /
       #     method: ANY
+plugins:
+  - serverless-offline

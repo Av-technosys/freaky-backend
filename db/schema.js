@@ -14,6 +14,7 @@ export const reviewMediaTypeEnum = user.reviewMediaTypeEnum;
 export const reviewMedia = user.reviewMedia;
 export const pricingSettings = user.pricingSettings;
 export const taxZones = user.taxZones;
+export const notifications = user.notifications;
 
 export const eventType = event.eventTypes;
 export const eventTypeProduct = event.eventTypeProduct;
@@ -36,3 +37,5 @@ export const productMedia = vendor.productMedia;
 export const productAddons = vendor.productAddons;
 export const discountScheduled = vendor.discountScheduled;
 export const contractProductType = vendor.contractProductType;
+export const featuredCategoryProducts = vendor.featuredCategoryProduct;
+export const featuredProdcuts = vendor.featuredProdcuts;

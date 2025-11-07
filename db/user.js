@@ -7,8 +7,8 @@ import {
   decimal,
   pgEnum,
 } from "drizzle-orm/pg-core";
-import { eventProductOrders, events } from "./event";
-import { products, vendors } from "./vendor";
+import { eventProductOrders, events } from "./event.js";
+import { products, vendors } from "./vendor.js";
 
 export const userTypes = pgTable("user_types", {
   id: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
@@ -19,13 +19,37 @@ export const users = pgTable("users", {
   userId: integer("user_id").generatedAlwaysAsIdentity().primaryKey(),
   userTypeId: integer("user_type_id").references(() => userTypes.id), // foreign key
   parseId: varchar("parse_id", { length: 255 }),
+  firstName: varchar("first_name", { length: 255 }),
+  lastName: varchar("last_name", { length: 255 }),
+  profileImage: varchar("profile_image", { length: 255 }),
+  number: varchar("number", { length: 255 }),
+  currentAddressId: integer("current_address_id").references(
+    () => userAddresses.id
+  ),
+  // user_socials: varchar("user_socials", { length: 255 }),
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
   loggedIn: boolean("logged_in"),
   tokenFacebook: varchar("token_facebook", { length: 255 }),
   tokenTwitter: varchar("token_twitter", { length: 255 }),
   userToken: varchar("user_token", { length: 255 }),
-  tokenExpiration: timestamp("created_at").defaultNow(), // will change when the token expires
+  currentLocation: integer("current_location").references(
+    () => userAddresses.id
+  ),
+  // otp
+  status: boolean("status").default(false).notNull(),
+  tokenExpiration: timestamp("total_expiration_time").defaultNow(), // will change when the token expires
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const notifications = pgTable("notifications", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  userId: integer("user_id").references(() => users.userId),
+  vendorId: integer("vendor_id").references(() => vendors.vendorId),
+  title: varchar("title", { length: 255 }),
+  message: varchar("message", { length: 255 }),
+  status: boolean("status").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -36,6 +60,8 @@ export const userAddresses = pgTable("user_addresses", {
   title: varchar("title", { length: 255 }),
   addressLineOne: varchar("address_line_one", { length: 255 }),
   addressLineTwo: varchar("address_line_two", { length: 255 }),
+  reciverName: varchar("reciver_name", { length: 255 }),
+  reciverNumber: varchar("reciver_number", { length: 255 }),
   city: varchar("city", { length: 255 }),
   state: varchar("state", { length: 255 }),
   postalCode: varchar("postal_code", { length: 255 }),
@@ -88,10 +114,13 @@ export const reviews = pgTable("reviews", {
   reviewId: integer("review_id").generatedAlwaysAsIdentity().primaryKey(),
 
   eventProductOrderId: integer("event_product_order_id").references(
-    () => eventProductOrders.orderId
+    () => eventProductOrders.orderId,
+    { onDelete: "cascade" }
   ),
 
-  userId: integer("user_id").references(() => users.userId),
+  userId: integer("user_id")
+    .references(() => users.userId)
+    .notNull(),
   eventId: integer("event_id").references(() => events.eventId),
 
   productId: integer("product_id")

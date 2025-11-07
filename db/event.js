@@ -47,6 +47,28 @@ export const eventBooking = pgTable("event_booking", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const featuredCategoryEvent = pgTable("featured_category_event", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  name: varchar("name", { length: 255 }), // -- e.g. 'featured', 'most_popular', 'trending'
+  description: varchar("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const featuredProdcuts = pgTable("featured_products", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  eventId: integer("event_id").references(() => products.productId, {
+    onDelete: "cascade",
+  }),
+  featuredCategoryId: integer("featured_category_id").references(
+    () => featuredCategoryEvent.id,
+    {
+      onDelete: "cascade",
+    }
+  ),
+  priority: integer("priority").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const eventProductOrders = pgTable("event_product_orders", {
   orderId: integer("order_id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
 

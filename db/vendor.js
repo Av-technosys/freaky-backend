@@ -30,7 +30,10 @@ export const vendors = pgTable("vendors", {
 
 export const vendorContacts = pgTable("vendor_contacts", {
   employeeId: varchar("employee_id", { length: 100 }).primaryKey(),
-  userId: integer("user_id").references(() => users.userId),
+  userId: integer("user_id")
+    .references(() => users.userId)
+    .notNull()
+    .unique(),
 
   vendorId: integer("vendor_id").references(() => vendors.vendorId),
 
@@ -118,6 +121,28 @@ export const products = pgTable("products", {
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const featuredCategoryProduct = pgTable("featured_category_product", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  name: varchar("name", { length: 255 }), // -- e.g. 'featured', 'most_popular', 'trending'
+  description: varchar("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const featuredProdcuts = pgTable("featured_products", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  productId: integer("product_id").references(() => products.productId, {
+    onDelete: "cascade",
+  }),
+  featuredCategoryId: integer("featured_category_id").references(
+    () => featuredCategoryProduct.id,
+    {
+      onDelete: "cascade",
+    }
+  ),
+  priority: integer("priority").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const productAvailableArea = pgTable("product_available_area", {

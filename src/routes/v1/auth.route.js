@@ -12,7 +12,7 @@ import {
   SignUpCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { db } from "../../../db/db.js";
-import { userTypes } from "../../../db/schema.js";
+import { users, userTypes } from "../../../db/schema.js";
 
 const router = Router();
 
@@ -24,9 +24,9 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/signup", async (req, res) => {
-  const { username, password, email } = req.body;
-
-  if (!username || !password || !email) {
+  const { full_name, password, number, email } = req.body;
+  const username = email;
+  if (!password || !email) {
     return res
       .status(400)
       .json({ error: "Username, password, and email are required." });
@@ -45,10 +45,18 @@ router.post("/signup", async (req, res) => {
   try {
     const command = new SignUpCommand(params);
     const result = await cognito.send(command);
-    res.json(result);
+    await db.insert(users).values({
+      firstName: full_name,
+      email,
+      number,
+      userTypeId: 2,
+      username,
+      password,
+    });
+    return res.json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 

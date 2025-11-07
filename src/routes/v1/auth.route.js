@@ -11,8 +11,18 @@ import {
   InitiateAuthCommand,
   SignUpCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
+import { db } from "../../../db/db.js";
+import { userTypes } from "../../../db/schema.js";
 
 const router = Router();
+
+router.get("/", async (req, res) => {
+  const data = await db.select().from(userTypes);
+  // const data = { name: "ashish" };
+  console.log("auth root");
+  res.status(200).json(data);
+});
+
 router.post("/signup", async (req, res) => {
   const { username, password, email } = req.body;
 
@@ -168,10 +178,6 @@ router.post("/confirm-forgot-password", async (req, res) => {
     console.error("ConfirmForgotPassword error:", err);
     res.status(500).json({ error: err.message });
   }
-});
-
-router.get("/", async (req, res) => {
-  res.json({ message: "auth root" });
 });
 
 export default router;

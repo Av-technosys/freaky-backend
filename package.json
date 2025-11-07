@@ -8,12 +8,20 @@
     "deploy:dev": "npx serverless deploy --stage dev",
     "deploy:prod": "npx serverless deploy --stage prod",
     "remove:dev": "npx serverless remove --stage dev",
-    "remove:prod": "npx serverless remove --stage prod"
+    "remove:prod": "npx serverless remove --stage prod",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.918.0",
     "dotenv": "^17.2.3",
+    "drizzle-kit": "^0.31.6",
+    "drizzle-orm": "^0.44.7",
     "express": "^4.19.2",
+    "pg": "^8.16.3",
+    "postgres": "^3.4.7",
     "serverless-http": "^3.2.0"
   },
   "devDependencies": {

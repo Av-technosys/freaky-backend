@@ -8,6 +8,8 @@ import {
 import { cognito, generateSecretHash } from "../../lib/cognitoClient.js";
 import { db } from "../../db/db.js";
 import { users } from "../../db/schema.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID;
 

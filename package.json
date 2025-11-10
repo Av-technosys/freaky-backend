@@ -20,6 +20,8 @@
     "drizzle-kit": "^0.31.6",
     "drizzle-orm": "^0.44.7",
     "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.2.0",
     "pg": "^8.16.3",
     "postgres": "^3.4.7",
     "serverless-http": "^3.2.0"

@@ -18,8 +18,4 @@ app.use((req, res, next) => {
   res.status(404).send({ message: "Not FOUND" });
 });
 
-app.use((err, req, res, next) => {
-  res.status(err.status || 500).send();
-});
-
 export const handler = serverless(app);

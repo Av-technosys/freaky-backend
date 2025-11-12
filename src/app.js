@@ -1,10 +1,20 @@
 import express from "express";
 import serverless from "serverless-http";
-
+import cors from "cors";
 import routes from "./routes/index.js";
 
 const app = express();
 
+const corsOptions = {
+  origin: [
+    "https://freaky-web-vendor-new.vercel.app/",
+    "http://localhost:5173",
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use("/", (req, res, next) => {

@@ -33,9 +33,6 @@ export const users = pgTable("users", {
   tokenFacebook: varchar("token_facebook", { length: 255 }),
   tokenTwitter: varchar("token_twitter", { length: 255 }),
   userToken: varchar("user_token", { length: 255 }),
-  currentLocation: integer("current_location").references(
-    () => userAddresses.id
-  ),
   // otp
   status: boolean("status").default(false).notNull(),
   tokenExpiration: timestamp("total_expiration_time").defaultNow(), // will change when the token expires

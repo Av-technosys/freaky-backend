@@ -14,7 +14,8 @@ dotenv.config();
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID;
 
 export const signup = async (req, res) => {
-  const { full_name, password, number, email } = req.body;
+  const { password, email } = req.body;
+  const bodyData = req.body;
   const username = email;
   if (!password || !email) {
     return res
@@ -34,9 +35,9 @@ export const signup = async (req, res) => {
     const command = new SignUpCommand(params);
     const result = await cognito.send(command);
     await db.insert(users).values({
-      firstName: full_name,
+      firstName: bodyData.full_name,
       email,
-      number,
+      number: bodyData.number,
       userTypeId: 2,
       username,
       password,

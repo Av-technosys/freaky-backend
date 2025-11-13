@@ -13,17 +13,65 @@ export const vendors = pgTable("vendors", {
   vendorId: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   // userId: uuid("user_id").references(() => users.userId, { onDelete: "cascade" }), // optional
   businessName: varchar("business_name", { length: 255 }).notNull(),
+  websiteURL: varchar("website_url", { length: 255 }),
+  DBAname: varchar("dba_name", { length: 255 }),
+
+  serviceLine: varchar("service_line", { length: 255 }),
+
+  incorporationYear: integer("incorporation_year"),
+  workingTime: varchar("working_time", { length: 255 }),
+
+  contactName: varchar("contact_name", { length: 255 }),
+  contactEmail: varchar("contact_email", { length: 255 }),
+
+  // pictures
+
   contactNumber: varchar("contact_number", { length: 50 }),
+  linkedinURL: varchar("linkedin_url", { length: 255 }),
+  youtubeURL: varchar("youtube_url", { length: 255 }),
+  facebookURL: varchar("facebook_url", { length: 255 }),
+
   email: varchar("email", { length: 255 }),
-  website: varchar("website", { length: 255 }),
+
+  // address
   addressLine1: varchar("address_line1", { length: 255 }),
   addressLine2: varchar("address_line2", { length: 255 }),
   city: varchar("city", { length: 100 }),
   state: varchar("state", { length: 100 }),
-  postalCode: varchar("postal_code", { length: 20 }),
   country: varchar("country", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+
+  // ownership Information
+  ownerName: varchar("owner_name", { length: 255 }).array(),
+  SSN: varchar("ssn", { length: 255 }),
+  authorizedSignatoryName: varchar("authorized_signatory_name", {
+    length: 255,
+  }),
+  ETINnumber: varchar("etin_number", { length: 255 }),
+
+  // Bank Account Information
+  bankName: varchar("bank_name", { length: 255 }),
+  accountHolderName: varchar("account_holder_name", { length: 255 }),
+  accountNumber: varchar("account_number", { length: 255 }),
+  routingNumber: varchar("routing_number", { length: 255 }),
+
+  // logo
   logoUrl: varchar("logo_url", { length: 500 }),
   description: varchar("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const MediaTypeEnum = pgEnum("media_type_enum", ["image", "video"]);
+
+export const vendorMedia = pgTable("vendor_media", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  vendorId: integer("vendor_id").references(() => vendors.vendorId),
+
+  mediaType: MediaTypeEnum("media_type").notNull(),
+  mediaUrl: varchar("media_url", { length: 255 }),
+  altText: varchar("alt_text", { length: 255 }),
+  sortOrder: integer("sort_order").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -38,11 +86,11 @@ export const vendorContacts = pgTable("vendor_contacts", {
   vendorId: integer("vendor_id").references(() => vendors.vendorId),
 
   portalRole: varchar("portal_role", { length: 100 }), // e.g., "isAdmin"
-  role: varchar("role", { length: 100 }),
+  role: varchar("role", { length: 100 }).array(),
   department: varchar("department", { length: 100 }),
   employeeCode: varchar("employee_code", { length: 100 }),
   isActive: boolean("is_active").default(true).notNull(),
-
+  bio: varchar("bio"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -152,16 +200,11 @@ export const productAvailableArea = pgTable("product_available_area", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const productMediaTypeEnum = pgEnum("product_media_type_enum", [
-  "image",
-  "video",
-]);
-
 export const productMedia = pgTable("product_media", {
   id: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   productId: integer("product_id").references(() => products.productId),
 
-  mediaType: productMediaTypeEnum("media_type").notNull(),
+  mediaType: MediaTypeEnum("media_type").notNull(),
   mediaUrl: varchar("media_url", { length: 255 }),
   altText: varchar("alt_text", { length: 255 }),
   sortOrder: integer("sort_order").notNull(),

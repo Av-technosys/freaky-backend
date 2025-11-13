@@ -9,7 +9,9 @@ provider:
   name: aws
   runtime: nodejs20.x
   region: ap-south-1
-  profile: default # <--- USE THE PROFILE
+  profile: freaky-dev
+  deploymentBucket:
+    name: freaky-serverless-deployments
 
   logs:
     httpApi: true # <--- ADD THIS

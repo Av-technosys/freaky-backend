@@ -57,7 +57,7 @@ export const updateUserInfo = async (req, res) => {
     }
 
     // Update user info
-    const updatedUser = await db
+    const [updatedUser] = await db
       .update(users)
       .set(updateData)
       .where(eq(users.userId, userId))
@@ -65,7 +65,7 @@ export const updateUserInfo = async (req, res) => {
 
     return res.json({
       message: "User profile updated successfully.",
-      data: updatedUser[0],
+      data: removePassowrd(updatedUser),
     });
   } catch (err) {
     console.error("Error updating user info:", err);

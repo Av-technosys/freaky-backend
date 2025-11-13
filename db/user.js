@@ -9,6 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { eventProductOrders, events } from "./event.js";
 import { products, vendors } from "./vendor.js";
+import { mediaTypeEnum } from "./schema.js";
 
 export const userTypes = pgTable("user_types", {
   id: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
@@ -35,6 +36,7 @@ export const users = pgTable("users", {
   userToken: varchar("user_token", { length: 255 }),
   // otp
   status: boolean("status").default(false).notNull(),
+  isActive: boolean("is_active").default(false).notNull(),
   tokenExpiration: timestamp("total_expiration_time").defaultNow(), // will change when the token expires
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -134,18 +136,13 @@ export const reviews = pgTable("reviews", {
     .notNull(),
 });
 
-export const reviewMediaTypeEnum = pgEnum("review_media_type", [
-  "image",
-  "video",
-]);
-
 export const reviewMedia = pgTable("review_media", {
   reviewMediaId: integer("review_media_id")
     .generatedAlwaysAsIdentity()
     .primaryKey(), // auto-increment
   reviewId: integer("review_id").references(() => reviews.reviewId),
   mediaUrl: varchar("media_url", { length: 255 }),
-  mediaType: reviewMediaTypeEnum("media_type").notNull(),
+  mediaType: mediaTypeEnum("media_type").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

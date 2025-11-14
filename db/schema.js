@@ -1,6 +1,12 @@
-import * as user from "./user.js";
-import * as event from "./event.js";
-import * as vendor from "./vendor.js";
+import * as vendor from './vendor.js';
+import * as user from './user.js';
+import * as event from './event.js';
+import * as enums from './enum.js';
+
+export const mediaTypeEnum = enums.mediaTypeEnum;
+export const productTypeEnum = enums.productTypeEnum;
+export const productPricingTypeEnum = enums.productPricingTypeEnum;
+export const userSubscriptionStatusEnum = enums.userSubscriptionStatusEnum;
 
 export const userTypes = user.userTypes;
 export const users = user.users;
@@ -23,12 +29,11 @@ export const eventProductOrders = event.eventProductOrders;
 export const eventOrderTransactions = event.eventOrderTransactions;
 
 export const vendors = vendor.vendors;
+export const vendorInvites = vendor.vendorInvite;
+export const vendorEmployeeRequests = vendor.vendorEmployeeRequest;
 export const vendorContacts = vendor.vendorContacts;
 export const vendorMedias = vendor.vendorMedia;
 export const priceBooking = vendor.priceBooking;
-export const productTypeEnum = vendor.productTypeEnum;
-export const pricingTypeEnum = vendor.pricingTypeEnum;
-export const mediaTypeEnum = vendor.MediaTypeEnum;
 export const priceBookingEntry = vendor.priceBookingEntry;
 export const productType = vendor.productType;
 export const products = vendor.products;

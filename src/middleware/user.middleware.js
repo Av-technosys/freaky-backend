@@ -24,10 +24,10 @@ const getKey = (header, callback) => {
 export const confirmUserToken = (req, res, next) => {
   console.log("Checking in middleware...");
 
-  const authHeader = req.headers.authorization;
+  const authHeader = req?.headers.authorization;
   const token = authHeader?.startsWith("Bearer ")
     ? authHeader.split(" ")[1]
-    : req.body.token;
+    : req?.body.token;
 
   if (!token) {
     return res.status(400).json({ error: "Token is required." });

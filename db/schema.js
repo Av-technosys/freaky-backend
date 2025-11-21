@@ -44,3 +44,5 @@ export const discountScheduled = vendor.discountScheduled;
 export const contractProductType = vendor.contractProductType;
 export const featuredCategoryProducts = vendor.featuredCategoryProduct;
 export const featuredProdcuts = vendor.featuredProdcuts;
+export const vendorOwnerships = vendor.vendorOwnership;
+export const vendorDocuments = vendor.vendorDocument;

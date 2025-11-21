@@ -16,55 +16,84 @@ import {
 
 export const vendors = pgTable('vendors', {
   vendorId: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  // userId: uuid("user_id").references(() => users.userId, { onDelete: "cascade" }), // optional
   businessName: varchar('business_name', { length: 255 }).notNull(),
   websiteURL: varchar('website_url', { length: 255 }),
+  logoUrl: varchar('logo_url', { length: 500 }),
+  description: varchar('description'),
   DBAname: varchar('dba_name', { length: 255 }),
-  serviceLine: varchar('service_line', { length: 255 }),
+  legalEntityName: varchar('legal_entity_name', { length: 255 }),
+  einNumber: integer('ein_number'),
+  businessType: varchar('business_type', { length: 255 }),
+  incorporationDate: timestamp('incorporation_date'),
 
-  createdBy: integer('created_by').references(() => users.userId),
-
-  incorporationYear: integer('incorporation_year'),
-  workingTime: varchar('working_time', { length: 255 }),
-
-  contactName: varchar('contact_name', { length: 255 }),
-  contactEmail: varchar('contact_email', { length: 255 }),
-  contactNumber: varchar('contact_number', { length: 50 }),
-
-  // pictures
-  linkedinURL: varchar('linkedin_url', { length: 255 }),
-  youtubeURL: varchar('youtube_url', { length: 255 }),
-  facebookURL: varchar('facebook_url', { length: 255 }),
-  email: varchar('email', { length: 255 }),
-
-  // address
-  addressLine1: varchar('address_line1', { length: 255 }),
-  addressLine2: varchar('address_line2', { length: 255 }),
+  // Address
+  streetAddressLine1: varchar('street_address_line1', { length: 255 }),
+  streetAddressLine2: varchar('street_address_line2', { length: 255 }),
+  zipcode: varchar('zipcode', { length: 20 }),
   city: varchar('city', { length: 100 }),
   state: varchar('state', { length: 100 }),
   country: varchar('country', { length: 100 }),
-  postalCode: varchar('postal_code', { length: 20 }),
 
-  // ownership Information
-  ownerName: varchar('owner_name', { length: 255 }).array(),
-  SSN: varchar('ssn', { length: 255 }),
-  authorizedSignatoryName: varchar('authorized_signatory_name', {
-    length: 255,
-  }),
-  ETINnumber: varchar('etin_number', { length: 255 }),
+  // Admin of company
+  createdBy: integer('created_by').references(() => users.userId),
 
-  // Bank Account Information
+  // Contact
+  primaryContactName: varchar('primary_contact_name', { length: 255 }),
+  primaryContactEmail: varchar('primary_contact_email', { length: 255 }),
+  primaryPhoneNumber: varchar('primary_phone_number', { length: 50 }),
+  // socials
+  youtubeURL: varchar('youtube_url', { length: 255 }),
+  facebookURL: varchar('facebook_url', { length: 255 }),
+  linkedinURL: varchar('linkedin_url', { length: 255 }),
+  instagramURL: varchar('instagram_url', { length: 255 }),
+
+  // Account information
   bankName: varchar('bank_name', { length: 255 }),
-  accountHolderName: varchar('account_holder_name', { length: 255 }),
-  accountNumber: varchar('account_number', { length: 255 }),
+  bankAccountNumber: varchar('bank_account_number', { length: 255 }),
+  payeeName: varchar('payee_name', { length: 255 }),
+  bankType: varchar('bank_type', { length: 255 }),
   routingNumber: varchar('routing_number', { length: 255 }),
 
-  // logo
-  logoUrl: varchar('logo_url', { length: 500 }),
-  description: varchar('description'),
+  authorizedSignatoryName: varchar('authorized_signatory_name', { length: 255 }),
+
+  // status
+  status: boolean('status').default(true).notNull(),
+  isAdminApproved: boolean('is_admin_approved').default(false).notNull(),
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+export const vendorOwnership = pgTable('vendor_ownership', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+
+  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  firstName: varchar('first_name', { length: 255 }),
+  lastName: varchar('last_name', { length: 255 }),
+  ssnNumber: integer('ssn_number'),
+
+  // Address
+  streetAddressLine1: varchar('street_address_line1', { length: 255 }),
+  streetAddressLine2: varchar('street_address_line2', { length: 255 }),
+  zipcode: varchar('zipcode', { length: 20 }),
+  city: varchar('city', { length: 100 }),
+  state: varchar('state', { length: 100 }),
+  country: varchar('country', { length: 100 }),
+
+  isAuthorizedSignatory: boolean('is_authorized_signatory').default(false),
+  ownershipPercentage: decimal('ownership_percentage', { precision: 5, scale: 2 }),
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const vendorDocument = pgTable('vendor_document', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  documentType: varchar('document_type', { length: 255 }),
+  documentUrl: varchar('document_url', { length: 255 }),
+  description: varchar('description', { length: 255 }),
+  createdAt: timestamp('created_at').defaultNow(),
+})
 
 export const vendorInvite = pgTable('vendor_invite', {
   vendorInviteId: integer('vendor_invite_id')

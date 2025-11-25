@@ -163,21 +163,39 @@ export const vendorContacts = pgTable('vendor_contacts', {
 export const priceBooking = pgTable('price_booking', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   vendorId: integer('vendor_id').references(() => vendors.vendorId),
+
+  isStandard: boolean('is_standard').default(false).notNull(),
+  isActive: boolean('is_active').default(false).notNull(),
+
   name: varchar('name', { length: 255 }),
-  status: boolean('status').default(true).notNull(),
+  description: varchar(),
+
   startDate: timestamp('start_date').defaultNow(),
   endDate: timestamp('end_date').defaultNow(),
 });
 
 export const priceBookingEntry = pgTable('price_booking_entry', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+
   productId: integer('product_id').references(() => products.productId),
   priceBookingId: integer('price_booking_id').references(
     () => priceBooking.id,
     { onDelete: 'cascade' }
   ),
+
   currency: varchar('currency', { length: 255 }),
-  amount: decimal('amount', { precision: 10, scale: 2 }),
+
+  lowerSlab: integer('lower_slab'),
+  upperSlab: integer('upper_slab'),
+
+  listPrice: decimal('list_price', { precision: 10, scale: 2 }),
+
+  discountPercentage: decimal('discount_percentage', {
+    precision: 10,
+    scale: 2,
+  }),
+  salePrice: decimal('sale_price', { precision: 10, scale: 2 }),
+
   createdAt: timestamp('created_at').defaultNow(),
 });
 

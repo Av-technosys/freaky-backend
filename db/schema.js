@@ -27,6 +27,7 @@ export const events = event.events;
 export const eventBooking = event.eventBooking;
 export const eventProductOrders = event.eventProductOrders;
 export const eventOrderTransactions = event.eventOrderTransactions;
+export const featuredCategoryEvents = event.featuredCategoryEvent;
 
 export const vendors = vendor.vendors;
 export const vendorInvites = vendor.vendorInvite;

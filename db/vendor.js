@@ -15,8 +15,7 @@ import {
 } from './enum.js';
 
 export const vendors = pgTable('vendors', {
-  vendorId: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  businessName: varchar('business_name', { length: 255 }).notNull(),
+  vendorId: integer('id').generatedAlwaysAsIdentity().primaryKey(),
   websiteURL: varchar('website_url', { length: 255 }),
   logoUrl: varchar('logo_url', { length: 500 }),
   description: varchar('description'),
@@ -54,7 +53,7 @@ export const vendors = pgTable('vendors', {
   bankType: varchar('bank_type', { length: 255 }),
   routingNumber: varchar('routing_number', { length: 255 }),
 
-  authorizedSignatoryName: varchar('authorized_signatory_name', { length: 255 }),
+  authorizedSignatory: integer('authorized_signatory').references(() => vendorOwnership.id),
 
   // status
   status: boolean('status').default(true).notNull(),
@@ -80,7 +79,7 @@ export const vendorOwnership = pgTable('vendor_ownership', {
   state: varchar('state', { length: 100 }),
   country: varchar('country', { length: 100 }),
 
-  isAuthorizedSignatory: boolean('is_authorized_signatory').default(false),
+  isAuthorizedSignature: boolean('is_authorized_signature').default(false),
   ownershipPercentage: decimal('ownership_percentage', { precision: 5, scale: 2 }),
 
   createdAt: timestamp('created_at').defaultNow(),

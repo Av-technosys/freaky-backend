@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon --exec npx serverless offline",
+    "seed": "node ./db/seeding/main.js",
     "deploy:dev": "npx serverless deploy --stage dev",
     "deploy:prod": "npx serverless deploy --stage prod",
     "remove:dev": "npx serverless remove --stage dev",
@@ -16,6 +17,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.918.0",
+    "@faker-js/faker": "^10.1.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.6",

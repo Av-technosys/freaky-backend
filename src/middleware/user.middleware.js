@@ -1,6 +1,6 @@
-import jwt from "jsonwebtoken";
-import jwksClient from "jwks-rsa";
-import dotenv from "dotenv";
+import jwt from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
+import dotenv from 'dotenv';
 dotenv.config();
 
 const poolRegion = process.env.AWS_REGION; // e.g. 'ap-south-1'
@@ -22,28 +22,28 @@ const getKey = (header, callback) => {
 
 // 3️⃣ Middleware to verify Cognito token
 export const confirmUserToken = (req, res, next) => {
-  console.log("Checking in middleware...");
+  console.log('Checking in middleware...');
 
   const authHeader = req?.headers.authorization;
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.split(" ")[1]
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.split(' ')[1]
     : req?.body.token;
 
   if (!token) {
-    return res.status(400).json({ error: "Token is required." });
+    return res.status(400).json({ error: 'Token is required.' });
   }
 
   jwt.verify(
     token,
     getKey,
     {
-      algorithms: ["RS256"],
+      algorithms: ['RS256'],
       issuer: `https://cognito-idp.${poolRegion}.amazonaws.com/${userPoolId}`,
     },
     (err, decoded) => {
       if (err) {
-        console.error("Token verification failed:", err);
-        return res.status(401).json({ error: "Invalid or expired token." });
+        console.error('Token verification failed:', err);
+        return res.status(401).json({ error: 'Invalid or expired token.' });
       }
 
       req.user = decoded; // ✅ contains user info (email, sub, etc.)

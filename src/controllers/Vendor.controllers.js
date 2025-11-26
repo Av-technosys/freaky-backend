@@ -1,8 +1,9 @@
-import { and, ilike, sql } from 'drizzle-orm';
+import { and, eq, ilike, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
   vendorContacts,
   vendorEmployeeRequests,
+  vendorOwnerships,
   vendors,
 } from '../../db/schema.js';
 import { commonVendorFields } from '../../const/vendor.js';
@@ -249,3 +250,220 @@ export const createVendorEmpRequest = async (req, res) => {
 };
 
 // export const createVendorEmpRequest = async (req, res) => {};
+
+export const updateAddressDetails = async (req, res) => {
+  try {
+    const vendorId = req.user['custom:vendor_ids'];
+    const {
+      streetAddressLine1,
+      streetAddressLine2,
+      city,
+      state,
+      country,
+      zipcode,
+    } = req.body;
+
+    await db
+      .update(vendors)
+      .set({
+        streetAddressLine1: streetAddressLine1,
+        streetAddressLine2: streetAddressLine2,
+        city: city,
+        state: state,
+        zipcode: zipcode,
+        country: country,
+      })
+      .where(eq(vendors.vendorId, vendorId))
+      .returning();
+
+    return res.json({
+      message: 'Address Details Updated successfully.',
+    });
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+export const updateBankDetails = async (req, res) => {
+  try {
+    const vendorId = req.user['custom:vendor_ids'];
+    const { bankAccountNumber, bankName, payeeName, routingNumber, bankType } =
+      req.body;
+
+    await db
+      .update(vendors)
+      .set({
+        bankAccountNumber: bankAccountNumber,
+        bankName: bankName,
+        payeeName: payeeName,
+        routingNumber: routingNumber,
+        bankType: bankType,
+      })
+      .where(eq(vendors.vendorId, vendorId))
+      .returning();
+
+    return res.json({
+      message: 'Bank Details Updated successfully.',
+    });
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+export const updateContactDetails = async (req, res) => {
+  try {
+    const vendorId = req.user['custom:vendor_ids'];
+    const {
+      primaryContactName,
+      primaryEmail,
+      primaryPhoneNumber,
+      instagramURL,
+      youtubeURL,
+      facebookURL,
+    } = req.body;
+
+    await db
+      .update(vendors)
+      .set({
+        primaryContactName: primaryContactName,
+        primaryEmail: primaryEmail,
+        primaryPhoneNumber: primaryPhoneNumber,
+        instagramURL: instagramURL,
+        youtubeURL: youtubeURL,
+        facebookURL: facebookURL,
+      })
+      .where(eq(vendors.vendorId, vendorId));
+
+    return res.json({
+      message: 'Contact Details Updated successfully.',
+    });
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+export const updateCompanyDetails = async (req, res) => {
+  try {
+    const vendorId = req.user['custom:vendor_ids'];
+    const {
+      businessName,
+      websiteURL,
+      logoUrl,
+      description,
+      DBAname,
+      legalEntityName,
+      einNumber,
+      businessType,
+      incorporationDate,
+    } = req.body;
+
+    await db
+      .update(vendors)
+      .set({
+        businessName: businessName,
+        websiteURL: websiteURL,
+        logoUrl: logoUrl,
+        description: description,
+        DBAname: DBAname,
+        legalEntityName: legalEntityName,
+        einNumber: einNumber,
+        businessType: businessType,
+        incorporationDate: new Date(incorporationDate),
+      })
+      .where(eq(vendors.vendorId, vendorId));
+
+    return res.json({
+      message: 'Company Details Updated successfully.',
+    });
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateOwnershipDetails = async (req, res) => {
+  try {
+    const vendorId = req.user['custom:vendor_ids'];
+    const { ownerId } = req.params;
+    const {
+      firstName,
+      lastName,
+      ssnNumber,
+      streetAddressLine1,
+      streetAddressLine2,
+      zipcode,
+      city,
+      state,
+      country,
+      isAuthorizedSignature,
+      ownershipPercentage,
+    } = req.body;
+
+    if (ownerId) {
+      await db
+        .update(vendorOwnerships)
+        .set({
+          firstName: firstName,
+          lastName: lastName,
+          ssnNumber: ssnNumber,
+          streetAddressLine1: streetAddressLine1,
+          streetAddressLine2: streetAddressLine2,
+          zipcode: zipcode,
+          city: city,
+          state: state,
+          country: country,
+          isAuthorizedSignature: isAuthorizedSignature,
+          ownershipPercentage: ownershipPercentage,
+        })
+        .where(eq(vendorOwnerships.id, ownerId));
+    } else {
+      const vendor = await db
+        .select()
+        .from(vendorOwnerships)
+        .where(eq(vendorOwnerships.vendorId, vendorId));
+      if (vendor) {
+        await db
+          .update(vendorOwnerships)
+          .set({
+            firstName: firstName,
+            lastName: lastName,
+            ssnNumber: ssnNumber,
+            streetAddressLine1: streetAddressLine1,
+            streetAddressLine2: streetAddressLine2,
+            zipcode: zipcode,
+            city: city,
+            state: state,
+            country: country,
+            isAuthorizedSignature: isAuthorizedSignature,
+            ownershipPercentage: ownershipPercentage,
+          })
+          .where(eq(vendorOwnerships.vendorId, vendorId));
+      } else {
+        await db.insert(vendorOwnerships).values({
+          firstName,
+          lastName,
+          ssnNumber,
+          streetAddressLine1,
+          streetAddressLine2,
+          zipcode,
+          city,
+          state,
+          country,
+          isAuthorizedSignature,
+          ownershipPercentage,
+          vendor_id: vendorId,
+        });
+      }
+    }
+
+    return res.json({
+      message: 'Ownership Details Updated successfully.',
+    });
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({ error: error.message });
+  }
+};

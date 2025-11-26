@@ -4,6 +4,11 @@ import {
   createVendorEmpRequest,
   getCompanyProfile,
   listAllVendors,
+  updateAddressDetails,
+  updateBankDetails,
+  updateCompanyDetails,
+  updateContactDetails,
+  updateOwnershipDetails,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -23,6 +28,15 @@ router.post(
   '/create_vendor_emp_request',
   confirmUserToken,
   createVendorEmpRequest
+);
+router.put('/update_address', confirmUserToken, updateAddressDetails);
+router.put('/update_bank_details', confirmUserToken, updateBankDetails);
+router.put('/update_contact_details', confirmUserToken, updateContactDetails);
+router.put('/update_company_details', confirmUserToken, updateCompanyDetails);
+router.put(
+  '/update_ownership_details/:ownerId?',
+  confirmUserToken,
+  updateOwnershipDetails
 );
 // router.get("/create_vendor_emp_request", createVendorEmpRequest);
 

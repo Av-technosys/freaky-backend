@@ -487,23 +487,21 @@ export const fetchProductPrice = async (req, res) => {
       const vendorId = product.vendorId;
 
       const priceBook = await db.query.priceBooking.findMany({
-       where: (t, { eq, and }) =>
-       and(
-        eq(t.vendorId, vendorId),
-        eq(t.isActive, true)
-        ),
-});
-
+        where: (t, { eq, and }) => and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+      });
+ 
       if (!priceBook){
       return res.status(404).json({ error: "No pricebook found for vendor" });
       }
 
-      const productPrice = await db.query.priceBookingEntry.findFirst({
-        where: (t, { and, eq }) =>
+      const priceBookingIds = priceBook.map(p => p.id);
+
+      const productPrice = await db.query.priceBookingEntry.findMany({
+        where: (t, { eq, and, inArray }) =>
           and(
-            eq(t.productId, Number(productId)),
-            eq(t.priceBookingId, priceBook.id) 
-          ),
+            eq(t.productId, productId),
+            inArray(t.priceBookingId, priceBookingIds)
+          )
       });
 
       if (!productPrice){

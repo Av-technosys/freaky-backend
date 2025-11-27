@@ -276,7 +276,7 @@ export const updateAddressDetails = async (req, res) => {
       .where(eq(vendors.vendorId, vendorId))
       .returning();
 
-    return res.json({
+    return res.status(200).json({
       message: 'Address Details Updated successfully.',
     });
   } catch (error) {
@@ -303,7 +303,7 @@ export const updateBankDetails = async (req, res) => {
       .where(eq(vendors.vendorId, vendorId))
       .returning();
 
-    return res.json({
+    return res.status(200).json({
       message: 'Bank Details Updated successfully.',
     });
   } catch (error) {
@@ -336,7 +336,7 @@ export const updateContactDetails = async (req, res) => {
       })
       .where(eq(vendors.vendorId, vendorId));
 
-    return res.json({
+    return res.status(200).json({
       message: 'Contact Details Updated successfully.',
     });
   } catch (error) {
@@ -375,7 +375,7 @@ export const updateCompanyDetails = async (req, res) => {
       })
       .where(eq(vendors.vendorId, vendorId));
 
-    return res.json({
+    return res.status(200).json({
       message: 'Company Details Updated successfully.',
     });
   } catch (error) {
@@ -387,79 +387,43 @@ export const updateCompanyDetails = async (req, res) => {
 export const updateOwnershipDetails = async (req, res) => {
   try {
     const vendorId = req.user['custom:vendor_ids'];
-    const { ownerId } = req.params;
-    const {
-      firstName,
-      lastName,
-      ssnNumber,
-      streetAddressLine1,
-      streetAddressLine2,
-      zipcode,
-      city,
-      state,
-      country,
-      isAuthorizedSignature,
-      ownershipPercentage,
-    } = req.body;
+    const ownershipDetailsArray = req.body;
 
-    if (ownerId) {
-      await db
-        .update(vendorOwnerships)
-        .set({
-          firstName: firstName,
-          lastName: lastName,
-          ssnNumber: ssnNumber,
-          streetAddressLine1: streetAddressLine1,
-          streetAddressLine2: streetAddressLine2,
-          zipcode: zipcode,
-          city: city,
-          state: state,
-          country: country,
-          isAuthorizedSignature: isAuthorizedSignature,
-          ownershipPercentage: ownershipPercentage,
-        })
-        .where(eq(vendorOwnerships.id, ownerId));
-    } else {
-      const vendor = await db
-        .select()
-        .from(vendorOwnerships)
-        .where(eq(vendorOwnerships.vendorId, vendorId));
-      if (vendor) {
-        await db
-          .update(vendorOwnerships)
-          .set({
-            firstName: firstName,
-            lastName: lastName,
-            ssnNumber: ssnNumber,
-            streetAddressLine1: streetAddressLine1,
-            streetAddressLine2: streetAddressLine2,
-            zipcode: zipcode,
-            city: city,
-            state: state,
-            country: country,
-            isAuthorizedSignature: isAuthorizedSignature,
-            ownershipPercentage: ownershipPercentage,
-          })
-          .where(eq(vendorOwnerships.vendorId, vendorId));
-      } else {
-        await db.insert(vendorOwnerships).values({
-          firstName,
-          lastName,
-          ssnNumber,
-          streetAddressLine1,
-          streetAddressLine2,
-          zipcode,
-          city,
-          state,
-          country,
-          isAuthorizedSignature,
-          ownershipPercentage,
-          vendor_id: vendorId,
-        });
-      }
+    if (!vendorId) {
+      return res.status(504).json({ msg: 'Vendor not found' });
     }
 
-    return res.json({
+    await Promise.all(
+      ownershipDetailsArray.map(async (ownership) => {
+        const ownerId = ownership.id;
+
+        const ownerDetailSave = {
+          firstName: ownership.firstName,
+          lastName: ownership.lastName,
+          ssnNumber: ownership.ssnNumber,
+          streetAddressLine1: ownership.streetAddressLine1,
+          streetAddressLine2: ownership.streetAddressLine2,
+          zipcode: ownership.zipcode,
+          city: ownership.city,
+          state: ownership.state,
+          country: ownership.country,
+          isAuthorizedSignature: ownership.isAuthorizedSignature,
+          ownershipPercentage: ownership.ownershipPercentage,
+        };
+
+        if (ownerId) {
+          await db
+            .update(vendorOwnerships)
+            .set(ownerDetailSave)
+            .where(eq(vendorOwnerships.id, ownerId));
+        } else {
+          await db
+            .insert(vendorOwnerships)
+            .values({ ...ownerDetailSave, vendorId: vendorId });
+        }
+      })
+    );
+    return res.status(200).json({
       message: 'Ownership Details Updated successfully.',
     });
   } catch (error) {

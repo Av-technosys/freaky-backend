@@ -34,7 +34,7 @@ router.put('/update_bank_details', confirmUserToken, updateBankDetails);
 router.put('/update_contact_details', confirmUserToken, updateContactDetails);
 router.put('/update_company_details', confirmUserToken, updateCompanyDetails);
 router.put(
-  '/update_ownership_details/:ownerId?',
+  '/update_ownership_details',
   confirmUserToken,
   updateOwnershipDetails
 );

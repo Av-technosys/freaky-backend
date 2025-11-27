@@ -141,7 +141,7 @@ export const getAllReviews = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
     if (!userId) {
-      return res.status(500);
+      return res.status(500).json({ error: 'User not found.' });
     }
 
     const response = await db.query.reviews.findMany({

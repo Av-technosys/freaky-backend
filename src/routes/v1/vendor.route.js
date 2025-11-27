@@ -11,8 +11,7 @@ import {
   updateOwnershipDetails,
   fetchVendorProducts,
   fetchProductPrice,
-  fetchAllProductTypes,
-  listProductsByType
+  listProductsType
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -47,8 +46,7 @@ router.put(
 
 router.post("/get_vendor_products/:vendorId", confirmUserToken, fetchVendorProducts);
 router.post("/get_product_price/:productId", confirmUserToken, fetchProductPrice);
-router.get("/list_product_type", confirmUserToken, fetchAllProductTypes);
-router.post("/get_product_by_id", confirmUserToken, listProductsByType);
+router.get("/get_products_type", confirmUserToken, listProductsType);
 
 
 export default router;

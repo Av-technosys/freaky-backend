@@ -522,29 +522,19 @@ export const fetchProductPrice = async (req, res) => {
 
 
 
-export const fetchAllProductTypes = async (req, res) => {
-  try {
-  
-    const productTypes = await db.query.productType.findMany();
 
-      return res.json({
-        message: "product type fetched successfully",
-        productTypes: productTypes,
-      });
-  } catch (err) {
-    console.error("product type Fetch Error:", err);
-    return res.status(500).json({ error: "Server error fetching product type" });
-  }
-};
-
-
-export const listProductsByType = async (req, res) => {
+export const listProductsType = async (req, res) => {
   try {
   
     const { productTypeId, page = 1, page_size = 12 } = req.query;
 
     if (!productTypeId){
-        return res.status(400).json({ error: "productTypeId is required" });
+       const productTypes = await db.query.productType.findMany();
+
+      return res.json({
+        message: "product type fetched successfully",
+        productTypes: productTypes,
+      });
     }
     
      const limit = Number(page_size);

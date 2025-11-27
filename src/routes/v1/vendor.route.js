@@ -9,9 +9,12 @@ import {
   updateCompanyDetails,
   updateContactDetails,
   updateOwnershipDetails,
+  fetchVendorProducts,
+  fetchProductPrice
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
+
 
 const router = Router();
 
@@ -39,5 +42,9 @@ router.put(
   updateOwnershipDetails
 );
 // router.get("/create_vendor_emp_request", createVendorEmpRequest);
+
+router.post("/get_vendor_products/:vendorId", confirmUserToken, fetchVendorProducts);
+router.post("/get_product_price/:productId", confirmUserToken, fetchProductPrice);
+
 
 export default router;

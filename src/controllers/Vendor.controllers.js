@@ -10,6 +10,7 @@ import { commonVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
 
+
 export const getCompanyProfile = async (req, res) => {
   // try {
   //   const email = req.user?.email || req.body.email;
@@ -46,7 +47,7 @@ export const listAllVendors = async (req, res) => {
     const filters = [];
 
     if (text && text.trim() !== '') {
-      filters.push(ilike(vendors.businessName, `%${text}%`));
+      filters.push(ilike(vendors.legalEntityName, `%${text}%`));
     }
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
@@ -85,6 +86,7 @@ export const listAllVendors = async (req, res) => {
     });
   }
 };
+
 
 export const createVendor = async (req, res) => {
   try {
@@ -429,5 +431,92 @@ export const updateOwnershipDetails = async (req, res) => {
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: error.message });
+  }
+};
+export const fetchVendorProducts = async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+
+    if (!vendorId) {
+        return res.status(400).json({ error: "Vendor ID is required." });
+      }
+
+    const vendorProducts = await db.query.products.findMany({
+      where: (tbl, { eq }) => eq(tbl.vendorId, Number(vendorId)),
+    });
+ 
+    if (vendorProducts.length === 0) {
+      return res.status(404).json({ error: "No products found for this vendor." });
+    }
+
+     const productIds = vendorProducts.map(p => p.productId);
+
+     const productMedia = await db.query.productMedia.findMany({
+      where: (tbl, { inArray }) => inArray(tbl.productId, productIds),
+    });
+
+    const data = vendorProducts.map(p => ({
+      ...p,
+      media: productMedia.filter(m => m.productId === p.productId)
+    }));
+
+    return res.json({
+      message: "Products fetched successfully",
+      products: data,
+    });
+
+  } catch (err) {
+    console.error("Error fetching vendor products:", err);
+    return res.status(500).json({ error: "Server error fetching vendor products." });
+  }
+};
+
+export const fetchProductPrice = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    if (!productId){
+      return res.status(400).json({ error: "Product ID is required." });
+      }
+      const product = await db.query.products.findFirst({
+        where: (t, { eq }) => eq(t.productId, Number(productId)),
+      });
+      if (!product){
+      return res.status(404).json({ error: "Product not found" });
+      }
+
+      const vendorId = product.vendorId;
+
+      const priceBook = await db.query.priceBooking.findMany({
+       where: (t, { eq, and }) =>
+       and(
+        eq(t.vendorId, vendorId),
+        eq(t.isActive, true)
+        ),
+});
+
+      if (!priceBook){
+      return res.status(404).json({ error: "No pricebook found for vendor" });
+      }
+
+      const productPrice = await db.query.priceBookingEntry.findFirst({
+        where: (t, { and, eq }) =>
+          and(
+            eq(t.productId, Number(productId)),
+            eq(t.priceBookingId, priceBook.id) 
+          ),
+      });
+
+      if (!productPrice){
+      return res.status(404).json({ error: "Price not found for this product" });
+      }
+
+      return res.json({
+        message: "Price fetched successfully",
+        vendorId,
+        price: productPrice,
+      });
+  } catch (err) {
+    console.error("Price Fetch Error:", err);
+    return res.status(500).json({ error: "Server error fetching product price" });
   }
 };

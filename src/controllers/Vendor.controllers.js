@@ -5,6 +5,7 @@ import {
   vendorEmployeeRequests,
   vendorOwnerships,
   vendors,
+  products
 } from '../../db/schema.js';
 import { commonVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
@@ -516,5 +517,71 @@ export const fetchProductPrice = async (req, res) => {
   } catch (err) {
     console.error("Price Fetch Error:", err);
     return res.status(500).json({ error: "Server error fetching product price" });
+  }
+};
+
+
+
+export const fetchAllProductTypes = async (req, res) => {
+  try {
+  
+    const productTypes = await db.query.productType.findMany();
+
+      return res.json({
+        message: "product type fetched successfully",
+        productTypes: productTypes,
+      });
+  } catch (err) {
+    console.error("product type Fetch Error:", err);
+    return res.status(500).json({ error: "Server error fetching product type" });
+  }
+};
+
+
+export const listProductsByType = async (req, res) => {
+  try {
+  
+    const { productTypeId, page = 1, page_size = 12 } = req.query;
+
+    if (!productTypeId){
+        return res.status(400).json({ error: "productTypeId is required" });
+    }
+    
+     const limit = Number(page_size);
+     const offset = (Number(page) - 1) * limit;
+
+     const totalRows = await db
+    .select({ count: sql`CAST(count(*) AS INTEGER)` })
+    .from(products)
+    .where(eq(products.productTypeId, Number(productTypeId)));
+
+    const total = totalRows[0].count;
+
+      const data = await db
+      .select()
+      .from(products)
+      .where(eq(products.productTypeId, Number(productTypeId)))
+      .limit(limit)
+      .offset(offset);
+
+      console.log("data",data)
+
+    return res.json({
+      success: true,
+      message: "Products fetched successfully",
+      pagination: {
+        page: Number(page),
+        page_size: limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      },
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching products by type:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };

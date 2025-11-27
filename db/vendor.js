@@ -16,6 +16,7 @@ import {
 
 export const vendors = pgTable('vendors', {
   vendorId: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+  businessName: varchar('business_name', { length: 255 }),
   websiteURL: varchar('website_url', { length: 255 }),
   logoUrl: varchar('logo_url', { length: 500 }),
   description: varchar('description'),
@@ -53,7 +54,9 @@ export const vendors = pgTable('vendors', {
   bankType: varchar('bank_type', { length: 255 }),
   routingNumber: varchar('routing_number', { length: 255 }),
 
-  authorizedSignatory: integer('authorized_signatory').references(() => vendorOwnership.id),
+  authorizedSignatory: integer('authorized_signatory').references(
+    () => vendorOwnership.id
+  ),
 
   // status
   status: boolean('status').default(true).notNull(),
@@ -80,7 +83,10 @@ export const vendorOwnership = pgTable('vendor_ownership', {
   country: varchar('country', { length: 100 }),
 
   isAuthorizedSignature: boolean('is_authorized_signature').default(false),
-  ownershipPercentage: decimal('ownership_percentage', { precision: 5, scale: 2 }),
+  ownershipPercentage: decimal('ownership_percentage', {
+    precision: 5,
+    scale: 2,
+  }),
 
   createdAt: timestamp('created_at').defaultNow(),
 });
@@ -92,7 +98,7 @@ export const vendorDocument = pgTable('vendor_document', {
   documentUrl: varchar('document_url', { length: 255 }),
   description: varchar('description', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow(),
-})
+});
 
 export const vendorInvite = pgTable('vendor_invite', {
   vendorInviteId: integer('vendor_invite_id')

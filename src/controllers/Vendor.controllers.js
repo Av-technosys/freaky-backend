@@ -5,10 +5,12 @@ import {
   vendorEmployeeRequests,
   vendorOwnerships,
   vendors,
+  products
 } from '../../db/schema.js';
 import { commonVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
+
 
 export const getCompanyProfile = async (req, res) => {
   // try {
@@ -46,7 +48,7 @@ export const listAllVendors = async (req, res) => {
     const filters = [];
 
     if (text && text.trim() !== '') {
-      filters.push(ilike(vendors.businessName, `%${text}%`));
+      filters.push(ilike(vendors.legalEntityName, `%${text}%`));
     }
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
@@ -85,6 +87,7 @@ export const listAllVendors = async (req, res) => {
     });
   }
 };
+
 
 export const createVendor = async (req, res) => {
   try {
@@ -429,5 +432,146 @@ export const updateOwnershipDetails = async (req, res) => {
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: error.message });
+  }
+};
+export const fetchVendorProducts = async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+
+    if (!vendorId) {
+        return res.status(400).json({ error: "Vendor ID is required." });
+      }
+
+    const vendorProducts = await db.query.products.findMany({
+      where: (table, { eq }) => eq(table.vendorId, Number(vendorId)),
+    });
+ 
+    if (vendorProducts.length === 0) {
+      return res.status(404).json({ error: "No products found for this vendor." });
+    }
+
+     const productIds = vendorProducts.map(p => p.productId);
+
+     const productMedia = await db.query.productMedia.findMany({
+      where: (table, { inArray }) => inArray(table.productId, productIds),
+    });
+
+    const data = vendorProducts.map(product => ({
+      ...product,
+      media: productMedia.filter(media => media.productId === p.productId)
+    }));
+
+    return res.json({
+      message: "Products fetched successfully",
+      products: data,
+    });
+
+  } catch (err) {
+    console.error("Error fetching vendor products:", err);
+    return res.status(500).json({ error: "Server error fetching vendor products." });
+  }
+};
+
+export const fetchProductPrice = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    if (!productId){
+      return res.status(400).json({ error: "Product ID is required." });
+      }
+      const product = await db.query.products.findFirst({
+        where: (t, { eq }) => eq(t.productId, Number(productId)),
+      });
+      if (!product){
+      return res.status(404).json({ error: "Product not found" });
+      }
+
+      const vendorId = product.vendorId;
+
+      const priceBook = await db.query.priceBooking.findMany({
+        where: (t, { eq, and }) => and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+      });
+ 
+      if (!priceBook){
+      return res.status(404).json({ error: "No pricebook found for vendor" });
+      }
+
+      const priceBookingIds = priceBook.map(p => p.id);
+
+      const productPrice = await db.query.priceBookingEntry.findMany({
+        where: (t, { eq, and, inArray }) =>
+          and(
+            eq(t.productId, productId),
+            inArray(t.priceBookingId, priceBookingIds)
+          )
+      });
+
+      if (!productPrice){
+      return res.status(404).json({ error: "Price not found for this product" });
+      }
+
+      return res.json({
+        message: "Price fetched successfully",
+        vendorId,
+        price: productPrice,
+      });
+  } catch (err) {
+    console.error("Price Fetch Error:", err);
+    return res.status(500).json({ error: "Server error fetching product price" });
+  }
+};
+
+
+
+
+export const listProductsType = async (req, res) => {
+  try {
+  
+    const { productTypeId, page = 1, page_size = 12 } = req.query;
+
+    if (!productTypeId){
+       const productTypes = await db.query.productType.findMany();
+
+      return res.json({
+        message: "product type fetched successfully",
+        productTypes: productTypes,
+      });
+    }
+    
+     const limit = Number(page_size);
+     const offset = (Number(page) - 1) * limit;
+
+     const totalRows = await db
+    .select({ count: sql`CAST(count(*) AS INTEGER)` })
+    .from(products)
+    .where(eq(products.productTypeId, Number(productTypeId)));
+
+    const total = totalRows[0].count;
+
+      const data = await db
+      .select()
+      .from(products)
+      .where(eq(products.productTypeId, Number(productTypeId)))
+      .limit(limit)
+      .offset(offset);
+
+      console.log("data",data)
+
+    return res.json({
+      success: true,
+      message: "Products fetched successfully",
+      pagination: {
+        page: Number(page),
+        page_size: limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      },
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching products by type:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };

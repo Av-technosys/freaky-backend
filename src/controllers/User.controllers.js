@@ -19,7 +19,7 @@ export const getUserInfo = async (req, res) => {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    return res.json({
+    return res.status(200).json({
       message: 'User info fetched successfully.',
       data: removePassowrd(user),
     });
@@ -63,7 +63,7 @@ export const updateUserInfo = async (req, res) => {
       .where(eq(users.userId, userId))
       .returning();
 
-    return res.json({
+    return res.status(200).json({
       message: 'User profile updated successfully.',
       data: removePassowrd(updatedUser),
     });
@@ -75,18 +75,26 @@ export const updateUserInfo = async (req, res) => {
 
 export const addAddress = async (req, res) => {
   try {
+    //fetch data from payload
+    const {title , addressLineOne, addressLineTwo, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude} = req.body;
+
     const email = req.user?.email || req.body.email;
 
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required.' });
-    }
+    // Validate all fields exist
+    const requiredFields = { title, addressLineOne ,reciverName, reciverNumber, city, state, postalCode, country,latitude, longitude};
 
+    for (const [key, value] of Object.entries(requiredFields)) {
+    if (!value) return res.status(400).json({ error: `${key} is required.` });
+   }
+
+    // Fetch User
     const user = await db.query.users.findFirst({
       where: (users, { eq }) => eq(users.email, email),
     });
 
+   // if user is not present
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ error: "User not found." });
     }
 
     const userId = user.userId;
@@ -96,9 +104,10 @@ export const addAddress = async (req, res) => {
       address: req.body.address,
     });
 
-    return res.json({
+    return res.status(204).json({
       message: 'Address added successfully.',
     });
+
   } catch (err) {
     console.error('Error fetching user info:', err);
     return res.status(500).json({ error: 'Internal server error.' });
@@ -127,7 +136,7 @@ export const listAllAddresses = async (req, res) => {
       where: (userAddresses, { eq }) => eq(userAddresses.userId, userId),
     });
 
-    return res.json({
+    return res.status(200).json({
       message: 'Address added successfully.',
       data: response,
     });
@@ -163,7 +172,7 @@ export const getAllReviews = async (req, res) => {
 
     // console.log('newReview', newReviewsResponse);
 
-    return res.json({
+    return res.status(200).json({
       message: 'Reviews fetched successfully.',
       data: newReviewsResponse,
     });
@@ -174,25 +183,38 @@ export const getAllReviews = async (req, res) => {
 };
 
 export const editAddresses = async (req, res) => {
-  try {
+ try {
+    //fetch data from payload
+    const { 
+      params:{ id }, 
+      body:{ 
+        title, addressLineOne, addressLineTwo, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude 
+      } 
+    } = req;
+
     const email = req.user?.email || req.body.email;
 
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required.' });
-    }
+      // Validate all fields exist
+    const requiredFields = { title, addressLineOne,reciverName, reciverNumber, city, state, postalCode, country,latitude, longitude};
 
+    for (const [key, value] of Object.entries(requiredFields)) {
+    if (!value) return res.status(400).json({ error: `${key} is required.` });
+   }
+
+    // Fetch User
     const user = await db.query.users.findFirst({
       where: (users, { eq }) => eq(users.email, email),
     });
 
+   // if user is not present
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ error: "User not found." });
     }
 
     const userId = user.userId;
 
     const data = req.body;
-    const { id, userId: reqUserId, ...filteredData } = data;
+    const { id:bodyId, userId: reqUserId, ...filteredData } = data;
 
     const response = await db
       .update(userAddresses)
@@ -200,13 +222,13 @@ export const editAddresses = async (req, res) => {
       .where(and(eq(userAddresses.userId, userId), eq(userAddresses.id, id)))
       .returning();
 
-    return res.json({
-      message: 'Address saved successfully.',
-      data: response,
+    return res.status(204).json({
+      message: "Address updated successfully.",
     });
+
   } catch (err) {
-    console.error('Error saving address:', err);
-    return res.status(500).json({ error: 'Internal server error.' });
+    console.error("Error updating address:", err);
+    return res.status(500).json({ error: "Internal server error." });
   }
 };
 
@@ -230,27 +252,55 @@ export const setCurrentAddress = async (req, res) => {
 
     const data = req.body;
     const { id } = data;
+ 
+    if (!id) {
+      return res.status(400).json({ error: "Address ID is required." });
+    }
 
-    await db
+     await db
       .update(users)
-      .set({
-        currentAddressId: id,
-      })
+      .set({ currentAddressId: id })
       .where(eq(users.userId, userId));
 
     const response = await db.query.users.findFirst({
       where: (users, { eq }) => eq(users.userId, userId),
-      with: {
-        currentAddressId: true,
-      },
     });
 
-    return res.json({
+    return res.status(200).json({
       message: 'Address saved successfully.',
       data: response,
     });
   } catch (err) {
-    console.error('Error saving address:', err);
-    return res.status(500).json({ error: 'Internal server error.' });
+    console.error("Error saving address:", err);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+export const deleteAddress = async (req, res) => {
+try {
+     const { id } = req.params; 
+
+    if (!id) {
+      return res.status(400).json({ error: "addressId is required." });
+    }
+
+    // Find address
+    const address = await db.query.userAddresses.findFirst({
+       where: (userAddresses, { eq }) => eq(userAddresses.id, id)
+    });
+
+    if (!address) {
+      return res.status(404).json({ error: "Address not found." });
+    }
+
+    // Delete address
+    await db.delete(userAddresses)
+      .where(eq(userAddresses.id, id));
+
+    return res.status(204).json({ message: "Address deleted successfully." });
+
+  } catch (err) {
+    console.error("Error deleting address:", err);
+    return res.status(500).json({ error: "Error deleting address." });
   }
 };

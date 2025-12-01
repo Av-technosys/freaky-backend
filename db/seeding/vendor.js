@@ -41,6 +41,7 @@ export async function seedVendor() {
         logoUrl: faker.image.avatar(),
         description: faker.lorem.sentence(),
         DBAname: faker.company.name(),
+        businessName: faker.company.name(),
         legalEntityName: faker.company.name(),
         einNumber: faker.number.int({ min: 100000000, max: 999999999 }),
 
@@ -59,6 +60,9 @@ export async function seedVendor() {
         primaryContactName: faker.person.fullName(),
         primaryContactEmail: faker.internet.email(),
         primaryPhoneNumber: faker.phone.number(),
+        location: faker.location.street(),               
+        latitude: faker.location.latitude(),               
+        longitude: faker.location.longitude(),   
 
         // socials
         youtubeURL: faker.internet.url(),
@@ -72,22 +76,33 @@ export async function seedVendor() {
         payeeName: faker.person.fullName(),
         bankType: faker.helpers.enumValue(BankType),
         routingNumber: faker.finance.routingNumber(),
-
-        // authorizedSignatory: faker.datatype.number({ min: 32, max: 62 }),
+        authorizedSignatory: faker.number.int({ min: 1, max: 25 }), 
 
         // status
         status: true,
         isAdminApproved: true,
     }));
 
-    await db.insert(vendors).values(data);
+    await db.insert(vendor).values(data);
 
 
 
 }
 
+export async function seedVendorNotification() {
+
+    const data = Array.from({ length: 300 }).map(() => ({
+        vendorId: faker.number.int({ min: 5, max: 103 }),
+        title: faker.lorem.sentence(),
+        message: faker.lorem.sentences(2),
+        status: faker.datatype.boolean(),   
+    }))
+    await db.insert(vendorNotification).values(data);
+}
+
+
 export async function seedVendorOwnership() {
-    const vendor_ownership = Array.from({ length: 300 }).map(() => ({
+    const data = Array.from({ length: 300 }).map(() => ({
         vendorId: faker.number.int({ min: 5, max: 103 }),
         firstName: faker.person.firstName(),
         lastName: faker.person.lastName(),
@@ -104,9 +119,10 @@ export async function seedVendorOwnership() {
         isAuthorizedSignature: false,
         ownershipPercentage: faker.number.int({ min: 25, max: 50 })
     }))
-    await db.insert(vendorOwnerships).values(vendor_ownership);
+    await db.insert(vendorOwnership).values(data);
 }
 
+ 
 
 export async function seedVendorDocument() {
     const documentTypes = [
@@ -119,14 +135,15 @@ export async function seedVendorDocument() {
         { label: 'Financial Statements or Audited Reports', value: 'financial_statements_or_audited_reports' }
     ];
 
-    const vendor_document = Array.from({ length: 300 }).map(() => ({
+    const data = Array.from({ length: 300 }).map(() => ({
         vendorId: faker.number.int({ min: 5, max: 103 }),
         documentType: documentTypes[faker.number.int({ min: 0, max: documentTypes.length - 1 })].value,
         documentUrl: faker.internet.url(),
         description: faker.lorem.sentence(),
     }))
-    await db.insert(vendorDocuments).values(vendor_document);
+    await db.insert(vendorDocument).values(data);
 }
+
 
 
 export async function seedvendorInvite() {
@@ -142,7 +159,8 @@ export async function seedvendorInvite() {
         "viewPayment",
         "viewManageUser"
     ];
-    const vendorInvite = Array.from({ length: 30 }).map(() => ({
+    const data = Array.from({ length: 30 }).map(() => ({
+         vendorId: faker.number.int({ min: 5, max: 103 }),
         email: faker.internet.email,
         token: faker.string.alphanumeric(32),
         inviteCode: faker.string.uuid(),
@@ -151,25 +169,27 @@ export async function seedvendorInvite() {
         employeeCode: faker.string.alphanumeric(8).toUpperCase(),
     }))
 
-    await db.insert(vendorInvite).values(vendorInvite);
+    await db.insert(vendorInvite).values(data);
 
 }
 
 
+
 export async function seedvendorEmployeeRequest() {
 
-    const vendorEmployeeRequest = Array.from({ length: 30 }).map(() => ({
+    const data = Array.from({ length: 30 }).map(() => ({
+        vendorId: faker.number.int({ min: 5, max: 103 }),
         status: true,
         note: faker.lorem.paragraph()
     }))
 
-    await db.insert(vendorEmployeeRequest).values(vendorEmployeeRequest);
+    await db.insert(vendorEmployeeRequest).values(data);
 
 }
 
 
 export async function seedvendorMedia() {
-    const vendorMedia = Array.from({ length: 300 }).map(() => ({
+    const data = Array.from({ length: 300 }).map(() => ({
         vendorId: faker.number.int({ min: 5, max: 103 }),
 
         mediaType: faker.helpers.enumValue(mediaTypeEnum),
@@ -178,7 +198,7 @@ export async function seedvendorMedia() {
         sortOrder: faker.number.int({ min: 1, max: 5 }),
     }))
 
-    await db.insert(vendorMedias).values(vendorMedia);
+    await db.insert(vendorMedia).values(data);
 }
 
 export const PermissionsEnum = Object.freeze({
@@ -193,37 +213,74 @@ export const PermissionsEnum = Object.freeze({
     VIEW_MANAGE_USER: 'viewManageUser'
 });
 
-export async function seedvendorContacts() {
 
-    const vendorContactsData = Array.from({ length: 99 }).map((_, idx) => ({
-        userId: (idx + 70),
+export async function seedVendorEmployee() {
+
+    const data = Array.from({ length: 99 }).map((_, idx) => ({
         vendorId: faker.number.int({ min: 5, max: 103 }),
         permissions: [faker.helpers.enumValue(PermissionsEnum)],
-        department: faker.lorem.word(),
+        department: faker.commerce.department(),
         employeeCode: faker.string.alphanumeric(8).toUpperCase(),
-        isActive: true,
+        isActive: faker.datatype.boolean(),
         bio: faker.lorem.sentence(),
     }))
 
-    await db.insert(vendorEmployees).values(vendorContactsData);
+  await db.insert(vendorEmployee).values(data);
 }
 
-export async function seedPriceBooking() {
 
-    const priceBookingData = Array.from({ length: 300 }).map(() => ({
+export async function seedVendorContract() {
+    const start = faker.date.past
+
+    const data = Array.from({ length: 99 }).map((_, idx) => ({
+         vendorId: faker.number.int({ min: 5, max: 103 }),
+        contractType: faker.company.buzzPhrase(),        
+        adminCommissionPercentage: Number(faker.finance.amount(5, 25, 2)),
+        platformFees:Number(faker.finance.amount(200, 2000, 2)),
+        startDate: start,
+        endDate:faker.date.between({ from: start, to: new Date() }),
+
+    }))
+
+    await db.insert(vendorContract).values(data);
+}
+
+// export async function seedvendorContacts() {
+
+//     const vendorContactsData = Array.from({ length: 99 }).map((_, idx) => ({
+//         userId: (idx + 70),
+//         vendorId: faker.number.int({ min: 5, max: 103 }),
+//         permissions: [faker.helpers.enumValue(PermissionsEnum)],
+//         department: faker.lorem.word(),
+//         employeeCode: faker.string.alphanumeric(8).toUpperCase(),
+//         isActive: true,
+//         bio: faker.lorem.sentence(),
+//     }))
+
+//     await db.insert(vendorContacts).values(vendorContactsData);
+// }
+
+
+export async function seedPriceBooking() {
+    const start = faker.date.past
+
+    const data = Array.from({ length: 300 }).map(() => ({
         vendorId: faker.number.int({ min: 5, max: 103 }),
         isStandard: false,
         isActive: false,
         name: faker.commerce.productName(),
         description: faker.lorem.sentence(),
+        startDate: start,
+        endDate:faker.date.between({ from: start, to: new Date() }),
     }))
 
-    await db.insert(priceBooking).values(priceBookingData);
+    await db.insert(priceBook).values(data);
 }
+
 
 export async function seedpriceBookingEntry() {
 
-    const priceBookingEntryData = Array.from({ length: 300 }).map(() => {
+    const data = Array.from({ length: 300 }).map(() => {
         const isTire = faker.datatype.boolean();
         const listPriceData = faker.commerce.price();
         const discountPercentageData = faker.number.float({ min: 0, max: 50, precision: 0.01 });
@@ -239,19 +296,22 @@ export async function seedpriceBookingEntry() {
         })
     })
 
-    await db.insert(priceBookingEntry).values(priceBookingEntryData);
+    await db.insert(priceBookEntry).values(data);
 
 }
 
-
 export async function seedproductType() {
 
-    const productType = Array.from({ length: 30 }).map(() => ({
+    const data = Array.from({ length: 30 }).map(() => ({
         name: faker.commerce.department(),
         description: faker.lorem.sentence(),
+        mediaURL: faker.image.url(),
+        altText: faker.commerce.productDescription(),       
+        isNewProductApproval: faker.datatype.boolean(),
+
     }))
 
-    await db.insert(productType).values(productType);
+    await db.insert(productType).values(data);
 
 }
 
@@ -267,8 +327,8 @@ const ProductPriceTypeEnum = Object.freeze({
 
 export async function seedProducts() {
 
-    const productsData = Array.from({ length: 300 }).map(() => ({
-        // type: faker.helpers.enumValue(ProductTypeEnum),
+    const data = Array.from({ length: 300 }).map(() => ({
+        type: faker.helpers.enumValue(ProductTypeEnum),
         vendorId: faker.number.int({ min: 5, max: 103 }),
         // productTypeId: faker.number.int({ min: 1, max: 29 }),
 
@@ -277,98 +337,108 @@ export async function seedProducts() {
 
         latitude: faker.location.latitude().toString(),
         longitude: faker.location.longitude().toString(),
+        location: varchar('location', { length: 255 }),
+        deliveryRadius: integer('delivery_radius').default(10),
+
         isAvailable: true,
 
         // currentPriceBook
         // isDiscountScheduled: true,
         pricingType: faker.helpers.enumValue(ProductPriceTypeEnum),
         // percentage: faker.number.float({ min: 0, max: 50, precision: 0.01 }),
-        // minQuantity: integer('min_quantity').default(1).notNull(),
-        // maxQuantity: integer('max_quantity'),
-        // status: boolean('status').default(true).notNull(),
+        minQuantity: faker.number.int({ min: 1, max: 50 }),
+        maxQuantity: faker.number.int({ min: minQty, max: minQty + 100 }),
+        status: faker.datatype.boolean(),
     }))
 
-    await db.insert(products).values(productsData);
+    await db.insert(product).values(data);
 }
+
+
 
 export async function seedfeaturedCategoryProduct() {
 
-    const featuredCategoryProduct = Array.from({ length: 30 }).map(() => ({
+    const data = Array.from({ length: 30 }).map(() => ({
         name: faker.lorem.word(),
         description: faker.lorem.paragraph(),
     }))
 
-    await db.insert(featuredCategoryProduct).values(featuredCategoryProduct);
+    await db.insert(featuredCategory).values(data);
 
 }
+
 
 
 export async function seedfeaturedProdcuts() {
 
-    const featuredProdcuts = Array.from({ length: 30 }).map(() => ({
+    const data = Array.from({ length: 30 }).map(() => ({
         // all ids value
+        priority: faker.number.int({ min: 0, max: 10 }),     
     }))
 
-    await db.insert(featuredProdcuts).values(featuredProdcuts);
+    await db.insert(featuredProdcut).values(data);
 
 }
 
 
-export async function seedproductAvailableArea() {
 
-    const productAvailableArea = Array.from({ length: 30 }).map(() => ({
-        postalCode: faker.location.zipCode(),
-    }))
+// export async function seedproductAvailableArea() {
 
-    await db.insert(productAvailableArea).values(productAvailableArea);
-}
+//     const data = Array.from({ length: 30 }).map(() => ({
+//         postalCode: faker.location.zipCode(),
+//     }))
+
+//     await db.insert(productAvailableArea).values(datas);
+// }
 
 
 export async function seedproductMedia() {
     const vendor = [
         149, 30, 11, 83, 27, 117, 247, 198, 29, 161
     ]
-    const productMediaData = Array.from({ length: 55 }).map(() => ({
+    const data = Array.from({ length: 55 }).map(() => ({
         productId: vendor[faker.number.int({ min: 0, max: vendor.length - 1 })],
         mediaType: faker.helpers.enumValue(mediaTypeEnum),
         mediaUrl: faker.image.url(),
         altText: faker.lorem.word(),
         sortOrder: faker.number.int({ min: 1, max: 10 }),
     }))
-    await db.insert(productMedia).values(productMediaData);
+    await db.insert(productMedia).values(data);
 }
-
 
 
 export async function seedproductAddons() {
 
-    const productAddons = Array.from({ length: 30 }).map(() => ({
+    const data = Array.from({ length: 30 }).map(() => ({
         //all ids here
     }))
 
-    await db.insert(productAddons).values(productAddons);
+    await db.insert(productAddon).values(data);
 
 }
 
 
-export async function seeddiscountScheduled() {
+// export async function seeddiscountScheduled() {
 
-    const discountScheduled = Array.from({ length: 30 }).map(() => ({
-        name: varchar('name', { length: 255 }),
-        lowerBound: decimal('lower_bound', { precision: 10, scale: 2 }),
-        upperBound: decimal('upper_bound', { precision: 10, scale: 2 }),
-        currency: varchar('currency', { length: 255 }),
-    }))
+//     const data = Array.from({ length: 30 }).map(() => ({
+//         name: varchar('name', { length: 255 }),
+//         lowerBound: decimal('lower_bound', { precision: 10, scale: 2 }),
+//         upperBound: decimal('upper_bound', { precision: 10, scale: 2 }),
+//         currency: varchar('currency', { length: 255 }),
+//     }))
 
-    await db.insert(discountScheduled).values(discountScheduled);
+//     await db.insert(discountScheduled).values(data);
 
-}
+// }
+
+
 
 
 export async function seedcontractProductType() {
     const start = faker.date.past
 
-    const contractProductType = Array.from({ length: 30 }).map(() => ({
+    const data = Array.from({ length: 30 }).map(() => ({
+        vendorId: faker.number.int({ min: 5, max: 103 }),
         startDate: start,
         endDate: faker.date.between({ from: start, to: new Date() }),
         adminCommissionPercentage: faker.number.float({ min: 0, max: 30, precision: 0.01 }),
@@ -376,7 +446,7 @@ export async function seedcontractProductType() {
 
     }))
 
-    await db.insert(contractProductType).values(contractProductType);
+    await db.insert(contractProductType).values(data);
 
 }
 

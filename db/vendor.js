@@ -7,14 +7,14 @@ import {
   timestamp,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { users } from './user.js';
+import { user } from './user.js';
 import {
   mediaTypeEnum,
   productPricingTypeEnum,
   productTypeEnum,
 } from './enum.js';
 
-export const vendors = pgTable('vendors', {
+export const vendor = pgTable('vendor', {
   vendorId: integer('id').generatedAlwaysAsIdentity().primaryKey(),
   businessName: varchar('business_name', { length: 255 }),
   websiteURL: varchar('website_url', { length: 255 }),
@@ -33,9 +33,12 @@ export const vendors = pgTable('vendors', {
   city: varchar('city', { length: 100 }),
   state: varchar('state', { length: 100 }),
   country: varchar('country', { length: 100 }),
+  location: varchar('location', { length: 255 }),
+  latitude: varchar('latitude', { length: 255 }),
+  longitude: varchar('longitude', { length: 255 }),
 
   // Admin of company
-  createdBy: integer('created_by').references(() => users.userId),
+  createdBy: integer('created_by').references(() => user.userId),
 
   // Contact
   primaryContactName: varchar('primary_contact_name', { length: 255 }),
@@ -66,10 +69,21 @@ export const vendors = pgTable('vendors', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+export const vendorNotification = pgTable('vendor_notification', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
+  userId: integer('user_id').references(() => user.userId),
+  title: varchar('title', { length: 255 }),
+  message: varchar('message', { length: 255 }),
+  status: boolean('status').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
 export const vendorOwnership = pgTable('vendor_ownership', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
 
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
   firstName: varchar('first_name', { length: 255 }),
   lastName: varchar('last_name', { length: 255 }),
   ssnNumber: integer('ssn_number'),
@@ -93,7 +107,7 @@ export const vendorOwnership = pgTable('vendor_ownership', {
 
 export const vendorDocument = pgTable('vendor_document', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
   documentType: varchar('document_type', { length: 255 }),
   documentUrl: varchar('document_url', { length: 255 }),
   description: varchar('description', { length: 255 }),
@@ -104,7 +118,7 @@ export const vendorInvite = pgTable('vendor_invite', {
   vendorInviteId: integer('vendor_invite_id')
     .generatedAlwaysAsIdentity()
     .primaryKey(),
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
   email: varchar('email', { length: 255 }),
   token: varchar('token', { length: 255 }),
   inviteCode: varchar('invite_code', { length: 255 }),
@@ -119,8 +133,8 @@ export const vendorEmployeeRequest = pgTable('vendor_employee_request', {
   vendorEmployeeRequestId: integer('vendor_employee_request_id')
     .generatedAlwaysAsIdentity()
     .primaryKey(),
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
-  userId: integer('user_id').references(() => users.userId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
+  userId: integer('user_id').references(() => user.userId),
   status: boolean('status').default(false).notNull(),
   note: text('note'),
 
@@ -129,7 +143,7 @@ export const vendorEmployeeRequest = pgTable('vendor_employee_request', {
 
 export const vendorMedia = pgTable('vendor_media', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
 
   mediaType: mediaTypeEnum('media_type').notNull(),
   mediaUrl: varchar('media_url', { length: 255 }),
@@ -139,16 +153,17 @@ export const vendorMedia = pgTable('vendor_media', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const vendorContacts = pgTable('vendor_contacts', {
-  vendorContactId: integer('vendor_contact_id')
+export const vendorEmployee = pgTable('vendor_employee', {
+  vendorEmployeeId: integer('vendor_employee_id')
     .generatedAlwaysAsIdentity()
     .primaryKey(),
+
   userId: integer('user_id')
-    .references(() => users.userId)
+    .references(() => user.userId)
     .notNull()
     .unique(),
 
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
 
   // portalRole: varchar('portal_role', { length: 100 }), // e.g., "isAdmin"
   permissions: text('permissions').array(),
@@ -160,9 +175,27 @@ export const vendorContacts = pgTable('vendor_contacts', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const priceBooking = pgTable('price_booking', {
+export const vendorContract = pgTable('vendor_contract', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
+  contractType: varchar('contract_type', { length: 255 }),
+  adminCommissionPercentage: decimal('admin_commission_percentage', {
+    precision: 5,
+    scale: 2,
+  }),
+  platformFees: decimal('platform_fees', {
+    precision: 10,
+    scale: 2,
+  }),
+  startDate: timestamp('start_date').defaultNow(),
+  endDate: timestamp('end_date').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+export const priceBook = pgTable('price_book', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
 
   isStandard: boolean('is_standard').default(false).notNull(),
   isActive: boolean('is_active').default(false).notNull(),
@@ -174,12 +207,12 @@ export const priceBooking = pgTable('price_booking', {
   endDate: timestamp('end_date').defaultNow(),
 });
 
-export const priceBookingEntry = pgTable('price_booking_entry', {
+export const priceBookEntry = pgTable('price_book_entry', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
 
-  productId: integer('product_id').references(() => products.productId),
+  productId: integer('product_id').references(() => product.productId),
   priceBookingId: integer('price_booking_id').references(
-    () => priceBooking.id,
+    () => priceBook.id,
     { onDelete: 'cascade' }
   ),
 
@@ -206,14 +239,18 @@ export const productType = pgTable('product_types', {
   ),
   name: varchar('name', { length: 255 }),
   description: varchar('description', { length: 255 }),
+  mediaURL: varchar('media_url', { length: 255 }),
+  altText: varchar('alt_text', { length: 255 }),
+  isNewProductApproval: boolean('is_new_product_approval').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const products = pgTable('products', {
+export const product = pgTable('product', {
   productId: integer('product_id').generatedAlwaysAsIdentity().primaryKey(),
 
-  type: productTypeEnum('type').notNull(),
+  type: productTypeEnum('type').notNull().default('product'),
 
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
   productTypeId: integer('product_type_id').references(() => productType.id),
 
   title: varchar('title', { length: 255 }),
@@ -221,17 +258,15 @@ export const products = pgTable('products', {
 
   latitude: varchar('latitude', { length: 255 }),
   longitude: varchar('longitude', { length: 255 }),
+  location: varchar('location', { length: 255 }),
+  deliveryRadius: integer('delivery_radius').default(10),
 
   isAvailable: boolean('is_available').default(true),
   currentPriceBook: integer('current_price_book').references(
-    () => priceBooking.id
+    () => priceBook.id
   ),
 
-  isDiscountScheduled: boolean('is_discount_scheduled').default(false),
-
   pricingType: productPricingTypeEnum('pricing_type').notNull(),
-
-  percentage: decimal('percentage', { precision: 5, scale: 2 }),
 
   minQuantity: integer('min_quantity').default(1).notNull(),
   maxQuantity: integer('max_quantity'),
@@ -242,20 +277,20 @@ export const products = pgTable('products', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const featuredCategoryProduct = pgTable('featured_category_product', {
+export const featuredCategory = pgTable('featured_category', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   name: varchar('name', { length: 255 }), // -- e.g. 'featured', 'most_popular', 'trending'
   description: varchar('description'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const featuredProdcuts = pgTable('featured_products', {
+export const featuredProdcut = pgTable('featured_product', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  productId: integer('product_id').references(() => products.productId, {
+  productId: integer('product_id').references(() => product.productId, {
     onDelete: 'cascade',
   }),
   featuredCategoryId: integer('featured_category_id').references(
-    () => featuredCategoryProduct.id,
+    () => featuredCategory.id,
     {
       onDelete: 'cascade',
     }
@@ -264,16 +299,16 @@ export const featuredProdcuts = pgTable('featured_products', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const productAvailableArea = pgTable('product_available_area', {
-  id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  productId: integer('product_id').references(() => productType.id),
-  postalCode: varchar('postal_code', { length: 255 }),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+// export const productAvailableArea = pgTable('product_available_area', {
+//   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+//   productId: integer('product_id').references(() => productType.id),
+//   postalCode: varchar('postal_code', { length: 255 }),
+//   createdAt: timestamp('created_at').defaultNow(),
+// });
 
 export const productMedia = pgTable('product_media', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  productId: integer('product_id').references(() => products.productId),
+  productId: integer('product_id').references(() => product.productId),
 
   mediaType: mediaTypeEnum('media_type').notNull(),
   mediaUrl: varchar('media_url', { length: 255 }),
@@ -283,32 +318,32 @@ export const productMedia = pgTable('product_media', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const productAddons = pgTable('product_addons', {
+export const productAddon = pgTable('product_addon', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   mainProductId: integer('main_product_id').references(
-    () => products.productId
+    () => product.productId
   ),
   addonProductId: integer('addon_product_id').references(
-    () => products.productId
+    () => product.productId
   ),
 });
 
-export const discountScheduled = pgTable('discount_scheduled', {
-  id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  productId: integer('product_id').references(() => productType.id),
-  name: varchar('name', { length: 255 }),
-  lowerBound: decimal('lower_bound', { precision: 10, scale: 2 }),
-  upperBound: decimal('upper_bound', { precision: 10, scale: 2 }),
-  currency: varchar('currency', { length: 255 }),
+// export const discountScheduled = pgTable('discount_scheduled', {
+//   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+//   productId: integer('product_id').references(() => productType.id),
+//   name: varchar('name', { length: 255 }),
+//   lowerBound: decimal('lower_bound', { precision: 10, scale: 2 }),
+//   upperBound: decimal('upper_bound', { precision: 10, scale: 2 }),
+//   currency: varchar('currency', { length: 255 }),
 
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+//   createdAt: timestamp('created_at').defaultNow(),
+//   updatedAt: timestamp('updated_at').defaultNow(),
+// });
 
 export const contractProductType = pgTable('contract_product_type', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   productTypeId: integer('product_type_id').references(() => productType.id),
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
 
   startDate: timestamp('start_date').defaultNow(),
   endDate: timestamp('end_date').defaultNow(),

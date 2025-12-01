@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { db } from '../db';
+import { db } from '../db.js';
 import {
   eventBooking,
   eventOrderTransactions,
@@ -7,12 +7,14 @@ import {
   events,
   eventType,
   eventTypeProduct,
-  featuredCategoryEvents,
+  featuredEventType,
 } from '../schema.js';
 
 export async function seedEventTypes() {
   const data = Array.from({ length: 25 }).map(() => ({
-    name: faker.commerce.catchPhrase(),
+    name: faker.commerce.department(),
+    image: faker.image.url(),
+    description: faker.commerce.productDescription(),
   }));
 
   await db.insert(eventType).values(data);
@@ -55,21 +57,14 @@ export async function seedEventBooking() {
   await db.insert(eventBooking).values(data);
 }
 
-export async function seedFeaturedCategoryEvent() {
-  const EventCategory = Object.freeze({
-    CORPORATE: 'corporate',
-    CASUAL: 'casual',
-    BIRTHDAY: 'birthday',
-    PROFESSIONAL: 'professional',
-    PARTY: 'party',
-  });
-
-  const data = Array.from({ length: 25 }).map(() => ({
-    name: faker.helpers.enumValue(EventCategory),
-    description: faker.lorem.sentence(),
+export async function seedFeaturedEventTypes() {
+  const data = Array.from({ length: 12 }).map((_, idx) => ({
+    name: faker.lorem.word(),
+    description: faker.lorem.text(),
+    eventTypeId: idx + 1,
   }));
 
-  await db.insert(featuredCategoryEvents).values(data);
+  await db.insert(featuredEventType).values(data);
 }
 
 export async function seedEventProductOrders() {

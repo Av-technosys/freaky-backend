@@ -1,6 +1,9 @@
-import { and, eq, ilike, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
+  featuredCategoryProducts,
+  featuredProdcuts,
+  products,
   vendorContacts,
   vendorEmployeeRequests,
   vendorOwnerships,
@@ -429,5 +432,61 @@ export const updateOwnershipDetails = async (req, res) => {
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: error.message });
+  }
+};
+
+export const getAllProductsByCategoryId = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    if (categoryId) {
+      const response = await db
+        .select()
+        .from(featuredProdcuts)
+        .where(eq(featuredProdcuts.featuredCategoryId, categoryId))
+        .orderBy(asc(featuredProdcuts.priority));
+
+      const updatedResponse = await Promise.all(
+        response.map(async (product) => {
+          const productDetail = await db
+            .select()
+            .from(products)
+            .where(eq(products.productId, product.productId));
+          return { ...product, productDetails: productDetail[0] };
+        })
+      );
+
+      return res.status(200).json({
+        message: 'All products fetched successfully...',
+        data: updatedResponse,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getAllFeaturedCategories = async (req, res) => {
+  try {
+    const response = await db
+      .select()
+      .from(featuredCategoryProducts)
+      .orderBy(asc(featuredCategoryProducts.id));
+
+    const updatedResponse = await Promise.all(
+      response.map(async (category) => {
+        const categoryProducts = await db
+          .select()
+          .from(featuredProdcuts)
+          .where(eq(featuredProdcuts.featuredCategoryId, category.id));
+        return { ...category, products: categoryProducts };
+      })
+    );
+
+    return res.status(200).json({
+      message: 'All categories fetched successfully...',
+      data: updatedResponse,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };

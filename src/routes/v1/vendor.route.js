@@ -2,6 +2,8 @@ import { Router } from 'express';
 import {
   createVendor,
   createVendorEmpRequest,
+  getAllFeaturedCategories,
+  getAllProductsByCategoryId,
   getCompanyProfile,
   listAllVendors,
   updateAddressDetails,
@@ -37,6 +39,17 @@ router.put(
   '/update_ownership_details',
   confirmUserToken,
   updateOwnershipDetails
+);
+router.get(
+  '/get_products_by_categoryId/:categoryId',
+  confirmUserToken,
+  getAllProductsByCategoryId
+);
+
+router.get(
+  '/get_all_featured_categories',
+  confirmUserToken,
+  getAllFeaturedCategories
 );
 // router.get("/create_vendor_emp_request", createVendorEmpRequest);
 

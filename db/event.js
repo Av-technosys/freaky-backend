@@ -1,110 +1,151 @@
 import {
   decimal,
   integer,
+  jsonb,
   pgTable,
   timestamp,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { productType, vendors } from './vendor.js';
-import { users } from './user.js';
+import { productType, vendor } from './vendor.js';
+import { user } from './user.js';
+import { bookingStatusEnum, eventStatusEnum, paymentStatusEnum } from './enum.js';
 
-export const eventTypes = pgTable('event_types', {
+export const eventType = pgTable('event_type', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   name: varchar('name', { length: 255 }),
-});
-
-export const eventTypeProduct = pgTable('event_type_product', {
-  id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  eventTypeId: integer('event_type_id').references(() => eventTypes.id),
-  productId: integer('product_id').references(() => productType.id),
-});
-
-export const events = pgTable('events', {
-  eventId: integer('event_id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  userId: integer('user_id').references(() => users.userId),
-  eventTypeId: integer('event_type_id').references(() => eventTypes.id),
-
-  title: varchar('title', { length: 255 }).notNull(),
+  image: varchar('image'),
   description: varchar('description'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const eventProductType = pgTable('event_product_type', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  eventTypeId: integer('event_type_id').references(() => eventType.id),
+  productTypeId: integer('product_id').references(() => productType.id),
+});
+
+export const event = pgTable('event', {
+  eventId: integer('event_id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  userId: integer('user_id').references(() => user.userId),
+  eventTypeId: integer('event_type_id').references(() => eventType.id),
+
+  name: varchar('name', { length: 255 }).notNull(),
+  description: varchar('description'),
+  contactNumber: varchar('contact_number', { length: 255 }),
 
   eventDate: timestamp('event_date').defaultNow(),
-  location: varchar('location', { length: 255 }),
+  minGuestCount: integer('min_guest_count').default(1),
+  maxGuestCount: integer('max_guest_count').default(1),
 
+  location: varchar('location', { length: 255 }),
   latitude: decimal('latitude', { precision: 10, scale: 7 }),
   longitude: decimal('longitude', { precision: 10, scale: 7 }),
+
+  bookingStatus: bookingStatusEnum("booking_status").default("created"),
+  paymentStatus: paymentStatusEnum("payment_status").default("pending"),
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 export const eventBooking = pgTable('event_booking', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  eventId: integer('event_id').references(() => events.eventId),
-  userId: integer('user_id').references(() => users.userId),
-  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }),
-  bookingStatus: varchar('booking_status', { length: 255 }),
-  bookedAt: timestamp('booked_at').defaultNow(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+  eventId: integer('event_id').references(() => event.eventId),
+  userId: integer('user_id').references(() => user.userId),
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }), // tootal of all product + service amount + admin commission
 
-export const featuredCategoryEvent = pgTable('featured_category_event', {
-  id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  name: varchar('name', { length: 255 }), // -- e.g. 'featured', 'most_popular', 'trending'
-  description: varchar('description'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const eventProductOrders = pgTable('event_product_orders', {
-  orderId: integer('order_id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-
-  bookingId: integer('booking_id')
-    .references(() => eventBooking.id, { onDelete: 'cascade' })
-    .notNull(),
-
-  userId: integer('user_id')
-    .references(() => users.userId, { onDelete: 'cascade' })
-    .notNull(),
-
-  eventTypeId: integer('event_type_id')
-    .references(() => eventTypes.id, { onDelete: 'cascade' })
-    .notNull(),
-
-  productId: integer('product_id')
-    .references(() => productType.id, { onDelete: 'cascade' })
-    .notNull(),
-
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
-
-  quantity: integer('quantity').default(1).notNull(),
-
-  price: decimal('price', { precision: 10, scale: 2 }),
-  paid: decimal('paid', { precision: 10, scale: 2 }),
-  due: decimal('due', { precision: 10, scale: 2 }),
+  // amount amoint paid and all
 
   adminCommissionPercentage: decimal('admin_commission_percentage', {
     precision: 10,
     scale: 2,
   }),
 
-  orderStatus: varchar('order_status', { length: 50 }),
+  platformFees: decimal('platform_fees', {
+    precision: 10,
+    scale: 2,
+  }),
 
-  orderedAt: timestamp('ordered_at', { withTimezone: false })
-    .defaultNow()
-    .notNull(),
+  bookingStatus: varchar('booking_status', { length: 255 }),
+  bookedAt: timestamp('booked_at').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const eventOrderTransactions = pgTable('event_order_transactions', {
+
+export const eventProductOrder = pgTable('event_product_order', {
+  orderId: integer('order_id').generatedAlwaysAsIdentity().primaryKey(),
+
+  eventBookingId: integer('event_booking_id')
+    .references(() => eventBooking.id, { onDelete: 'cascade' })
+    .notNull(),
+  userId: integer('user_id')
+    .references(() => user.userId, { onDelete: 'cascade' })
+    .notNull(),
+
+  productId: integer('product_id')
+    .references(() => productType.id, { onDelete: 'cascade' })
+    .notNull(),
+  productName: varchar('product_name', { length: 255 }),
+  productImage: varchar('product_image', { length: 255 }),
+
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
+  vnedorName: varchar('vnedor_name', { length: 255 }),
+
+  quantity: integer('quantity').default(1).notNull(),
+  lowerSlab: integer('lower_slab'),
+  upperSlab: integer('upper_slab'),
+
+  productPrice: decimal('product_price', { precision: 10, scale: 2 }),
+  serviceBookingPrice: decimal('service_booking_price', {
+    precision: 10,
+    scale: 2,
+  }),
+
+  status: eventStatusEnum('status').default('booked'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const eventOrderTransaction = pgTable('event_order_transaction', {
   transactionId: integer('transaction_id')
     .generatedAlwaysAsIdentity()
-    .primaryKey(), // auto-increment
-  orderId: integer('order_id').references(() => eventProductOrders.orderId),
+    .primaryKey(),
+
+
+  eventBookingId: integer('order_id').references(() => eventBooking.id),
   transactionStatus: varchar('transaction_status', { length: 255 }),
-  paymentMethod: varchar('payment_method', { length: 255 }),
-  amount: decimal('amount', { precision: 10, scale: 2 }),
-  transactionDate: timestamp('transaction_date', { withTimezone: false })
+
+  paymentStatus: varchar("payment_status", { length: 50 }).notNull(),
+  paymentMethod: varchar("payment_method", { length: 50 }),
+  paymentType: varchar("payment_type", { length: 50 }),
+  paymentMeta: jsonb("payment_meta"),
+
+  remarks: varchar("remarks", { length: 255 }),
+
+  referenceNumber: varchar("reference_number", { length: 255 }),
+
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 10 }).default("USD").notNull(),
+
+  transactionTime: timestamp('transaction_time')
     .defaultNow()
     .notNull(),
-  referenceNumber: varchar('reference_number', { length: 255 }),
-  remarks: varchar('remarks', { length: 255 }),
+
+  failureReason: varchar("failure_reason", { length: 255 }),
+  errorCode: varchar("error_code", { length: 100 }),
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const featuredEvent = pgTable('featured_event', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  name: varchar('name', { length: 255 }),
+  description: varchar('description'),
+
+  mediaURL: varchar('media_url', { length: 255 }),
+  altText: varchar('alt_text', { length: 255 }),
+  priority: integer('priority').default(0),
+  eventId: integer('event_id').references(() => event.eventId),
   createdAt: timestamp('created_at').defaultNow(),
 });

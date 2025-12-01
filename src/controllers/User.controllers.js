@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../db/db.js';
-import { userAddresses, users } from '../../db/schema.js';
+import { userAddress, users } from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
 
 export const getUserInfo = async (req, res) => {
@@ -91,7 +91,7 @@ export const addAddress = async (req, res) => {
 
     const userId = user.userId;
 
-    await db.insert(userAddresses).values({
+    await db.insert(userAddress).values({
       userId,
       address: req.body.address,
     });
@@ -123,8 +123,8 @@ export const listAllAddresses = async (req, res) => {
 
     const userId = user.userId;
 
-    const response = await db.query.userAddresses.findMany({
-      where: (userAddresses, { eq }) => eq(userAddresses.userId, userId),
+    const response = await db.query.userAddress.findMany({
+      where: (userAddress, { eq }) => eq(userAddress.userId, userId),
     });
 
     return res.json({
@@ -195,9 +195,9 @@ export const editAddresses = async (req, res) => {
     const { id, userId: reqUserId, ...filteredData } = data;
 
     const response = await db
-      .update(userAddresses)
+      .update(userAddress)
       .set(filteredData)
-      .where(and(eq(userAddresses.userId, userId), eq(userAddresses.id, id)))
+      .where(and(eq(userAddress.userId, userId), eq(userAddress.id, id)))
       .returning();
 
     return res.json({

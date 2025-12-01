@@ -19,3 +19,28 @@ export const userSubscriptionStatusEnum = pgEnum("subscription_status", [
   "expired",
   "cancelled",
 ]);
+
+export const bookingStatusEnum = pgEnum("booking_status", [
+  "created",        // user created event (cart/draft)
+  "booked",         // user submitted booking
+  "confirmed",      // admin/vendor confirmed
+  "in_progress",    // event happening / work started
+  "completed",      // event is done
+  "cancelled"       // event cancelled
+]);
+
+
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "pending",        // no payment yet
+  "partial",        // half/advance received
+  "paid",           // full payment done
+  "refunded"        // refunded
+]);
+
+export const eventStatusEnum = pgEnum("event_status", [
+  "booked",        // booking confirmed
+  "will_start",    // upcoming / scheduled but not started
+  "ongoing",       // event is happening now
+  "completed",     // event finished
+  "cancelled"      // event cancelled anytime
+]);

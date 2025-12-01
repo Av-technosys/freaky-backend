@@ -6,18 +6,18 @@ import {
   timestamp,
   decimal,
 } from 'drizzle-orm/pg-core';
-import { eventProductOrders, events } from './event.js';
-import { products, vendors } from './vendor.js';
+import { event } from './event.js';
+import { product, vendor } from './vendor.js';
 import { mediaTypeEnum, userSubscriptionStatusEnum } from './enum.js';
 
-export const userTypes = pgTable('user_types', {
+export const userType = pgTable('user_type', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   name: varchar('name', { length: 255 }),
 });
 
-export const users = pgTable('users', {
+export const user = pgTable('user', {
   userId: integer('user_id').generatedAlwaysAsIdentity().primaryKey(),
-  userTypeId: integer('user_type_id').references(() => userTypes.id), // foreign key
+  userTypeId: integer('user_type_id').references(() => userType.id), // foreign key
   parseId: varchar('parse_id', { length: 255 }),
   cognitoSub: varchar('cognito_sub', { length: 255 }),
 
@@ -37,16 +37,16 @@ export const users = pgTable('users', {
   isActive: boolean('is_active').default(false).notNull(),
   tokenExpiration: timestamp('total_expiration_time').defaultNow(),
   currentAddressId: integer('current_address_id').references(
-    () => userAddresses.id
+    () => userAddress.id
   ),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const notifications = pgTable('notifications', {
+export const userNotification = pgTable('user_notification', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  userId: integer('user_id').references(() => users.userId),
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  userId: integer('user_id').references(() => user.userId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
   title: varchar('title', { length: 255 }),
   message: varchar('message', { length: 255 }),
   status: boolean('status').default(false).notNull(),
@@ -54,9 +54,9 @@ export const notifications = pgTable('notifications', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const userAddresses = pgTable('user_addresses', {
+export const userAddress = pgTable('user_address', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  userId: integer('user_id').references(() => users.userId),
+  userId: integer('user_id').references(() => user.userId),
   title: varchar('title', { length: 255 }),
   addressLineOne: varchar('address_line_one', { length: 255 }),
   addressLineTwo: varchar('address_line_two', { length: 255 }),
@@ -66,15 +66,18 @@ export const userAddresses = pgTable('user_addresses', {
   state: varchar('state', { length: 255 }),
   postalCode: varchar('postal_code', { length: 255 }),
   country: varchar('country', { length: 255 }),
+
   latitude: varchar('latitude', { length: 255 }),
   longitude: varchar('longitude', { length: 255 }),
+  location: varchar('location', { length: 255 }),
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const subscriptions = pgTable('subscriptions', {
+export const subscription = pgTable('subscription', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  userId: integer('user_id').references(() => users.userId),
+  userId: integer('user_id').references(() => user.userId),
 
   planName: varchar('plan_name', { length: 255 }).notNull(),
   discountPercentage: decimal('discount_percentage', {
@@ -88,40 +91,36 @@ export const subscriptions = pgTable('subscriptions', {
 
 export const cart = pgTable('cart', {
   cartId: integer('cart_id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  userId: integer('user_id').references(() => users.userId),
+  userId: integer('user_id').references(() => user.userId),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const cartItems = pgTable('cart_items', {
+export const cartItem = pgTable('cart_item', {
   cartItemId: integer('cart_item_id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   cartId: integer('cart_id').references(() => cart.cartId),
-  productId: integer('product_id').references(() => products.productId),
+  productId: integer('product_id').references(() => product.productId),
   quantity: integer('quantity').notNull(),
-  discountApplied: boolean('discount_applied').default(false),
   addedAt: timestamp('added_at').defaultNow(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const reviews = pgTable('reviews', {
+export const review = pgTable('review', {
   reviewId: integer('review_id').generatedAlwaysAsIdentity().primaryKey(),
 
-  eventProductOrderId: integer('event_product_order_id').references(
-    () => eventProductOrders.orderId,
+  productId: integer('product_id').references(
+    () => product.productId,
     { onDelete: 'cascade' }
   ),
 
   userId: integer('user_id')
-    .references(() => users.userId)
-    .notNull(),
-  eventId: integer('event_id').references(() => events.eventId),
-
-  productId: integer('product_id')
-    .references(() => products.productId, { onDelete: 'cascade' })
+    .references(() => user.userId)
     .notNull(),
 
-  vendorId: integer('vendor_id').references(() => vendors.vendorId),
+  eventId: integer('event_id').references(() => event.eventId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId),
+
   rating: integer('rating').notNull(),
   title: varchar('title', { length: 255 }),
   description: varchar('description'),
@@ -135,25 +134,28 @@ export const reviewMedia = pgTable('review_media', {
   reviewMediaId: integer('review_media_id')
     .generatedAlwaysAsIdentity()
     .primaryKey(), // auto-increment
-  reviewId: integer('review_id').references(() => reviews.reviewId),
+  reviewId: integer('review_id').references(() => review.reviewId),
   mediaUrl: varchar('media_url', { length: 255 }),
   mediaType: mediaTypeEnum('media_type').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const pricingSettings = pgTable('pricing_settings', {
+export const pricingSetting = pgTable('pricing_setting', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  platformServiceFeePercentage: decimal('platform_service_fee_percentage', {
+  feePercentage: decimal('fee_percentage', {
     precision: 10,
     scale: 2,
   }),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: varchar('description', { length: 255 }),
+
   effectiveFrom: timestamp('effective_from').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const taxZones = pgTable('tax_zones', {
+export const taxZone = pgTable('tax_zone', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   name: varchar('name', { length: 255 }),
   postalCode: varchar('postal_code', { length: 255 }),

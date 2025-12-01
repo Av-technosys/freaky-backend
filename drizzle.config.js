@@ -10,4 +10,5 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL,
   },
+  tablesFilter: ["public.*", "!spatial_ref_sys", "!geography_columns", "!geometry_columns"],
 });

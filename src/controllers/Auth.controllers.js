@@ -12,9 +12,10 @@ import {
   USER_POOL_ID,
 } from '../../lib/cognitoClient.js';
 import { db } from '../../db/db.js';
-import { users, vendorContacts, vendorInvites } from '../../db/schema.js';
+import { users, vendorEmployees, vendorInvites } from '../../db/schema.js';
 import dotenv from 'dotenv';
 import { eq } from 'drizzle-orm';
+
 dotenv.config();
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID;
@@ -47,7 +48,7 @@ export const signup = async (req, res) => {
   try {
     const createUserCommand = new SignUpCommand(createUserParams);
     const createUserResult = await cognito.send(createUserCommand);
-
+    console.log(bodyData)
     const [userRes] = await db
       .insert(users)
       .values({
@@ -84,9 +85,22 @@ export const signup = async (req, res) => {
         .from(vendorInvites)
         .where(eq(vendorInvites.email, email));
 
+
+      // vendorInviteId: integer('vendor_invite_id')
+      //   .generatedAlwaysAsIdentity()
+      //   .primaryKey(),
+      // vendorId: integer('vendor_id').references(() => vendor.vendorId),
+      // email: varchar('email', { length: 255 }),
+      // token: varchar('token', { length: 255 }),
+      // inviteCode: varchar('invite_code', { length: 255 }),
+      // status: varchar('status', { length: 255 }),
+      // permissions: text('permissions').array(),
+      // employeeCode: varchar('employee_code', { length: 100 }),
+
+
       if (vendorInviteRes) {
-        const [vendorContractRes] = await db
-          .insert(vendorContacts)
+        const [vendorEmployeesRes] = await db
+          .insert(vendorEmployees)
           .values({
             userId: userRes.userId,
             vendorId: vendorInviteRes.vendorId,
@@ -98,8 +112,8 @@ export const signup = async (req, res) => {
 
         // vendor_ids in cognito are a JSON.stringify version of vendorContractId and vendorId
         const vendorIds = {
-          vendorContractId: vendorContractRes.vendorContactId,
-          vendorId: vendorContractRes.vendorId,
+          vendorEmployeesId: vendorEmployeesRes.vendorEmployeeId,
+          vendorId: vendorEmployeesRes.vendorId,
         };
 
         const params = {
@@ -113,7 +127,7 @@ export const signup = async (req, res) => {
           ],
         };
         const command = new AdminUpdateUserAttributesCommand(params);
-        const result = await cognito.send(command);
+        await cognito.send(command);
 
         // Now the user got onboarded so deleting the enrty from vendorInvites
         await db.delete(vendorInvites).where(eq(vendorInvites.email, email));
@@ -173,7 +187,7 @@ export const confirmController = async (req, res) => {
     const response = await cognito.send(commandLogin);
 
     res.json({
-      message: 'Account created and confirmed.',
+      message: 'Account confirmed.',
       accessToken: response.AuthenticationResult.AccessToken,
       idToken: response.AuthenticationResult.IdToken,
       refreshToken: response.AuthenticationResult.RefreshToken,

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { priceBooking, priceBookingEntry, productMedia, products, vendorContacts, vendorDocuments, vendorMedias, vendorOwnerships, vendors } from '../schema.js';
+import { priceBooking, priceBookingEntry, productMedia, products, vendorEmployees, vendorDocuments, vendorMedias, vendorOwnerships, vendors } from '../schema.js';
 import { db } from '../db.js';
 
 const mediaTypeEnum = Object.freeze({

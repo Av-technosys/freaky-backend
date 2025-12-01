@@ -1,7 +1,7 @@
 import { and, eq, ilike, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
-  vendorContacts,
+  vendorEmployees,
   vendorEmployeeRequests,
   vendorOwnerships,
   vendors,
@@ -183,7 +183,7 @@ export const createVendor = async (req, res) => {
     const vendorContactPermission = ['admin'];
 
     const [vnedorContractData] = await db
-      .insert(vendorContacts)
+      .insert(vendorEmployees)
       .values({
         userId: userId,
         vendorId: newVendor.vendorId,

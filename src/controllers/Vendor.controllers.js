@@ -443,7 +443,7 @@ export const fetchVendorProducts = async (req, res) => {
       }
 
     const vendorProducts = await db.query.products.findMany({
-      where: (tbl, { eq }) => eq(tbl.vendorId, Number(vendorId)),
+      where: (table, { eq }) => eq(table.vendorId, Number(vendorId)),
     });
  
     if (vendorProducts.length === 0) {
@@ -453,12 +453,12 @@ export const fetchVendorProducts = async (req, res) => {
      const productIds = vendorProducts.map(p => p.productId);
 
      const productMedia = await db.query.productMedia.findMany({
-      where: (tbl, { inArray }) => inArray(tbl.productId, productIds),
+      where: (table, { inArray }) => inArray(table.productId, productIds),
     });
 
-    const data = vendorProducts.map(p => ({
-      ...p,
-      media: productMedia.filter(m => m.productId === p.productId)
+    const data = vendorProducts.map(product => ({
+      ...product,
+      media: productMedia.filter(media => media.productId === p.productId)
     }));
 
     return res.json({

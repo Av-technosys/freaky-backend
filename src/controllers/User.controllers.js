@@ -209,7 +209,7 @@ export const editAddresses = async (req, res) => {
     const userId = user.userId;
 
     const data = req.body;
-    const { id, userId: reqUserId, ...filteredData } = data;
+    const { id:bodyId, userId: reqUserId, ...filteredData } = data;
 
     const response = await db
       .update(userAddresses)

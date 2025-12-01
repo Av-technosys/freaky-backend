@@ -70,7 +70,7 @@ export async function seedUsersAddress() {
     country: 'usa',
     latitude: faker.location.latitude(),
     longitude: faker.location.longitude(),
-    location: faker.location.country(),
+    // location: faker.location.country(),
   }));
   await db.insert(userAddresses).values(data);
 }

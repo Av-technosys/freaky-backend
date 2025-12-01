@@ -26,7 +26,7 @@ export const pricingSettings = user.pricingSetting;
 export const taxZones = user.taxZone;
 
 export const eventType = event.eventType;
-export const eventTypeProduct = event.eventTypeProduct;
+export const eventProductType = event.eventProductType;
 export const events = event.event;
 export const eventBooking = event.eventBooking;
 export const eventProductOrders = event.eventProductOrder;

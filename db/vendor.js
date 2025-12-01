@@ -33,7 +33,7 @@ export const vendor = pgTable('vendor', {
   city: varchar('city', { length: 100 }),
   state: varchar('state', { length: 100 }),
   country: varchar('country', { length: 100 }),
-  location: varchar('location', { length: 255 }),
+  // location: varchar('location', { length: 255 }),
   latitude: varchar('latitude', { length: 255 }),
   longitude: varchar('longitude', { length: 255 }),
 
@@ -258,7 +258,7 @@ export const product = pgTable('product', {
 
   latitude: varchar('latitude', { length: 255 }),
   longitude: varchar('longitude', { length: 255 }),
-  location: varchar('location', { length: 255 }),
+  // location: varchar('location', { length: 255 }),
   deliveryRadius: integer('delivery_radius').default(10),
 
   isAvailable: boolean('is_available').default(true),

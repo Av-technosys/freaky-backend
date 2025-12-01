@@ -48,7 +48,7 @@ export async function seedEvent() {
     eventDate: faker.date.anytime(),
     minGuestCount: faker.number.int(),
     maxGuestCount: faker.number.int(),
-    location: faker.location.city(),
+    // location: faker.location.city(),
     latitude: faker.location.latitude(),
     longitude: faker.location.longitude(),
     bookingStatus: faker.helpers.enumValue(bookingStatus),

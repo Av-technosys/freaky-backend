@@ -8,6 +8,34 @@
       "when": 1764250356603,
       "tag": "0000_lovely_mimic",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1764583077691,
+      "tag": "0001_slimy_bloodaxe",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1764583077692,
+      "tag": "0002_add_postgis_location",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1764588025243,
+      "tag": "0003_cooing_darkhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1764588126967,
+      "tag": "0004_awesome_kinsey_walden",
+      "breakpoints": true
     }
   ]
 }

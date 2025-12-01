@@ -69,7 +69,7 @@ export const userAddress = pgTable('user_address', {
 
   latitude: varchar('latitude', { length: 255 }),
   longitude: varchar('longitude', { length: 255 }),
-  location: varchar('location', { length: 255 }),
+  // location: varchar('location', { length: 255 }),
 
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -150,7 +150,7 @@ export const pricingSetting = pgTable('pricing_setting', {
   name: varchar('name', { length: 255 }).notNull(),
   description: varchar('description', { length: 255 }),
 
-  effectiveFrom: timestamp('effective_from').notNull(),
+  effectiveFrom: timestamp('effective_from').defaultNow(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

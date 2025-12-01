@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import { userAddresses, users } from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
@@ -75,24 +75,24 @@ export const updateUserInfo = async (req, res) => {
 
 export const addAddress = async (req, res) => {
   try {
-    //fetch data from payload
-    const {title , addressLineOne, addressLineTwo, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude} = req.body;
+
+    const { title, addressLineOne, addressLineTwo, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude } = req.body;
 
     const email = req.user?.email || req.body.email;
 
-    // Validate all fields exist
-    const requiredFields = { title, addressLineOne ,reciverName, reciverNumber, city, state, postalCode, country,latitude, longitude};
+
+    const requiredFields = { title, addressLineOne, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude };
 
     for (const [key, value] of Object.entries(requiredFields)) {
-    if (!value) return res.status(400).json({ error: `${key} is required.` });
-   }
+      if (!value) return res.status(400).json({ error: `${key} is required.` });
+    }
 
     // Fetch User
     const user = await db.query.users.findFirst({
       where: (users, { eq }) => eq(users.email, email),
     });
 
-   // if user is not present
+    // if user is not present
     if (!user) {
       return res.status(404).json({ error: "User not found." });
     }
@@ -104,7 +104,27 @@ export const addAddress = async (req, res) => {
       address: req.body.address,
     });
 
-    return res.status(204).json({
+
+    await db.execute(sql`
+    INSERT INTO user_address (user_id, title, address_line_one, address_line_two, reciver_name, reciver_number, city, state, postal_code, country, latitude, longitude, location)
+    VALUES (
+      ${userId},
+      ${title},
+      ${addressLineOne},
+      ${addressLineTwo},
+      ${reciverName},
+      ${reciverNumber},
+      ${city},
+      ${state},
+      ${postalCode},
+      ${country},
+      ${latitude},
+      ${longitude},
+      ${sql`ST_SetSRID(ST_MakePoint(${latitude}, ${longitude}), 4326)::geography`}
+    );
+  `);
+
+    return res.status(201).json({
       message: 'Address added successfully.',
     });
 
@@ -183,46 +203,48 @@ export const getAllReviews = async (req, res) => {
 };
 
 export const editAddresses = async (req, res) => {
- try {
-    //fetch data from payload
-    const { 
-      params:{ id }, 
-      body:{ 
-        title, addressLineOne, addressLineTwo, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude 
-      } 
-    } = req;
-
+  try {
+    const { id, title, addressLineOne, addressLineTwo, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude } = req.body;
     const email = req.user?.email || req.body.email;
 
-      // Validate all fields exist
-    const requiredFields = { title, addressLineOne,reciverName, reciverNumber, city, state, postalCode, country,latitude, longitude};
+    const requiredFields = { title, addressLineOne, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude };
 
     for (const [key, value] of Object.entries(requiredFields)) {
-    if (!value) return res.status(400).json({ error: `${key} is required.` });
-   }
+      if (!value) return res.status(400).json({ error: `${key} is required.` });
+    }
 
-    // Fetch User
     const user = await db.query.users.findFirst({
       where: (users, { eq }) => eq(users.email, email),
     });
 
-   // if user is not present
     if (!user) {
       return res.status(404).json({ error: "User not found." });
     }
 
     const userId = user.userId;
 
-    const data = req.body;
-    const { id:bodyId, userId: reqUserId, ...filteredData } = data;
+    console.log(userId, id, title, addressLineOne, addressLineTwo, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude);
 
-    const response = await db
-      .update(userAddresses)
-      .set(filteredData)
-      .where(and(eq(userAddresses.userId, userId), eq(userAddresses.id, id)))
-      .returning();
+    await db.execute(sql`
+      UPDATE user_address
+      SET
+        title = ${title},
+        address_line_one = ${addressLineOne},
+        address_line_two = ${addressLineTwo},
+        reciver_name = ${reciverName},
+        reciver_number = ${reciverNumber},
+        city = ${city},
+        state = ${state},
+        postal_code = ${postalCode},
+        country = ${country},
+        latitude = ${latitude},
+        longitude = ${longitude},
+        location = ${sql`ST_SetSRID(ST_MakePoint(${latitude}, ${longitude}), 4326)::geography`}
+      WHERE user_id = ${userId} AND id = ${id}; 
+    `);
 
-    return res.status(204).json({
+
+    return res.status(200).json({
       message: "Address updated successfully.",
     });
 
@@ -252,12 +274,12 @@ export const setCurrentAddress = async (req, res) => {
 
     const data = req.body;
     const { id } = data;
- 
+
     if (!id) {
       return res.status(400).json({ error: "Address ID is required." });
     }
 
-     await db
+    await db
       .update(users)
       .set({ currentAddressId: id })
       .where(eq(users.userId, userId));
@@ -277,8 +299,8 @@ export const setCurrentAddress = async (req, res) => {
 };
 
 export const deleteAddress = async (req, res) => {
-try {
-     const { id } = req.params; 
+  try {
+    const { id } = req.body;
 
     if (!id) {
       return res.status(400).json({ error: "addressId is required." });
@@ -286,7 +308,7 @@ try {
 
     // Find address
     const address = await db.query.userAddresses.findFirst({
-       where: (userAddresses, { eq }) => eq(userAddresses.id, id)
+      where: (userAddresses, { eq }) => eq(userAddresses.id, id)
     });
 
     if (!address) {
@@ -300,6 +322,13 @@ try {
     return res.status(204).json({ message: "Address deleted successfully." });
 
   } catch (err) {
+    if (err?.cause?.code === "23503") {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot delete this address because it is set as your current address.",
+      });
+    }
+
     console.error("Error deleting address:", err);
     return res.status(500).json({ error: "Error deleting address." });
   }

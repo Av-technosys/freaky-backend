@@ -19,8 +19,8 @@ router.get('/get_all_reviews', confirmUserToken, getAllReviews);
 
 router.post("/update_personal_info", confirmUserToken, updateUserInfo);
 router.post("/add_address", confirmUserToken, addAddress);
-router.post("/edit_address/:id", confirmUserToken, editAddresses);
+router.post("/edit_address", confirmUserToken, editAddresses);
 router.post("/set_current_address", confirmUserToken, setCurrentAddress);
-router.post("/delete_address/:id", confirmUserToken, deleteAddress);
+router.post("/delete_address", confirmUserToken, deleteAddress);
 
 export default router;

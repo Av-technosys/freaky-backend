@@ -21,7 +21,7 @@ export const eventType = pgTable('event_type', {
 export const eventProductType = pgTable('event_product_type', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   eventTypeId: integer('event_type_id').references(() => eventType.id),
-  productTypeId: integer('product_id').references(() => productType.id),
+  productTypeId: integer('product_type_id').references(() => productType.id),
 });
 
 export const event = pgTable('event', {
@@ -37,7 +37,7 @@ export const event = pgTable('event', {
   minGuestCount: integer('min_guest_count').default(1),
   maxGuestCount: integer('max_guest_count').default(1),
 
-  location: varchar('location', { length: 255 }),
+  // location: varchar('location', { length: 255 }),
   latitude: decimal('latitude', { precision: 10, scale: 7 }),
   longitude: decimal('longitude', { precision: 10, scale: 7 }),
 

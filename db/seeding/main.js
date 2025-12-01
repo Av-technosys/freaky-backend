@@ -1,12 +1,13 @@
 // import { db } from "../db.js";
 // import { seedEventTypes, seedFeaturedEventTypes } from "./event.js";
 import { seedUsers } from "./user.js";
+import { seedPriceBooking, seedpriceBookingEntry, seedproductMedia, seedProducts, seedproductType, seedVendor, seedVendorDocument, seedvendorMedia, seedVendorOwnership } from "./vendor.js";
 // import { seedPriceBooking, seedpriceBookingEntry, seedproductMedia, seedProducts, seedVendor, seedvendorContacts, seedVendorDocument, seedvendorMedia, seedVendorOwnership } from "./vendor.js";
 // import { sql } from "drizzle-orm";
 
 async function main() {
   console.log("Seeding...");
-  await seedUsers()
+  await seedpriceBookingEntry()
   // await seedVendor()
   // await seedEventTypes()
   // await seedFeaturedEventTypes()

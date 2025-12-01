@@ -122,7 +122,7 @@ export async function seedVendorOwnership() {
     await db.insert(vendorOwnership).values(data);
 }
 
-
+ 
 
 export async function seedVendorDocument() {
     const documentTypes = [

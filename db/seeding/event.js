@@ -7,7 +7,7 @@ import {
   events,
   eventType,
   eventTypeProduct,
-  featuredEventType,
+  featuredEvents,
 } from '../schema.js';
 
 export async function seedEventTypes() {
@@ -30,16 +30,29 @@ export async function seedEventTypeProduct() {
 }
 
 export async function seedEvent() {
+  const bookingStatus = Object.freeze({
+    CREATED: 'created',
+    PENDING: 'pending',
+  });
+  const paymentStatus = Object.freeze({
+    CREATED: 'created',
+    PENDING: 'pending',
+  });
   const data = Array.from({ length: 25 }).map(() => ({
     // eventId: faker.number.int({ min: 1, max: 25 }),
     // userId: faker.number.int({ min: 1, max: 25 }),
     // eventTypeId: faker.number.int({ min: 1, max: 25 }),
-    title: faker.company.catchPhrase(),
+    name: faker.company.name(),
     description: faker.lorem.sentence(),
+    contactNumber: faker.phone.number(),
     eventDate: faker.date.anytime(),
+    minGuestCount: faker.number.int(),
+    maxGuestCount: faker.number.int(),
     location: faker.location.city(),
     latitude: faker.location.latitude(),
     longitude: faker.location.longitude(),
+    bookingStatus: faker.helpers.enumValue(bookingStatus),
+    paymentStatus: faker.helpers.enumValue(paymentStatus),
   }));
 
   await db.insert(events).values(data);
@@ -50,6 +63,8 @@ export async function seedEventBooking() {
     // eventId: faker.number.int({ min: 1, max: 25 }),
     // userId: faker.number.int({ min: 1, max: 25 }),
     totalAmount: faker.finance.amount(),
+    adminCommissionPercentage: faker.commerce.price(),
+    platformFees: faker.commerce.price(),
     bookingStatus: true,
     bookedAt: faker.date.anytime(),
   }));
@@ -57,31 +72,32 @@ export async function seedEventBooking() {
   await db.insert(eventBooking).values(data);
 }
 
-export async function seedFeaturedEventTypes() {
-  const data = Array.from({ length: 12 }).map((_, idx) => ({
-    name: faker.lorem.word(),
-    description: faker.lorem.text(),
-    eventTypeId: idx + 1,
-  }));
+// export async function seedFeaturedEventTypes() {
+//   const data = Array.from({ length: 12 }).map((_, idx) => ({
+//     name: faker.lorem.word(),
+//     description: faker.lorem.text(),
+//     eventTypeId: idx + 1,
+//   }));
 
-  await db.insert(featuredEventType).values(data);
-}
+//   await db.insert(featuredEventType).values(data);
+// }
 
 export async function seedEventProductOrders() {
   const data = Array.from({ length: 25 }).map(() => ({
     // orderId:faker.number.int({ min: 1, max: 25 }),
-    // bookingId:faker.number.int({ min: 1, max: 25 }),
+    // eventBookingId:faker.number.int({ min: 1, max: 25 }),
     // userId:faker.number.int({ min: 1, max: 25 }),
-    // eventTypeId:faker.number.int({ min: 1, max: 25 }),
     // productId:faker.number.int({ min: 1, max: 25 }),
     // vendorId:faker.number.int({ min: 1, max: 25 }),
+    productName: faker.company.name(),
+    productImage: faker.image.url(),
+    vnedorName: faker.company.name(),
     quantity: faker.number.int(),
-    price: faker.commerce.price(),
-    paid: faker.commerce.price(),
-    due: faker.commerce.price(),
-    adminCommissionPercentage: faker.commerce.price(),
-    orderStatus: 'confirmed',
-    orderedAt: faker.date.anytime(),
+    lowerSlab: faker.number.int(),
+    upperSlab: faker.number.int(),
+    productPrice: faker.commerce.price(),
+    serviceBookingPrice: faker.commerce.price(),
+    status: 'booked',
   }));
 
   await db.insert(eventProductOrders).values(data);
@@ -93,6 +109,16 @@ export async function seedEventOrderTransactions() {
     SUCCESSFUL: 'successful',
     REJECT: 'reject',
   });
+  const paymentStatus = Object.freeze({
+    PENDING: 'pending',
+    SUCCESSFUL: 'successful',
+    REJECT: 'reject',
+  });
+
+  const currency = Object.freeze({
+    USD: 'usd',
+    RUPEES: 'rupees',
+  });
 
   const paymentMethod = Object.freeze({
     UPI: 'upi',
@@ -103,14 +129,33 @@ export async function seedEventOrderTransactions() {
 
   const data = Array.from({ length: 25 }).map(() => ({
     // transactionId:faker.number.int({ min: 1, max: 25 }),
-    // orderId:faker.number.int({ min: 1, max: 25 }),
+    // eventBookingId:faker.number.int({ min: 1, max: 25 }),
     transactionStatus: faker.helpers.enumValue(transactionStatus),
+    paymentStatus: faker.helpers.enumValue(paymentStatus),
     paymentMethod: faker.helpers.enumValue(paymentMethod),
-    amount: faker.commerce.price(),
-    transactionDate: faker.date.anytime(),
-    referenceNumber: faker.number.int({ min: 100000, max: 9999999 }),
+    paymentType: faker.helpers.enumValue(paymentMethod),
+    paymentMeta: faker.lorem.sentence(),
     remarks: faker.lorem.sentence(),
+    referenceNumber: faker.number.int(),
+    currency: faker.helpers.enumValue(currency),
+    amount: faker.commerce.price(),
+    transactionTime: faker.date.anytime(),
+    failureReason: faker.lorem.sentence(),
+    errorCode: faker.lorem.sentence(),
   }));
 
   await db.insert(eventOrderTransactions).values(data);
+}
+
+export async function seedFeaturedEvent() {
+  const data = Array.from({ length: 25 }).map(() => ({
+    // eventId:faker.number.int({ min: 1, max: 25 }),
+    name: faker.commerce.name(),
+    description: faker.lorem.sentence(),
+    mediaURL: faker.lorem.sentence(),
+    altText: faker.lorem.sentence(),
+    priority: faker.number.int(),
+  }));
+
+  await db.insert(featuredEvents).values(data);
 }

@@ -22,8 +22,8 @@ export const uploadUrl = async (req, res) => {
 
     return res.status(200).json({
       uploadUrl,
-      fileUrl: `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`
-    });
+      filePath: key   
+     });
 
   } catch (err) {
     console.error("Error generating URL", err);

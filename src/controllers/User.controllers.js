@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import { userAddresses, users } from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
+import { cart , cartItem } from "../../db/user.js";
 
 export const getUserInfo = async (req, res) => {
   try {
@@ -331,5 +332,113 @@ export const deleteAddress = async (req, res) => {
 
     console.error("Error deleting address:", err);
     return res.status(500).json({ error: "Error deleting address." });
+  }
+};
+
+
+export const cartHandler = async (req, res) => {
+  try {
+    const email = req.user?.email || req.body.email;
+   
+    const user = await db.query.users.findFirst({
+      where: (user, { eq }) => eq(user.email, email)
+    });  
+
+    const userId = user.userId;
+    if (!userId) {
+      return res.status(400).json({ error: "User ID required" });
+    }
+
+    let userCart = await db.query.cart.findFirst({
+      where: (t, { eq }) => eq(t.userId, userId),
+    });
+
+    if (req.method === "GET") {
+      console.log('did he come this far')
+      if (!userCart) {
+        return res.json({
+          message: "Cart is empty",
+          cartId: null,
+          items: [],
+        });
+      }
+
+      const items = await db.query.cartItems.findMany({
+        where: (t, { eq }) => eq(t.cartId, userCart.cartId),
+      });
+
+      return res.json({
+        cartId: userCart.cartId,
+        items,
+      });
+    }
+
+    if (req.method === "POST") {
+
+    if (!userCart) {
+        const newCart = await db.insert(cart).values({ userId }).returning();
+        userCart = newCart[0];
+      }
+    
+    const cartId = userCart.cartId;
+
+    const { productId, quantity } = req.body;
+
+      if (!productId || !quantity) {
+        return res.status(400).json({ error: "productId & quantity required" });
+      }
+
+      const existing = await db.query.cartItems.findFirst({
+        where: (t, { eq, and }) =>
+          and(eq(t.cartId, cartId), eq(t.productId, productId)),
+      });
+
+      if (existing) {
+        return res.json({
+          message: "item already exists"
+          
+        });
+      }
+
+      const newItem = await db
+        .insert(cartItem)
+        .values({ cartId, productId, quantity })
+        .returning();
+
+      return res.json({
+        message: "Item added to cart",
+        item: newItem[0],
+      });
+    }
+
+    if (req.method === "DELETE") {
+      const { cartItemId } = req.params;
+
+      if (!cartItemId) {
+        return res.status(400).json({ error: "cartItemId required" });
+      }
+
+      const item = await db.query.cartItems.findFirst({
+        where: (t, { eq }) => eq(t.cartItemId, Number(cartItemId)),
+      });
+
+      if (!item) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      await db
+        .delete(cartItem)
+        .where(eq(cartItem.cartItemId, Number(cartItemId)));
+
+      return res.json({
+        message: "Item removed from cart",
+      });
+    }
+
+    return res.status(405).json({ error: "Method not allowed" });
+
+  } catch (err) {
+    console.error("Cart API Error:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 };

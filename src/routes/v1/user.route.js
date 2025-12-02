@@ -7,7 +7,8 @@ import {
   listAllAddresses,
   setCurrentAddress,
   updateUserInfo,
-  deleteAddress
+  deleteAddress,
+  cartHandler
 } from "../../controllers/User.controllers.js";
 import { confirmUserToken } from "../../middleware/user.middleware.js";
 
@@ -22,5 +23,9 @@ router.post("/add_address", confirmUserToken, addAddress);
 router.post("/edit_address", confirmUserToken, editAddresses);
 router.post("/set_current_address", confirmUserToken, setCurrentAddress);
 router.post("/delete_address", confirmUserToken, deleteAddress);
+router.post("/cart", confirmUserToken, cartHandler);
+router.get("/cart", confirmUserToken, cartHandler);
+router.delete("/cart/:cartItemId", confirmUserToken, cartHandler);
+
 
 export default router;

@@ -450,7 +450,7 @@ export const fetchVendorProducts = async (req, res) => {
       return res.status(404).json({ error: "No products found for this vendor." });
     }
 
-     const productIds = vendorProducts.map(p => p.productId);
+     const productIds = vendorProducts.map(product => product.productId);
 
      const productMedia = await db.query.productMedia.findMany({
       where: (table, { inArray }) => inArray(table.productId, productIds),
@@ -458,7 +458,7 @@ export const fetchVendorProducts = async (req, res) => {
 
     const data = vendorProducts.map(product => ({
       ...product,
-      media: productMedia.filter(media => media.productId === p.productId)
+      media: productMedia.filter(media => media.productId === product.productId)
     }));
 
     return res.json({
@@ -487,7 +487,7 @@ export const fetchProductPrice = async (req, res) => {
 
       const vendorId = product.vendorId;
 
-      const priceBook = await db.query.priceBooking.findMany({
+      const priceBook = await db.query.priceBook.findMany({
         where: (t, { eq, and }) => and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
       });
  
@@ -497,7 +497,7 @@ export const fetchProductPrice = async (req, res) => {
 
       const priceBookingIds = priceBook.map(p => p.id);
 
-      const productPrice = await db.query.priceBookingEntry.findMany({
+      const productPrice = await db.query.priceBookEntry.findMany({
         where: (t, { eq, and, inArray }) =>
           and(
             eq(t.productId, productId),

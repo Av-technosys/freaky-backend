@@ -618,13 +618,43 @@ export const getAllFeaturedCategories = async (req, res) => {
       .orderBy(asc(featuredCategorys.id));
 
     const updatedResponse = await db
-      .select()
+      .select({
+        featuredCategoryId: featuredCategorys.id,
+        products: sql`
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'productId', ${products.productId},
+            'title', ${products.title},
+            'description', ${products.description},
+            'latitude', ${products.latitude},
+            'longitude', ${products.longitude},
+            'deliveryRadius', ${products.deliveryRadius},
+            'isAvailable', ${products.isAvailable},
+            'pricingType', ${products.pricingType},
+            'minQuantity', ${products.minQuantity},
+            'maxQuantity', ${products.maxQuantity},
+            'status', ${products.status},
+            'createdAt', ${products.createdAt},
+            'updatedAt', ${products.updatedAt}
+          )
+        ) FILTER (WHERE ${products.productId} IS NOT NULL),
+      '[]')`
+      })
       .from(featuredCategorys)
       .leftJoin(
         featuredProdcuts,
         eq(featuredCategorys.id, featuredProdcuts.featuredCategoryId)
-      );
+      )
+      .leftJoin(products, eq(products.productId, featuredProdcuts.productId))
+      .groupBy(featuredCategorys.id);
 
+
+
+    // .leftJoin(
+    //   featuredProdcuts,
+    //   eq(featuredCategorys.id, featuredProdcuts.featuredCategoryId)
+    // )
     // const updatedResponse = await Promise.all(
     //   response.map(async (category) => {
     //     const categoryProducts = await db

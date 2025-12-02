@@ -442,3 +442,57 @@ export const cartHandler = async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 };
+export const profilePictureHandler  = async (req, res) => {
+  try {
+    const email = req.user?.email || req.body.email;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required." });
+    }
+
+    const user = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.email, email),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    if (req.method === "POST") {
+      const { profileImage } = req.body;
+
+      if (!profileImage) {
+        return res.status(400).json({ error: "Profile image URL is required." });
+      }
+
+      await db
+        .update(users)
+        .set({ profileImage })
+        .where(eq(users.userId, user.userId))
+        .returning();
+
+      return res.status(200).json({
+        message: "Profile image saved successfully.",
+      });
+    }
+
+ if (req.method === "DELETE") {
+      await db
+        .update(users)
+        .set({ profileImage: null })
+        .where(eq(users.userId, user.userId))
+        .returning();
+
+      return res.status(200).json({
+        message: "Profile image deleted successfully.",
+      });
+    }
+
+      return res.status(405).json({ error: "Method not allowed." });
+
+  } catch (err) {
+    console.error("Error updating profile image:", err);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
+

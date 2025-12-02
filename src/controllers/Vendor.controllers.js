@@ -591,12 +591,51 @@ export const getAllProductsByCategoryId = async (req, res) => {
         .orderBy(asc(featuredProdcuts.priority));
 
       const updatedResponse = await Promise.all(
-        response.map(async (product) => {
+        response.map(async (featureProduct) => {
+          const productId = featureProduct.productId;
+          if (!productId) {
+            return res.status(400).json({ error: 'Product ID is required.' });
+          }
+          const product = await db.query.products.findFirst({
+            where: (t, { eq }) => eq(t.productId, Number(productId)),
+          });
+          if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+          }
+
+          const vendorId = product.vendorId;
+
+          const priceBook = await db.query.priceBook.findMany({
+            where: (t, { eq, and }) =>
+              and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+          });
+
+          if (!priceBook) {
+            return res
+              .status(404)
+              .json({ error: 'No pricebook found for vendor' });
+          }
+
+          const priceBookingIds = priceBook.map((p) => p.id);
+
+          const productPrice = await db.query.priceBookEntry.findMany({
+            where: (t, { eq, and, inArray }) =>
+              and(
+                eq(t.productId, productId),
+                inArray(t.priceBookingId, priceBookingIds)
+              ),
+          });
+
+          if (!productPrice) {
+            return res
+              .status(404)
+              .json({ error: 'Price not found for this product' });
+          }
           const productDetail = await db
             .select()
             .from(products)
             .where(eq(products.productId, product.productId));
-          return { ...product, productDetails: productDetail[0] };
+          return { ...productDetail[0], price: productPrice };
         })
       );
 
@@ -625,6 +664,7 @@ export const getAllFeaturedCategories = async (req, res) => {
         json_agg(
           json_build_object(
             'productId', ${products.productId},
+            'price',${productPrice}
             'title', ${products.title},
             'description', ${products.description},
             'latitude', ${products.latitude},
@@ -639,7 +679,7 @@ export const getAllFeaturedCategories = async (req, res) => {
             'updatedAt', ${products.updatedAt}
           )
         ) FILTER (WHERE ${products.productId} IS NOT NULL),
-      '[]')`
+      '[]')`,
       })
       .from(featuredCategorys)
       .leftJoin(
@@ -648,8 +688,6 @@ export const getAllFeaturedCategories = async (req, res) => {
       )
       .leftJoin(products, eq(products.productId, featuredProdcuts.productId))
       .groupBy(featuredCategorys.id);
-
-
 
     // .leftJoin(
     //   featuredProdcuts,

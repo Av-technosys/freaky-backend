@@ -590,7 +590,7 @@ export const getAllProductsByCategoryId = async (req, res) => {
         .where(eq(featuredProdcuts.featuredCategoryId, categoryId))
         .orderBy(asc(featuredProdcuts.priority));
 
-      const updatedResponse = await Promise.all(
+      const categoryWiseProducts = await Promise.all(
         response.map(async (featureProduct) => {
           const productId = featureProduct.productId;
           if (!productId) {
@@ -641,62 +641,13 @@ export const getAllProductsByCategoryId = async (req, res) => {
 
       return res.status(200).json({
         message: 'All products fetched successfully...',
-        data: updatedResponse,
+        data: categoryWiseProducts,
       });
     }
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
-
-// export const getAllFeaturedCategories = async (req, res) => {
-//   try {
-//     const featuredCategoryData = await db
-//       .select()
-//       .from(featuredCategorys)
-//       .orderBy(asc(featuredCategorys.id));
-
-//     const updatedResponse = await db
-//       .select({
-//         featuredCategoryId: featuredCategorys.id,
-//         products: sql`
-//       COALESCE(
-//         json_agg(
-//           json_build_object(
-//             'productId', ${products.productId},
-//             'title', ${products.title},
-//             'description', ${products.description},
-//             'latitude', ${products.latitude},
-//             'longitude', ${products.longitude},
-//             'deliveryRadius', ${products.deliveryRadius},
-//             'isAvailable', ${products.isAvailable},
-//             'pricingType', ${products.pricingType},
-//             'minQuantity', ${products.minQuantity},
-//             'maxQuantity', ${products.maxQuantity},
-//             'status', ${products.status},
-//             'createdAt', ${products.createdAt},
-//             'updatedAt', ${products.updatedAt}
-//           )
-//         ) FILTER (WHERE ${products.productId} IS NOT NULL),
-//       '[]')`,
-//       })
-//       .from(featuredCategorys)
-//       .leftJoin(
-//         featuredProdcuts,
-//         eq(featuredCategorys.id, featuredProdcuts.featuredCategoryId)
-//       )
-//       .leftJoin(products, eq(products.productId, featuredProdcuts.productId))
-//       .groupBy(featuredCategorys.id);
-
-//     return res.status(200).json({
-//       message: 'All categories fetched successfully...',
-//       data: updatedResponse,
-//     });
-//   } catch (error) {
-//     console.error('Error: ', error);
-//     return res.status(500).json({ message: error.message });
-//   }
-// };
 
 export const getAllFeaturedCategories = async (req, res) => {
   try {
@@ -734,17 +685,17 @@ export const getAllFeaturedCategories = async (req, res) => {
       .leftJoin(products, eq(products.productId, featuredProdcuts.productId))
       .groupBy(featuredCategorys.id);
 
-    const parsedCategories = categories.map((cat) => ({
-      ...cat,
-      products: Array.isArray(cat.products)
-        ? cat.products
-        : JSON.parse(cat.products),
+    const parsedCategories = categories.map((category) => ({
+      ...category,
+      products: Array.isArray(category.products)
+        ? category.products
+        : JSON.parse(category.products),
     }));
 
-    const finalData = await Promise.all(
-      parsedCategories.map(async (cat) => {
-        const updatedProducts = await Promise.all(
-          cat.products.map(async (product) => {
+    const CategoryWithProductPricing = await Promise.all(
+      parsedCategories.map(async (category) => {
+        const productDataWithPricing = await Promise.all(
+          category.products.map(async (product) => {
             const productId = product.productId;
 
             const dbProduct = await db.query.products.findFirst({
@@ -780,15 +731,15 @@ export const getAllFeaturedCategories = async (req, res) => {
         );
 
         return {
-          ...cat,
-          products: updatedProducts,
+          ...category,
+          products: productDataWithPricing,
         };
       })
     );
 
     return res.status(200).json({
       message: 'All categories fetched successfully...',
-      data: finalData,
+      data: CategoryWithProductPricing,
     });
   } catch (error) {
     console.error('Error: ', error);

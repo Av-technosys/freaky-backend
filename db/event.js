@@ -48,6 +48,15 @@ export const event = pgTable('event', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+export const eventItem = pgTable("event_item", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  eventId: integer("event_type_id").references(() => event.eventId),
+  productId: integer("product_id").references(() => productType.id),
+  quantity: integer("quantity").notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
 export const eventBooking = pgTable('event_booking', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   eventId: integer('event_id').references(() => event.eventId),
@@ -146,6 +155,6 @@ export const featuredEvent = pgTable('featured_event', {
   mediaURL: varchar('media_url', { length: 255 }),
   altText: varchar('alt_text', { length: 255 }),
   priority: integer('priority').default(0),
-  eventId: integer('event_id').references(() => event.eventId),
+  eventId: integer('event_id').references(() => eventType.id),
   createdAt: timestamp('created_at').defaultNow(),
 });

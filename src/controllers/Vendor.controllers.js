@@ -649,37 +649,82 @@ export const getAllProductsByCategoryId = async (req, res) => {
   }
 };
 
+// export const getAllFeaturedCategories = async (req, res) => {
+//   try {
+//     const featuredCategoryData = await db
+//       .select()
+//       .from(featuredCategorys)
+//       .orderBy(asc(featuredCategorys.id));
+
+//     const updatedResponse = await db
+//       .select({
+//         featuredCategoryId: featuredCategorys.id,
+//         products: sql`
+//       COALESCE(
+//         json_agg(
+//           json_build_object(
+//             'productId', ${products.productId},
+//             'title', ${products.title},
+//             'description', ${products.description},
+//             'latitude', ${products.latitude},
+//             'longitude', ${products.longitude},
+//             'deliveryRadius', ${products.deliveryRadius},
+//             'isAvailable', ${products.isAvailable},
+//             'pricingType', ${products.pricingType},
+//             'minQuantity', ${products.minQuantity},
+//             'maxQuantity', ${products.maxQuantity},
+//             'status', ${products.status},
+//             'createdAt', ${products.createdAt},
+//             'updatedAt', ${products.updatedAt}
+//           )
+//         ) FILTER (WHERE ${products.productId} IS NOT NULL),
+//       '[]')`,
+//       })
+//       .from(featuredCategorys)
+//       .leftJoin(
+//         featuredProdcuts,
+//         eq(featuredCategorys.id, featuredProdcuts.featuredCategoryId)
+//       )
+//       .leftJoin(products, eq(products.productId, featuredProdcuts.productId))
+//       .groupBy(featuredCategorys.id);
+
+//     return res.status(200).json({
+//       message: 'All categories fetched successfully...',
+//       data: updatedResponse,
+//     });
+//   } catch (error) {
+//     console.error('Error: ', error);
+//     return res.status(500).json({ message: error.message });
+//   }
+// };
+
 export const getAllFeaturedCategories = async (req, res) => {
   try {
-    const featuredCategoryData = await db
-      .select()
-      .from(featuredCategorys)
-      .orderBy(asc(featuredCategorys.id));
-
-    const updatedResponse = await db
+    const categories = await db
       .select({
         featuredCategoryId: featuredCategorys.id,
         products: sql`
-      COALESCE(
-        json_agg(
-          json_build_object(
-            'productId', ${products.productId},
-            'price',${productPrice}
-            'title', ${products.title},
-            'description', ${products.description},
-            'latitude', ${products.latitude},
-            'longitude', ${products.longitude},
-            'deliveryRadius', ${products.deliveryRadius},
-            'isAvailable', ${products.isAvailable},
-            'pricingType', ${products.pricingType},
-            'minQuantity', ${products.minQuantity},
-            'maxQuantity', ${products.maxQuantity},
-            'status', ${products.status},
-            'createdAt', ${products.createdAt},
-            'updatedAt', ${products.updatedAt}
-          )
-        ) FILTER (WHERE ${products.productId} IS NOT NULL),
-      '[]')`,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'productId', ${products.productId},
+                'vendorId', ${products.vendorId},
+                'title', ${products.title},
+                'description', ${products.description},
+                'latitude', ${products.latitude},
+                'longitude', ${products.longitude},
+                'deliveryRadius', ${products.deliveryRadius},
+                'isAvailable', ${products.isAvailable},
+                'pricingType', ${products.pricingType},
+                'minQuantity', ${products.minQuantity},
+                'maxQuantity', ${products.maxQuantity},
+                'status', ${products.status},
+                'createdAt', ${products.createdAt},
+                'updatedAt', ${products.updatedAt}
+              )
+            ) FILTER (WHERE ${products.productId} IS NOT NULL),
+          '[]'
+        )`,
       })
       .from(featuredCategorys)
       .leftJoin(
@@ -689,43 +734,61 @@ export const getAllFeaturedCategories = async (req, res) => {
       .leftJoin(products, eq(products.productId, featuredProdcuts.productId))
       .groupBy(featuredCategorys.id);
 
-    // .leftJoin(
-    //   featuredProdcuts,
-    //   eq(featuredCategorys.id, featuredProdcuts.featuredCategoryId)
-    // )
-    // const updatedResponse = await Promise.all(
-    //   response.map(async (category) => {
-    //     const categoryProducts = await db
-    //       .select()
-    //       .from(featuredProdcuts)
-    //       .where(eq(featuredProdcuts.featuredCategoryId, category.id));
+    const parsedCategories = categories.map((cat) => ({
+      ...cat,
+      products: Array.isArray(cat.products)
+        ? cat.products
+        : JSON.parse(cat.products),
+    }));
 
-    // const newUpdatedResponse = await Promise.all(
-    //   categoryProducts.map(async (categoryProd) => {
-    //     const categoryProductDetail = await db
-    //       .select()
-    //       .from(products)
-    //       .where(eq(categoryProd.productId, products.productId));
-    //     return {
-    //       ...categoryProd,
-    //       productDetails: categoryProductDetail[0],
-    //     };
-    //   })
-    // );
-    // return { ...category, products: newUpdatedResponse };
-    //     return { categoryProducts };
-    //   })
-    // );
+    const finalData = await Promise.all(
+      parsedCategories.map(async (cat) => {
+        const updatedProducts = await Promise.all(
+          cat.products.map(async (product) => {
+            const productId = product.productId;
 
-    // const updatedResponseForProductDetails= await Promise.all(
-    //   updatedResponse.map(async(categoryProduct)=> {
-    //     const productDetails = await db.select().from(products).where(eq(categoryProduct.productId,products.productId))
-    //   })
-    // )
+            const dbProduct = await db.query.products.findFirst({
+              where: (t, { eq }) => eq(t.productId, Number(productId)),
+            });
+
+            if (!dbProduct) return { ...product, price: [] };
+
+            const vendorId = dbProduct.vendorId;
+
+            const priceBook = await db.query.priceBook.findMany({
+              where: (t, { eq, and }) =>
+                and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+            });
+
+            if (!priceBook.length) return { ...product, price: [] };
+
+            const priceBookingIds = priceBook.map((p) => p.id);
+
+            const productPrice = await db.query.priceBookEntry.findMany({
+              where: (t, { eq, and, inArray }) =>
+                and(
+                  eq(t.productId, productId),
+                  inArray(t.priceBookingId, priceBookingIds)
+                ),
+            });
+
+            return {
+              ...product,
+              price: productPrice || [],
+            };
+          })
+        );
+
+        return {
+          ...cat,
+          products: updatedProducts,
+        };
+      })
+    );
 
     return res.status(200).json({
       message: 'All categories fetched successfully...',
-      data: updatedResponse,
+      data: finalData,
     });
   } catch (error) {
     console.error('Error: ', error);

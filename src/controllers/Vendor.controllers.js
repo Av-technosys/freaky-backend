@@ -1,16 +1,17 @@
-import { and, eq, ilike, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
   vendorEmployees,
   vendorEmployeeRequests,
   vendorOwnerships,
   vendors,
-  products
+  products,
+  featuredCategorys,
+  featuredProdcuts,
 } from '../../db/schema.js';
 import { commonVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
-
 
 export const getCompanyProfile = async (req, res) => {
   // try {
@@ -87,7 +88,6 @@ export const listAllVendors = async (req, res) => {
     });
   }
 };
-
 
 export const createVendor = async (req, res) => {
   try {
@@ -439,126 +439,130 @@ export const fetchVendorProducts = async (req, res) => {
     const { vendorId } = req.params;
 
     if (!vendorId) {
-        return res.status(400).json({ error: "Vendor ID is required." });
-      }
+      return res.status(400).json({ error: 'Vendor ID is required.' });
+    }
 
     const vendorProducts = await db.query.products.findMany({
       where: (table, { eq }) => eq(table.vendorId, Number(vendorId)),
     });
- 
+
     if (vendorProducts.length === 0) {
-      return res.status(404).json({ error: "No products found for this vendor." });
+      return res
+        .status(404)
+        .json({ error: 'No products found for this vendor.' });
     }
 
-     const productIds = vendorProducts.map(product => product.productId);
+    const productIds = vendorProducts.map((p) => p.productId);
 
-     const productMedia = await db.query.productMedia.findMany({
+    const productMedia = await db.query.productMedia.findMany({
       where: (table, { inArray }) => inArray(table.productId, productIds),
     });
 
-    const data = vendorProducts.map(product => ({
+    const data = vendorProducts.map((product) => ({
       ...product,
-      media: productMedia.filter(media => media.productId === product.productId)
+      media: productMedia.filter((media) => media.productId === p.productId),
     }));
 
     return res.json({
-      message: "Products fetched successfully",
+      message: 'Products fetched successfully',
       products: data,
     });
-
   } catch (err) {
-    console.error("Error fetching vendor products:", err);
-    return res.status(500).json({ error: "Server error fetching vendor products." });
+    console.error('Error fetching vendor products:', err);
+    return res
+      .status(500)
+      .json({ error: 'Server error fetching vendor products.' });
   }
 };
 
 export const fetchProductPrice = async (req, res) => {
   try {
     const { productId } = req.params;
-    if (!productId){
-      return res.status(400).json({ error: "Product ID is required." });
-      }
-      const product = await db.query.products.findFirst({
-        where: (t, { eq }) => eq(t.productId, Number(productId)),
-      });
-      if (!product){
-      return res.status(404).json({ error: "Product not found" });
-      }
+    if (!productId) {
+      return res.status(400).json({ error: 'Product ID is required.' });
+    }
+    const product = await db.query.products.findFirst({
+      where: (t, { eq }) => eq(t.productId, Number(productId)),
+    });
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
 
-      const vendorId = product.vendorId;
+    const vendorId = product.vendorId;
 
-      const priceBook = await db.query.priceBook.findMany({
-        where: (t, { eq, and }) => and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
-      });
- 
-      if (!priceBook){
-      return res.status(404).json({ error: "No pricebook found for vendor" });
-      }
+    const priceBook = await db.query.priceBooking.findMany({
+      where: (t, { eq, and }) =>
+        and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+    });
 
-      const priceBookingIds = priceBook.map(p => p.id);
+    if (!priceBook) {
+      return res.status(404).json({ error: 'No pricebook found for vendor' });
+    }
 
-      const productPrice = await db.query.priceBookEntry.findMany({
-        where: (t, { eq, and, inArray }) =>
-          and(
-            eq(t.productId, productId),
-            inArray(t.priceBookingId, priceBookingIds)
-          )
-      });
+    const priceBookingIds = priceBook.map((p) => p.id);
 
-      if (!productPrice){
-      return res.status(404).json({ error: "Price not found for this product" });
-      }
+    const productPrice = await db.query.priceBookingEntry.findMany({
+      where: (t, { eq, and, inArray }) =>
+        and(
+          eq(t.productId, productId),
+          inArray(t.priceBookingId, priceBookingIds)
+        ),
+    });
 
-      return res.json({
-        message: "Price fetched successfully",
-        vendorId,
-        price: productPrice,
-      });
+    if (!productPrice) {
+      return res
+        .status(404)
+        .json({ error: 'Price not found for this product' });
+    }
+
+    return res.json({
+      message: 'Price fetched successfully',
+      vendorId,
+      price: productPrice,
+    });
   } catch (err) {
-    console.error("Price Fetch Error:", err);
-    return res.status(500).json({ error: "Server error fetching product price" });
+    console.error('Price Fetch Error:', err);
+    return res
+      .status(500)
+      .json({ error: 'Server error fetching product price' });
   }
 };
 
-
-
-
 export const listProductsType = async (req, res) => {
   try {
-  
     const { productTypeId, page = 1, page_size = 12 } = req.query;
 
-    if (!productTypeId){
-       const productTypes = await db.query.productType.findMany();
+    if (!productTypeId) {
+      const productTypes = await db.query.productType.findMany();
 
       return res.json({
-        message: "product type fetched successfully",
+        message: 'product type fetched successfully',
         productTypes: productTypes,
       });
     }
-    
-     const limit = Number(page_size);
-     const offset = (Number(page) - 1) * limit;
 
-     const totalRows = await db
-    .select({ count: sql`CAST(count(*) AS INTEGER)` })
-    .from(products)
-    .where(eq(products.productTypeId, Number(productTypeId)));
+    const limit = Number(page_size);
+    const offset = (Number(page) - 1) * limit;
+
+    const totalRows = await db
+      .select({ count: sql`CAST(count(*) AS INTEGER)` })
+      .from(products)
+      .where(eq(products.productTypeId, Number(productTypeId)));
 
     const total = totalRows[0].count;
 
-      const data = await db
+    const data = await db
       .select()
       .from(products)
       .where(eq(products.productTypeId, Number(productTypeId)))
       .limit(limit)
       .offset(offset);
 
-      console.log("data",data)
+    console.log('data', data);
 
     return res.json({
       success: true,
-      message: "Products fetched successfully",
+      message: 'Products fetched successfully',
       pagination: {
         page: Number(page),
         page_size: limit,
@@ -568,10 +572,177 @@ export const listProductsType = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error("Error fetching products by type:", error);
+    console.error('Error fetching products by type:', error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: 'Internal server error',
     });
+  }
+};
+
+export const getAllProductsByCategoryId = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    if (categoryId) {
+      const response = await db
+        .select()
+        .from(featuredProdcuts)
+        .where(eq(featuredProdcuts.featuredCategoryId, categoryId))
+        .orderBy(asc(featuredProdcuts.priority));
+
+      const categoryWiseProducts = await Promise.all(
+        response.map(async (featureProduct) => {
+          const productId = featureProduct.productId;
+          if (!productId) {
+            return res.status(400).json({ error: 'Product ID is required.' });
+          }
+          const product = await db.query.products.findFirst({
+            where: (t, { eq }) => eq(t.productId, Number(productId)),
+          });
+          if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+          }
+
+          const vendorId = product.vendorId;
+
+          const priceBook = await db.query.priceBook.findMany({
+            where: (t, { eq, and }) =>
+              and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+          });
+
+          if (!priceBook) {
+            return res
+              .status(404)
+              .json({ error: 'No pricebook found for vendor' });
+          }
+
+          const priceBookingIds = priceBook.map((p) => p.id);
+
+          const productPrice = await db.query.priceBookEntry.findMany({
+            where: (t, { eq, and, inArray }) =>
+              and(
+                eq(t.productId, productId),
+                inArray(t.priceBookingId, priceBookingIds)
+              ),
+          });
+
+          if (!productPrice) {
+            return res
+              .status(404)
+              .json({ error: 'Price not found for this product' });
+          }
+          const productDetail = await db
+            .select()
+            .from(products)
+            .where(eq(products.productId, product.productId));
+          return { ...productDetail[0], price: productPrice };
+        })
+      );
+
+      return res.status(200).json({
+        message: 'All products fetched successfully...',
+        data: categoryWiseProducts,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getAllFeaturedCategories = async (req, res) => {
+  try {
+    const categories = await db
+      .select({
+        featuredCategoryId: featuredCategorys.id,
+        products: sql`
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'productId', ${products.productId},
+                'vendorId', ${products.vendorId},
+                'title', ${products.title},
+                'description', ${products.description},
+                'latitude', ${products.latitude},
+                'longitude', ${products.longitude},
+                'deliveryRadius', ${products.deliveryRadius},
+                'isAvailable', ${products.isAvailable},
+                'pricingType', ${products.pricingType},
+                'minQuantity', ${products.minQuantity},
+                'maxQuantity', ${products.maxQuantity},
+                'status', ${products.status},
+                'createdAt', ${products.createdAt},
+                'updatedAt', ${products.updatedAt}
+              )
+            ) FILTER (WHERE ${products.productId} IS NOT NULL),
+          '[]'
+        )`,
+      })
+      .from(featuredCategorys)
+      .leftJoin(
+        featuredProdcuts,
+        eq(featuredCategorys.id, featuredProdcuts.featuredCategoryId)
+      )
+      .leftJoin(products, eq(products.productId, featuredProdcuts.productId))
+      .groupBy(featuredCategorys.id);
+
+    const parsedCategories = categories.map((category) => ({
+      ...category,
+      products: Array.isArray(category.products)
+        ? category.products
+        : JSON.parse(category.products),
+    }));
+
+    const CategoryWithProductPricing = await Promise.all(
+      parsedCategories.map(async (category) => {
+        const productDataWithPricing = await Promise.all(
+          category.products.map(async (product) => {
+            const productId = product.productId;
+
+            const dbProduct = await db.query.products.findFirst({
+              where: (t, { eq }) => eq(t.productId, Number(productId)),
+            });
+
+            if (!dbProduct) return { ...product, price: [] };
+
+            const vendorId = dbProduct.vendorId;
+
+            const priceBook = await db.query.priceBook.findMany({
+              where: (t, { eq, and }) =>
+                and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+            });
+
+            if (!priceBook.length) return { ...product, price: [] };
+
+            const priceBookingIds = priceBook.map((p) => p.id);
+
+            const productPrice = await db.query.priceBookEntry.findMany({
+              where: (t, { eq, and, inArray }) =>
+                and(
+                  eq(t.productId, productId),
+                  inArray(t.priceBookingId, priceBookingIds)
+                ),
+            });
+
+            return {
+              ...product,
+              price: productPrice || [],
+            };
+          })
+        );
+
+        return {
+          ...category,
+          products: productDataWithPricing,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      message: 'All categories fetched successfully...',
+      data: CategoryWithProductPricing,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
   }
 };

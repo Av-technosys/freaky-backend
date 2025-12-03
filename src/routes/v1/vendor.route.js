@@ -11,11 +11,12 @@ import {
   updateOwnershipDetails,
   fetchVendorProducts,
   fetchProductPrice,
-  listProductsType
+  listProductsType,
+  getAllProductsByCategoryId,
+  getAllFeaturedCategories,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
-
 
 const router = Router();
 
@@ -44,9 +45,27 @@ router.put(
 );
 // router.get("/create_vendor_emp_request", createVendorEmpRequest);
 
-router.post("/get_vendor_products/:vendorId", confirmUserToken, fetchVendorProducts);
-router.post("/get_product_price/:productId", confirmUserToken, fetchProductPrice);
-router.get("/get_products_type", confirmUserToken, listProductsType);
+router.post(
+  '/get_vendor_products/:vendorId',
+  confirmUserToken,
+  fetchVendorProducts
+);
+router.post(
+  '/get_product_price/:productId',
+  confirmUserToken,
+  fetchProductPrice
+);
+router.get('/get_products_type', confirmUserToken, listProductsType);
+router.get(
+  '/get_products_by_categoryId/:categoryId',
+  confirmUserToken,
+  getAllProductsByCategoryId
+);
 
+router.get(
+  '/get_all_featured_categories',
+  confirmUserToken,
+  getAllFeaturedCategories
+);
 
 export default router;

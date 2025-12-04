@@ -5,6 +5,7 @@ import user from './user.route.js';
 import vendor from './vendor.route.js';
 import upload from './upload.route.js';
 import event from './event.route.js';
+import product from './product.route.js';
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.use('/user', user);
 router.use('/vendor', vendor);
 router.use('/upload', upload);
 router.use('/event', event);
+router.use('/product', product);
 
 export default router;

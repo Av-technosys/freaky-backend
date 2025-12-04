@@ -89,10 +89,12 @@ export const listAllServicesByEventTypeId = async (req, res) => {
 
 export const createEventItem = async (req, res) => {
   try {
-    const { eventId, productId, quantity } = req.body;
+    const { eventId, productId } = req.body;
+    const quantity = req.body.quantity || 1;
     await db
       .insert(eventItems)
       .values({ eventId: eventId, productId: productId, quantity: quantity });
+
     return res.status(201).json({
       message: 'Event item created successfully...',
     });
@@ -105,6 +107,7 @@ export const createEventItem = async (req, res) => {
 export const deleteEventItem = async (req, res) => {
   try {
     const { itemId } = req.params;
+    const userId = req.user['custom:user_id'];
 
     const eventItem = await db
       .select()
@@ -112,10 +115,20 @@ export const deleteEventItem = async (req, res) => {
       .where(eq(eventItems.id, itemId));
 
     if (eventItem.length > 0) {
-      await db.delete(eventItems).where(eq(eventItems.id, eventItem[0].id));
-      return res.status(200).json({
-        message: 'Event item deleted successfully...',
-      });
+      const event = await db
+        .select({ userId: events.userId })
+        .from(events)
+        .where(eq(events.eventId, eventItem[0].eventId));
+      if (event[0].userId == userId) {
+        await db.delete(eventItems).where(eq(eventItems.id, eventItem[0].id));
+        return res.status(200).json({
+          message: 'Event item deleted successfully...',
+        });
+      } else {
+        return res.status(401).json({
+          message: 'You are not authorized to delete event item..',
+        });
+      }
     } else {
       return res.status(500).json({
         message: 'Event item not found...',

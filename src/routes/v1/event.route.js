@@ -17,7 +17,7 @@ router.get(
   confirmUserToken,
   listAllServicesByEventTypeId
 );
-router.post('/create_eventItem', confirmUserToken, createEventItem);
-router.delete('/delete_eventItem/:itemId', confirmUserToken, deleteEventItem);
+router.post('/create_eventitem', confirmUserToken, createEventItem);
+router.delete('/delete_eventitem/:itemId', confirmUserToken, deleteEventItem);
 
 export default router;

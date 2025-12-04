@@ -763,7 +763,7 @@ export const getAllFeaturedCategories = async (req, res) => {
 
     return res.json({
       message: 'Products fetched successfully',
-      products: products || [],
+      products: products,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

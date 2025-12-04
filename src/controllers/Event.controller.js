@@ -1,6 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
+  eventItems,
   eventProductType,
   events,
   eventType,
@@ -80,6 +81,46 @@ export const listAllServicesByEventTypeId = async (req, res) => {
       message: 'Services Fetched successfully...',
       data: eventServices,
     });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const createEventItem = async (req, res) => {
+  try {
+    const { eventId, productId, quantity } = req.body;
+    await db
+      .insert(eventItems)
+      .values({ eventId: eventId, productId: productId, quantity: quantity });
+    return res.status(201).json({
+      message: 'Event item created successfully...',
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteEventItem = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    const eventItem = await db
+      .select()
+      .from(eventItems)
+      .where(eq(eventItems.id, itemId));
+
+    if (eventItem.length > 0) {
+      await db.delete(eventItems).where(eq(eventItems.id, eventItem[0].id));
+      return res.status(200).json({
+        message: 'Event item deleted successfully...',
+      });
+    } else {
+      return res.status(500).json({
+        message: 'Event item not found...',
+      });
+    }
   } catch (error) {
     console.error('Error: ', error);
     return res.status(500).json({ message: error.message });

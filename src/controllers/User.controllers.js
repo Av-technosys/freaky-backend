@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import { userAddresses, users } from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
-import { cart , cartItem } from "../../db/user.js";
+import { cart , cartItem ,  review, reviewMedia } from "../../db/user.js";
 
 export const getUserInfo = async (req, res) => {
   try {
@@ -496,3 +496,93 @@ export const profilePictureHandler  = async (req, res) => {
   }
 };
 
+
+export const addReview = async (req, res) => {
+  try {
+    const { eventId, eventRating, title, products } = req.body;
+
+    if (!eventId || !eventRating || !title) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const email = req.user?.email || req.body.email;
+    if (!email) return res.status(400).json({ error: "email not found" });
+
+    const user = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.email, email),
+    });
+
+    if (!user) return res.status(400).json({ error: "user not found" });
+
+    const userId = user.userId;
+
+    // create event rating 
+    await db
+      .insert(review)
+      .values({
+        userId,
+        eventId, 
+        rating: eventRating,
+        title,
+      })
+      .returning();
+
+
+    if (!products || products.length === 0) {
+      return res.status(200).json({
+        message: "Product data not provided",
+      });
+    }
+
+    for (const product of products) {
+      const { productId, description, rating, media } = product;
+
+      if (!productId || !description || !rating) {
+        return res.status(400).json({
+          error: "Product review data missing fields",
+        });
+      }
+
+      const productData = await db.query.products.findFirst({
+        where: (product, { eq }) => eq(product.productId, productId),
+      });
+
+      if (!productData)
+        return res.status(404).json({ error: `Product ${productId} not found` });
+
+      const vendorId = productData.vendorId;
+
+      const [reviews] = await db
+        .insert(review)
+        .values({
+          userId,
+          eventId,
+          vendorId,
+          productId,
+          rating,          
+          title,           
+          description
+        })
+        .returning();
+
+      const reviewId = reviews.reviewId;
+
+      if (media && media.length > 0) {
+        const mediaRows = media.map((file) => ({
+          reviewId,
+          mediaUrl: file.mediaUrl,
+          mediaType: file.mediaType,
+        }));
+
+        await db.insert(reviewMedia).values(mediaRows);
+      }
+    }
+
+    return res.status(200).json({
+      message: "Reviews saved successfully",
+    });
+  } catch (err) {
+    console.error("Error while adding review:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};

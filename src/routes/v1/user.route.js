@@ -9,7 +9,8 @@ import {
   updateUserInfo,
   deleteAddress,
   cartHandler,
-  profilePictureHandler
+  profilePictureHandler,
+  addReview
 } from "../../controllers/User.controllers.js";
 import { confirmUserToken } from "../../middleware/user.middleware.js";
 
@@ -30,5 +31,5 @@ router.delete("/cart/:cartItemId", confirmUserToken, cartHandler);
 
 router.post("/profile_picture", confirmUserToken, profilePictureHandler )
 router.delete("/profile_picture", confirmUserToken, profilePictureHandler )
-
+router.post("/add_review", confirmUserToken, addReview )
 export default router;

@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
 import {
   createEvent,
+  createEventItem,
+  deleteEventItem,
   listAllEventTypes,
   listAllServicesByEventTypeId,
 } from '../../controllers/Event.controller.js';
@@ -15,5 +17,7 @@ router.get(
   confirmUserToken,
   listAllServicesByEventTypeId
 );
+router.post('/create_eventitem', confirmUserToken, createEventItem);
+router.delete('/delete_eventitem/:itemId', confirmUserToken, deleteEventItem);
 
 export default router;

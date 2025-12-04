@@ -22,23 +22,20 @@ export const createEvent = async (req, res) => {
       longitude,
     } = req.body;
 
-    await db
-      .insert(events)
-      .values({
-        eventTypeId: eventTypeId,
-        userId: userId,
-        name: name,
-        description: description,
-        contactNumber: contactNumber,
-        eventDate: new Date(eventDate),
-        minGuestCount: minGuestCount,
-        maxGuestCount: maxGuestCount,
-        latitude: latitude,
-        longitude: longitude,
-      })
-      .returning();
+    await db.insert(events).values({
+      eventTypeId: eventTypeId,
+      userId: userId,
+      name: name,
+      description: description,
+      contactNumber: contactNumber,
+      eventDate: new Date(eventDate),
+      minGuestCount: minGuestCount,
+      maxGuestCount: maxGuestCount,
+      latitude: latitude,
+      longitude: longitude,
+    });
 
-    return res.status(200).json({
+    return res.status(201).json({
       message: 'Event created successfully...',
     });
   } catch (error) {
@@ -55,7 +52,7 @@ export const listAllEventTypes = async (req, res) => {
       .orderBy(asc(eventType.name));
 
     return res.status(200).json({
-      message: 'Event Types Fetched Successfully...',
+      message: 'Event Type Fetched Successfully...',
       data: response,
     });
   } catch (error) {

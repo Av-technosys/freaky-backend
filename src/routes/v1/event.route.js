@@ -9,9 +9,9 @@ import {
 const router = Router();
 
 router.post('/create_event', confirmUserToken, createEvent);
-router.get('/list_all_event_types', confirmUserToken, listAllEventTypes);
+router.get('/list_all_event_type', confirmUserToken, listAllEventTypes);
 router.get(
-  '/list_all_services_by_eventTypeId/:eventTypeId',
+  '/list_all_service_type/:eventTypeId',
   confirmUserToken,
   listAllServicesByEventTypeId
 );

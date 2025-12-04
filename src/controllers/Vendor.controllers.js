@@ -746,3 +746,27 @@ export const getAllFeaturedCategories = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+ export const fetchProductByProductId = async (req , res) => {
+  try {
+      const { productTypeId } = req.params;
+
+      if (!productTypeId) {
+        return res.status(400).json({ error: 'productTypeId is required.' });
+      }
+
+    const products = await db
+      .select()
+      .from(productsTable)
+      .where(eq(productsTable.productTypeId, Number(productTypeId)));
+
+
+    return res.json({
+      message: 'Products fetched successfully',
+      products: products,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}
+

@@ -14,6 +14,7 @@ import {
   listProductsType,
   getAllProductsByCategoryId,
   getAllFeaturedCategories,
+  fetchProductByProductId
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -68,4 +69,9 @@ router.get(
   getAllFeaturedCategories
 );
 
+router.get(
+  '/get_product_by_product_type_id/:productTypeId',
+  confirmUserToken,
+  fetchProductByProductId
+);
 export default router;

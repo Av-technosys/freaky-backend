@@ -43,6 +43,13 @@
       "when": 1764758082699,
       "tag": "0005_past_barracuda",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1764829085021,
+      "tag": "0006_sloppy_klaw",
+      "breakpoints": true
     }
   ]
 }

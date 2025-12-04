@@ -6,9 +6,13 @@ import {
   timestamp,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { productType, vendor } from './vendor.js';
+import { product, productType, vendor } from './vendor.js';
 import { user } from './user.js';
-import { bookingStatusEnum, eventStatusEnum, paymentStatusEnum } from './enum.js';
+import {
+  bookingStatusEnum,
+  eventStatusEnum,
+  paymentStatusEnum,
+} from './enum.js';
 
 export const eventType = pgTable('event_type', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
@@ -41,21 +45,25 @@ export const event = pgTable('event', {
   latitude: decimal('latitude', { precision: 10, scale: 7 }),
   longitude: decimal('longitude', { precision: 10, scale: 7 }),
 
-  bookingStatus: bookingStatusEnum("booking_status").default("created"),
-  paymentStatus: paymentStatusEnum("payment_status").default("pending"),
+  bookingStatus: bookingStatusEnum('booking_status').default('created'),
+  paymentStatus: paymentStatusEnum('payment_status').default('pending'),
 
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const eventItem = pgTable("event_item", {
-  id: integer("id").generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  eventId: integer("event_type_id").references(() => event.eventId),
-  productId: integer("product_id").references(() => productType.id),
-  quantity: integer("quantity").notNull(),
+export const eventItem = pgTable('event_item', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  eventId: integer('event_id').references(() => event.eventId, {
+    onDelete: 'cascade',
+  }),
+  productId: integer('product_id').references(() => product.productId, {
+    onDelete: 'cascade',
+  }),
+  quantity: integer('quantity').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-})
+});
 
 export const eventBooking = pgTable('event_booking', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
@@ -80,7 +88,6 @@ export const eventBooking = pgTable('event_booking', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
-
 
 export const eventProductOrder = pgTable('event_product_order', {
   orderId: integer('order_id').generatedAlwaysAsIdentity().primaryKey(),
@@ -121,28 +128,25 @@ export const eventOrderTransaction = pgTable('event_order_transaction', {
     .generatedAlwaysAsIdentity()
     .primaryKey(),
 
-
   eventBookingId: integer('order_id').references(() => eventBooking.id),
   transactionStatus: varchar('transaction_status', { length: 255 }),
 
-  paymentStatus: varchar("payment_status", { length: 50 }).notNull(),
-  paymentMethod: varchar("payment_method", { length: 50 }),
-  paymentType: varchar("payment_type", { length: 50 }),
-  paymentMeta: jsonb("payment_meta"),
+  paymentStatus: varchar('payment_status', { length: 50 }).notNull(),
+  paymentMethod: varchar('payment_method', { length: 50 }),
+  paymentType: varchar('payment_type', { length: 50 }),
+  paymentMeta: jsonb('payment_meta'),
 
-  remarks: varchar("remarks", { length: 255 }),
+  remarks: varchar('remarks', { length: 255 }),
 
-  referenceNumber: varchar("reference_number", { length: 255 }),
+  referenceNumber: varchar('reference_number', { length: 255 }),
 
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 10 }).default("USD").notNull(),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
 
-  transactionTime: timestamp('transaction_time')
-    .defaultNow()
-    .notNull(),
+  transactionTime: timestamp('transaction_time').defaultNow().notNull(),
 
-  failureReason: varchar("failure_reason", { length: 255 }),
-  errorCode: varchar("error_code", { length: 100 }),
+  failureReason: varchar('failure_reason', { length: 255 }),
+  errorCode: varchar('error_code', { length: 100 }),
 
   createdAt: timestamp('created_at').defaultNow(),
 });

@@ -746,3 +746,31 @@ export const getAllFeaturedCategories = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+ export const fetchProductByProductId = async (req , res) => {
+  try {
+      const { productTypeId } = req.params;
+
+      if (!productTypeId) {
+        return res.status(400).json({ error: 'productTypeId is required.' });
+      }
+
+      const products = await db.query.products.findMany({
+        where: (table, { eq }) => eq(table.productTypeId, Number(productTypeId)),
+      });
+
+    if (products.length === 0) {
+      return res
+        .status(404)
+        .json({ error: 'No products found for this product type id' });
+    }
+
+    return res.json({
+      message: 'Products fetched successfully',
+      products: products,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}
+

@@ -122,16 +122,16 @@ export const deleteEventItem = async (req, res) => {
       if (event[0].userId == userId) {
         await db.delete(eventItems).where(eq(eventItems.id, eventItem[0].id));
         return res.status(200).json({
-          message: 'Event item deleted successfully...',
+          message: 'Event item deleted successfully.',
         });
       } else {
         return res.status(401).json({
-          message: 'You are not authorized to delete event item..',
+          message: 'You are not authorized to delete event item.',
         });
       }
     } else {
       return res.status(500).json({
-        message: 'Event item not found...',
+        message: 'Event item not found.',
       });
     }
   } catch (error) {

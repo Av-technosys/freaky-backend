@@ -7,8 +7,8 @@ dotenv.config();
 
 export const uploadUrl = async (req, res) => {
   try {
-    const { fileName, fileType } = req.body;
-    const key = `uploads/${Date.now()}-${fileName}`;
+    const { fileName, fileType, path } = req.body;
+    const key = `uploads/${path}/${Date.now()}-${fileName}`;
 
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET,

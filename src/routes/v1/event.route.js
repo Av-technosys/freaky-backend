@@ -4,6 +4,7 @@ import {
   createEvent,
   createEventItem,
   deleteEventItem,
+  listAllEvents,
   listAllEventTypes,
   listAllServicesByEventTypeId,
   getFeaturedEvents,
@@ -21,4 +22,6 @@ router.get(
 router.post('/create_eventitem', confirmUserToken, createEventItem);
 router.delete('/eventitem/:itemId', confirmUserToken, deleteEventItem);
 router.get('/featured_events', confirmUserToken, getFeaturedEvents);
+router.get('/:eventid?', confirmUserToken, listAllEvents);
+
 export default router;

@@ -614,3 +614,41 @@ export const addReview = async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+export const deleteReview = async (req, res) => {
+  try {
+    const { reviewId } = req.body;
+
+    if (!reviewId) {
+      return res.status(400).json({
+        success: false,
+        message: 'reviewId is required',
+      });
+    }
+
+    await db.delete(reviewMedia).where(eq(reviewMedia.reviewId, reviewId));
+
+    const deleted = await db
+      .delete(review)
+      .where(eq(review.reviewId, reviewId))
+      .returning();
+
+    if (deleted.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Review deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete review',
+    });
+  }
+};

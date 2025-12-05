@@ -501,20 +501,11 @@ export const addReview = async (req, res) => {
   try {
     const { eventId, eventRating, title, products } = req.body;
 
-    if (!eventId || !eventRating || !title) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
+    if (!eventId) return res.status(400).json({ error: "eventId is required" });
+    if (!eventRating) return res.status(400).json({ error: "eventRating is required" });
+    if (!title) return res.status(400).json({ error: "title is required" });
 
-    const email = req.user?.email || req.body.email;
-    if (!email) return res.status(400).json({ error: "email not found" });
-
-    const user = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.email, email),
-    });
-
-    if (!user) return res.status(400).json({ error: "user not found" });
-
-    const userId = user.userId;
+    const userId = req.user["custom:user_id"];
 
     // create event rating 
     await db
@@ -530,14 +521,14 @@ export const addReview = async (req, res) => {
 
     if (!products || products.length === 0) {
       return res.status(200).json({
-        message: "Product data not provided",
+        message: "Event rating added",
       });
     }
 
     for (const product of products) {
       const { productId, description, rating, media } = product;
 
-      if (!productId || !description || !rating) {
+      if (!productId || !rating) {
         return res.status(400).json({
           error: "Product review data missing fields",
         });

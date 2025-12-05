@@ -89,34 +89,9 @@ export const addAddress = async (req, res) => {
       latitude,
       longitude,
     } = req.body;
-    const {
-      title,
-      addressLineOne,
-      addressLineTwo,
-      reciverName,
-      reciverNumber,
-      city,
-      state,
-      postalCode,
-      country,
-      latitude,
-      longitude,
-    } = req.body;
 
     const email = req.user?.email || req.body.email;
 
-    const requiredFields = {
-      title,
-      addressLineOne,
-      reciverName,
-      reciverNumber,
-      city,
-      state,
-      postalCode,
-      country,
-      latitude,
-      longitude,
-    };
     const requiredFields = {
       title,
       addressLineOne,
@@ -141,7 +116,6 @@ export const addAddress = async (req, res) => {
 
     // if user is not present
     if (!user) {
-      return res.status(404).json({ error: 'User not found.' });
       return res.status(404).json({ error: 'User not found.' });
     }
 
@@ -262,34 +236,8 @@ export const editAddresses = async (req, res) => {
       latitude,
       longitude,
     } = req.body;
-    const {
-      id,
-      title,
-      addressLineOne,
-      addressLineTwo,
-      reciverName,
-      reciverNumber,
-      city,
-      state,
-      postalCode,
-      country,
-      latitude,
-      longitude,
-    } = req.body;
     const email = req.user?.email || req.body.email;
 
-    const requiredFields = {
-      title,
-      addressLineOne,
-      reciverName,
-      reciverNumber,
-      city,
-      state,
-      postalCode,
-      country,
-      latitude,
-      longitude,
-    };
     const requiredFields = {
       title,
       addressLineOne,
@@ -312,7 +260,6 @@ export const editAddresses = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found.' });
       return res.status(404).json({ error: 'User not found.' });
     }
 
@@ -338,11 +285,8 @@ export const editAddresses = async (req, res) => {
 
     return res.status(200).json({
       message: 'Address updated successfully.',
-      message: 'Address updated successfully.',
     });
   } catch (err) {
-    console.error('Error updating address:', err);
-    return res.status(500).json({ error: 'Internal server error.' });
     console.error('Error updating address:', err);
     return res.status(500).json({ error: 'Internal server error.' });
   }
@@ -371,7 +315,6 @@ export const setCurrentAddress = async (req, res) => {
 
     if (!id) {
       return res.status(400).json({ error: 'Address ID is required.' });
-      return res.status(400).json({ error: 'Address ID is required.' });
     }
 
     await db
@@ -390,8 +333,6 @@ export const setCurrentAddress = async (req, res) => {
   } catch (err) {
     console.error('Error saving address:', err);
     return res.status(500).json({ error: 'Internal server error.' });
-    console.error('Error saving address:', err);
-    return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
@@ -401,40 +342,30 @@ export const deleteAddress = async (req, res) => {
 
     if (!id) {
       return res.status(400).json({ error: 'addressId is required.' });
-      return res.status(400).json({ error: 'addressId is required.' });
     }
 
     // Find address
     const address = await db.query.userAddresses.findFirst({
       where: (userAddresses, { eq }) => eq(userAddresses.id, id),
-      where: (userAddresses, { eq }) => eq(userAddresses.id, id),
     });
 
     if (!address) {
-      return res.status(404).json({ error: 'Address not found.' });
       return res.status(404).json({ error: 'Address not found.' });
     }
 
     // Delete address
     await db.delete(userAddresses).where(eq(userAddresses.id, id));
-    await db.delete(userAddresses).where(eq(userAddresses.id, id));
 
     return res.status(204).json({ message: 'Address deleted successfully.' });
-    return res.status(204).json({ message: 'Address deleted successfully.' });
   } catch (err) {
-    if (err?.cause?.code === '23503') {
     if (err?.cause?.code === '23503') {
       return res.status(400).json({
         success: false,
         message:
           'You cannot delete this address because it is set as your current address.',
-        message:
-          'You cannot delete this address because it is set as your current address.',
       });
     }
 
-    console.error('Error deleting address:', err);
-    return res.status(500).json({ error: 'Error deleting address.' });
     console.error('Error deleting address:', err);
     return res.status(500).json({ error: 'Error deleting address.' });
   }
@@ -638,7 +569,7 @@ export const addReview = async (req, res) => {
         });
 
         if (!productData) {
-          throw new Error(`Product ${productId} not found`);
+          throw new Error('Product not found');
         }
 
         const vendorId = productData.vendorId;

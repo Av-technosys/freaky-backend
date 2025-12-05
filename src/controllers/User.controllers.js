@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
-import { userAddresses, users } from '../../db/schema.js';
+import { reviewMedia, reviews, userAddresses, users } from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
 import { cart, cartItem, review, reviewMedia } from '../../db/user.js';
 
@@ -569,7 +569,7 @@ export const addReview = async (req, res) => {
         });
 
         if (!productData) {
-          throw new Error(`Product ${productId} not found`);
+          throw new Error('Product not found');
         }
 
         const vendorId = productData.vendorId;

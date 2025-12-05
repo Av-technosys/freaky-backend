@@ -230,7 +230,7 @@ export const createVendorEmpRequest = async (req, res) => {
     const { vendorId, note } = req.body;
     const userId = req.user['custom:user_id'];
     const vendorIds = req.user['custom:vendor_ids'];
-    console.log(vendorIds);
+
     if (vendorIds && vendorIds.length > 0)
       return res
         .status(400)
@@ -452,7 +452,7 @@ export const fetchVendorProducts = async (req, res) => {
         .json({ error: 'No products found for this vendor.' });
     }
 
-    const productIds = vendorProducts.map((p) => p.productId);
+    const productIds = vendorProducts.map((product) => product.productId);
 
     const productMedia = await db.query.productMedia.findMany({
       where: (table, { inArray }) => inArray(table.productId, productIds),
@@ -460,7 +460,9 @@ export const fetchVendorProducts = async (req, res) => {
 
     const data = vendorProducts.map((product) => ({
       ...product,
-      media: productMedia.filter((media) => media.productId === p.productId),
+      media: productMedia.filter(
+        (media) => media.productId === product.productId
+      ),
     }));
 
     return res.json({
@@ -490,7 +492,7 @@ export const fetchProductPrice = async (req, res) => {
 
     const vendorId = product.vendorId;
 
-    const priceBook = await db.query.priceBooking.findMany({
+    const priceBook = await db.query.priceBook.findMany({
       where: (t, { eq, and }) =>
         and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
     });
@@ -501,7 +503,7 @@ export const fetchProductPrice = async (req, res) => {
 
     const priceBookingIds = priceBook.map((p) => p.id);
 
-    const productPrice = await db.query.priceBookingEntry.findMany({
+    const productPrice = await db.query.priceBookEntry.findMany({
       where: (t, { eq, and, inArray }) =>
         and(
           eq(t.productId, productId),
@@ -528,17 +530,27 @@ export const fetchProductPrice = async (req, res) => {
   }
 };
 
-export const listProductsType = async (req, res) => {
+export const fetchAllProductTypes = async (req, res) => {
+  try {
+    const productTypes = await db.query.productTypes.findMany();
+    return res.json({
+      message: 'product type fetched successfully',
+      productTypes: productTypes,
+    });
+  } catch (err) {
+    console.error('product type Fetch Error:', err);
+    return res
+      .status(500)
+      .json({ error: 'Server error fetching product type' });
+  }
+};
+
+export const listProductsByType = async (req, res) => {
   try {
     const { productTypeId, page = 1, page_size = 12 } = req.query;
 
     if (!productTypeId) {
-      const productTypes = await db.query.productType.findMany();
-
-      return res.json({
-        message: 'product type fetched successfully',
-        productTypes: productTypes,
-      });
+      return res.status(400).json({ error: 'productTypeId is required' });
     }
 
     const limit = Number(page_size);
@@ -557,8 +569,6 @@ export const listProductsType = async (req, res) => {
       .where(eq(products.productTypeId, Number(productTypeId)))
       .limit(limit)
       .offset(offset);
-
-    console.log('data', data);
 
     return res.json({
       success: true,
@@ -747,26 +757,24 @@ export const getAllFeaturedCategories = async (req, res) => {
   }
 };
 
- export const fetchProductByProductId = async (req , res) => {
+export const fetchProductByProductId = async (req, res) => {
   try {
-      const { productTypeId } = req.params;
+    const { productTypeId } = req.params;
 
-      if (!productTypeId) {
-        return res.status(400).json({ error: 'productTypeId is required.' });
-      }
+    if (!productTypeId) {
+      return res.status(400).json({ error: 'productTypeId is required.' });
+    }
 
-    const products = await db
+    const data = await db
       .select()
-      .from(productsTable)
-      .where(eq(productsTable.productTypeId, Number(productTypeId)));
-
+      .from(products)
+      .where(eq(products.productTypeId, Number(productTypeId)));
 
     return res.json({
       message: 'Products fetched successfully',
-      products: products,
+      products: data,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
-}
-
+};

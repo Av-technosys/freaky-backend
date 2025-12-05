@@ -452,7 +452,7 @@ export const fetchVendorProducts = async (req, res) => {
         .json({ error: 'No products found for this vendor.' });
     }
 
-    const productIds = vendorProducts.map((p) => p.productId);
+    const productIds = vendorProducts.map((product) => product.productId);
 
     const productMedia = await db.query.productMedia.findMany({
       where: (table, { inArray }) => inArray(table.productId, productIds),
@@ -460,7 +460,7 @@ export const fetchVendorProducts = async (req, res) => {
 
     const data = vendorProducts.map((product) => ({
       ...product,
-      media: productMedia.filter((media) => media.productId === p.productId),
+      media: productMedia.filter((media) => media.productId === product.productId),
     }));
 
     return res.json({
@@ -490,7 +490,7 @@ export const fetchProductPrice = async (req, res) => {
 
     const vendorId = product.vendorId;
 
-    const priceBook = await db.query.priceBooking.findMany({
+    const priceBook = await db.query.priceBook.findMany({
       where: (t, { eq, and }) =>
         and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
     });
@@ -501,7 +501,7 @@ export const fetchProductPrice = async (req, res) => {
 
     const priceBookingIds = priceBook.map((p) => p.id);
 
-    const productPrice = await db.query.priceBookingEntry.findMany({
+    const productPrice = await db.query.priceBookEntry.findMany({
       where: (t, { eq, and, inArray }) =>
         and(
           eq(t.productId, productId),
@@ -528,41 +528,53 @@ export const fetchProductPrice = async (req, res) => {
   }
 };
 
-export const listProductsType = async (req, res) => {
+
+export const fetchAllProductTypes = async (req, res) => {
+
   try {
-    const { productTypeId, page = 1, page_size = 12 } = req.query;
 
-    if (!productTypeId) {
-      const productTypes = await db.query.productType.findMany();
-
+    const productTypes = await db.query.productTypes.findMany();
       return res.json({
-        message: 'product type fetched successfully',
+        message: "product type fetched successfully",
         productTypes: productTypes,
       });
+  } catch (err) {
+    console.error("product type Fetch Error:", err);
+    return res.status(500).json({ error: "Server error fetching product type" });
+  }
+};
+
+export const listProductsByType = async (req, res) => {
+  try {
+  
+    const { productTypeId, page = 1, page_size = 12 } = req.query;
+
+    if (!productTypeId){
+        return res.status(400).json({ error: "productTypeId is required" });
     }
 
-    const limit = Number(page_size);
-    const offset = (Number(page) - 1) * limit;
+     const limit = Number(page_size);
+     const offset = (Number(page) - 1) * limit;
 
-    const totalRows = await db
-      .select({ count: sql`CAST(count(*) AS INTEGER)` })
-      .from(products)
-      .where(eq(products.productTypeId, Number(productTypeId)));
+     const totalRows = await db
+    .select({ count: sql`CAST(count(*) AS INTEGER)` })
+    .from(products)
+    .where(eq(products.productTypeId, Number(productTypeId)));
 
     const total = totalRows[0].count;
 
-    const data = await db
+      const data = await db
       .select()
       .from(products)
       .where(eq(products.productTypeId, Number(productTypeId)))
       .limit(limit)
       .offset(offset);
 
-    console.log('data', data);
+      console.log("data",data)
 
     return res.json({
       success: true,
-      message: 'Products fetched successfully',
+      message: "Products fetched successfully",
       pagination: {
         page: Number(page),
         page_size: limit,
@@ -572,13 +584,13 @@ export const listProductsType = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error('Error fetching products by type:', error);
+    console.error("Error fetching products by type:", error);
     return res.status(500).json({
       success: false,
-      message: 'Internal server error',
+      message: "Internal server error",
     });
   }
-};
+}
 
 export const getAllProductsByCategoryId = async (req, res) => {
   try {
@@ -755,15 +767,15 @@ export const getAllFeaturedCategories = async (req, res) => {
         return res.status(400).json({ error: 'productTypeId is required.' });
       }
 
-    const products = await db
+    const data = await db
       .select()
-      .from(productsTable)
-      .where(eq(productsTable.productTypeId, Number(productTypeId)));
+      .from(products)
+      .where(eq(products.productTypeId, Number(productTypeId)));
 
 
     return res.json({
       message: 'Products fetched successfully',
-      products: products,
+      products: data,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

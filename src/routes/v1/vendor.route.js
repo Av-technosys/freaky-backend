@@ -11,8 +11,9 @@ import {
   updateOwnershipDetails,
   fetchVendorProducts,
   fetchProductPrice,
-  listProductsType,
-  getAllProductsByCategoryId,
+ fetchAllProductTypes,
+  listProductsByType,
+ getAllProductsByCategoryId,
   getAllFeaturedCategories,
   fetchProductByProductId
 } from '../../controllers/Vendor.controllers.js';
@@ -56,7 +57,10 @@ router.post(
   confirmUserToken,
   fetchProductPrice
 );
-router.get('/get_products_type', confirmUserToken, listProductsType);
+
+router.get("/list_product_type", confirmUserToken, fetchAllProductTypes);
+router.get("/get_product_by_id", confirmUserToken, listProductsByType);
+
 router.get(
   '/get_products_by_categoryId/:categoryId',
   confirmUserToken,

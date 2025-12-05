@@ -100,10 +100,10 @@ export const addAddress = async (req, res) => {
 
     const userId = user.userId;
 
-    await db.insert(userAddresses).values({
-      userId,
-      address: req.body.address,
-    });
+    // await db.insert(userAddresses).values({
+    //   userId,
+    //   address: req.body.address,
+    // });
 
 
     await db.execute(sql`

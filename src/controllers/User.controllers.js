@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import { reviewMedia, reviews, userAddresses, users } from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
-import { cart, cartItem } from '../../db/user.js';
+import { cart, cartItem, review, reviewMedia } from '../../db/user.js';
 
 export const getUserInfo = async (req, res) => {
   try {
@@ -89,9 +89,34 @@ export const addAddress = async (req, res) => {
       latitude,
       longitude,
     } = req.body;
+    const {
+      title,
+      addressLineOne,
+      addressLineTwo,
+      reciverName,
+      reciverNumber,
+      city,
+      state,
+      postalCode,
+      country,
+      latitude,
+      longitude,
+    } = req.body;
 
     const email = req.user?.email || req.body.email;
 
+    const requiredFields = {
+      title,
+      addressLineOne,
+      reciverName,
+      reciverNumber,
+      city,
+      state,
+      postalCode,
+      country,
+      latitude,
+      longitude,
+    };
     const requiredFields = {
       title,
       addressLineOne,
@@ -117,14 +142,15 @@ export const addAddress = async (req, res) => {
     // if user is not present
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
+      return res.status(404).json({ error: 'User not found.' });
     }
 
     const userId = user.userId;
 
-    await db.insert(userAddresses).values({
-      userId,
-      address: req.body.address,
-    });
+    // await db.insert(userAddresses).values({
+    //   userId,
+    //   address: req.body.address,
+    // });
 
     await db.execute(sql`
     INSERT INTO user_address (user_id, title, address_line_one, address_line_two, reciver_name, reciver_number, city, state, postal_code, country, latitude, longitude, location)
@@ -210,8 +236,6 @@ export const getAllReviews = async (req, res) => {
       })
     );
 
-    // console.log('newReview', newReviewsResponse);
-
     return res.status(200).json({
       message: 'Reviews fetched successfully.',
       data: newReviewsResponse,
@@ -224,6 +248,20 @@ export const getAllReviews = async (req, res) => {
 
 export const editAddresses = async (req, res) => {
   try {
+    const {
+      id,
+      title,
+      addressLineOne,
+      addressLineTwo,
+      reciverName,
+      reciverNumber,
+      city,
+      state,
+      postalCode,
+      country,
+      latitude,
+      longitude,
+    } = req.body;
     const {
       id,
       title,
@@ -252,6 +290,18 @@ export const editAddresses = async (req, res) => {
       latitude,
       longitude,
     };
+    const requiredFields = {
+      title,
+      addressLineOne,
+      reciverName,
+      reciverNumber,
+      city,
+      state,
+      postalCode,
+      country,
+      latitude,
+      longitude,
+    };
 
     for (const [key, value] of Object.entries(requiredFields)) {
       if (!value) return res.status(400).json({ error: `${key} is required.` });
@@ -263,25 +313,10 @@ export const editAddresses = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
+      return res.status(404).json({ error: 'User not found.' });
     }
 
     const userId = user.userId;
-
-    console.log(
-      userId,
-      id,
-      title,
-      addressLineOne,
-      addressLineTwo,
-      reciverName,
-      reciverNumber,
-      city,
-      state,
-      postalCode,
-      country,
-      latitude,
-      longitude
-    );
 
     await db.execute(sql`
       UPDATE user_address
@@ -303,8 +338,11 @@ export const editAddresses = async (req, res) => {
 
     return res.status(200).json({
       message: 'Address updated successfully.',
+      message: 'Address updated successfully.',
     });
   } catch (err) {
+    console.error('Error updating address:', err);
+    return res.status(500).json({ error: 'Internal server error.' });
     console.error('Error updating address:', err);
     return res.status(500).json({ error: 'Internal server error.' });
   }
@@ -333,6 +371,7 @@ export const setCurrentAddress = async (req, res) => {
 
     if (!id) {
       return res.status(400).json({ error: 'Address ID is required.' });
+      return res.status(400).json({ error: 'Address ID is required.' });
     }
 
     await db
@@ -351,6 +390,8 @@ export const setCurrentAddress = async (req, res) => {
   } catch (err) {
     console.error('Error saving address:', err);
     return res.status(500).json({ error: 'Internal server error.' });
+    console.error('Error saving address:', err);
+    return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
@@ -360,30 +401,40 @@ export const deleteAddress = async (req, res) => {
 
     if (!id) {
       return res.status(400).json({ error: 'addressId is required.' });
+      return res.status(400).json({ error: 'addressId is required.' });
     }
 
     // Find address
     const address = await db.query.userAddresses.findFirst({
       where: (userAddresses, { eq }) => eq(userAddresses.id, id),
+      where: (userAddresses, { eq }) => eq(userAddresses.id, id),
     });
 
     if (!address) {
+      return res.status(404).json({ error: 'Address not found.' });
       return res.status(404).json({ error: 'Address not found.' });
     }
 
     // Delete address
     await db.delete(userAddresses).where(eq(userAddresses.id, id));
+    await db.delete(userAddresses).where(eq(userAddresses.id, id));
 
     return res.status(204).json({ message: 'Address deleted successfully.' });
+    return res.status(204).json({ message: 'Address deleted successfully.' });
   } catch (err) {
+    if (err?.cause?.code === '23503') {
     if (err?.cause?.code === '23503') {
       return res.status(400).json({
         success: false,
         message:
           'You cannot delete this address because it is set as your current address.',
+        message:
+          'You cannot delete this address because it is set as your current address.',
       });
     }
 
+    console.error('Error deleting address:', err);
+    return res.status(500).json({ error: 'Error deleting address.' });
     console.error('Error deleting address:', err);
     return res.status(500).json({ error: 'Error deleting address.' });
   }
@@ -407,7 +458,6 @@ export const cartHandler = async (req, res) => {
     });
 
     if (req.method === 'GET') {
-      console.log('did he come this far');
       if (!userCart) {
         return res.json({
           message: 'Cart is empty',
@@ -544,5 +594,86 @@ export const profilePictureHandler = async (req, res) => {
   } catch (err) {
     console.error('Error updating profile image:', err);
     return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+export const addReview = async (req, res) => {
+  try {
+    const { eventId, eventRating, description, products } = req.body;
+
+    if (!eventId) return res.status(400).json({ error: 'eventId is required' });
+    if (!eventRating)
+      return res.status(400).json({ error: 'eventRating is required' });
+    if (!description)
+      return res.status(400).json({ error: 'title is required' });
+
+    const userId = req.user['custom:user_id'];
+
+    // create event rating
+    await db
+      .insert(review)
+      .values({
+        userId,
+        eventId,
+        rating: eventRating,
+        description,
+      })
+      .returning();
+
+    if (!products || products.length === 0) {
+      return res.status(200).json({
+        message: 'Event rating added',
+      });
+    }
+    await Promise.all(
+      products.map(async (product) => {
+        const { productId, description, rating, media } = product;
+
+        if (!productId || !rating) {
+          throw new Error('Product review data missing fields');
+        }
+
+        const productData = await db.query.products.findFirst({
+          where: (product, { eq }) => eq(product.productId, productId),
+        });
+
+        if (!productData) {
+          throw new Error(`Product ${productId} not found`);
+        }
+
+        const vendorId = productData.vendorId;
+
+        const [reviews] = await db
+          .insert(review)
+          .values({
+            userId,
+            eventId,
+            vendorId,
+            productId,
+            rating,
+            description,
+          })
+          .returning();
+
+        const reviewId = reviews.reviewId;
+
+        if (media && media.length > 0) {
+          const mediaRows = media.map((file) => ({
+            reviewId,
+            mediaUrl: file.mediaUrl,
+            mediaType: file.mediaType,
+          }));
+
+          await db.insert(reviewMedia).values(mediaRows);
+        }
+      })
+    );
+
+    return res.status(200).json({
+      message: 'Reviews saved successfully',
+    });
+  } catch (err) {
+    console.error('Error while adding review:', err);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };

@@ -10,7 +10,7 @@ import {
 
 const router = Router();
 
-router.post('/create_event', confirmUserToken, createEvent);
+router.post('/create', confirmUserToken, createEvent);
 router.get('/event_type', confirmUserToken, listAllEventTypes);
 router.get(
   '/service_type/:eventTypeId',
@@ -18,6 +18,6 @@ router.get(
   listAllServicesByEventTypeId
 );
 router.post('/create_eventitem', confirmUserToken, createEventItem);
-router.delete('/delete_eventitem/:itemId', confirmUserToken, deleteEventItem);
+router.delete('/eventitem/:itemId', confirmUserToken, deleteEventItem);
 
 export default router;

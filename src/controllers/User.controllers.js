@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import { userAddresses, users } from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
-import { cart , cartItem ,  review, reviewMedia } from "../../db/user.js";
+import { cart, cartItem, review, reviewMedia } from '../../db/user.js';
 
 export const getUserInfo = async (req, res) => {
   try {
@@ -76,13 +76,34 @@ export const updateUserInfo = async (req, res) => {
 
 export const addAddress = async (req, res) => {
   try {
-
-    const { title, addressLineOne, addressLineTwo, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude } = req.body;
+    const {
+      title,
+      addressLineOne,
+      addressLineTwo,
+      reciverName,
+      reciverNumber,
+      city,
+      state,
+      postalCode,
+      country,
+      latitude,
+      longitude,
+    } = req.body;
 
     const email = req.user?.email || req.body.email;
 
-
-    const requiredFields = { title, addressLineOne, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude };
+    const requiredFields = {
+      title,
+      addressLineOne,
+      reciverName,
+      reciverNumber,
+      city,
+      state,
+      postalCode,
+      country,
+      latitude,
+      longitude,
+    };
 
     for (const [key, value] of Object.entries(requiredFields)) {
       if (!value) return res.status(400).json({ error: `${key} is required.` });
@@ -95,7 +116,7 @@ export const addAddress = async (req, res) => {
 
     // if user is not present
     if (!user) {
-      return res.status(404).json({ error: "User not found." });
+      return res.status(404).json({ error: 'User not found.' });
     }
 
     const userId = user.userId;
@@ -104,7 +125,6 @@ export const addAddress = async (req, res) => {
     //   userId,
     //   address: req.body.address,
     // });
-
 
     await db.execute(sql`
     INSERT INTO user_address (user_id, title, address_line_one, address_line_two, reciver_name, reciver_number, city, state, postal_code, country, latitude, longitude, location)
@@ -128,7 +148,6 @@ export const addAddress = async (req, res) => {
     return res.status(201).json({
       message: 'Address added successfully.',
     });
-
   } catch (err) {
     console.error('Error fetching user info:', err);
     return res.status(500).json({ error: 'Internal server error.' });
@@ -191,8 +210,6 @@ export const getAllReviews = async (req, res) => {
       })
     );
 
-    // console.log('newReview', newReviewsResponse);
-
     return res.status(200).json({
       message: 'Reviews fetched successfully.',
       data: newReviewsResponse,
@@ -205,10 +222,34 @@ export const getAllReviews = async (req, res) => {
 
 export const editAddresses = async (req, res) => {
   try {
-    const { id, title, addressLineOne, addressLineTwo, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude } = req.body;
+    const {
+      id,
+      title,
+      addressLineOne,
+      addressLineTwo,
+      reciverName,
+      reciverNumber,
+      city,
+      state,
+      postalCode,
+      country,
+      latitude,
+      longitude,
+    } = req.body;
     const email = req.user?.email || req.body.email;
 
-    const requiredFields = { title, addressLineOne, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude };
+    const requiredFields = {
+      title,
+      addressLineOne,
+      reciverName,
+      reciverNumber,
+      city,
+      state,
+      postalCode,
+      country,
+      latitude,
+      longitude,
+    };
 
     for (const [key, value] of Object.entries(requiredFields)) {
       if (!value) return res.status(400).json({ error: `${key} is required.` });
@@ -219,12 +260,10 @@ export const editAddresses = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ error: "User not found." });
+      return res.status(404).json({ error: 'User not found.' });
     }
 
     const userId = user.userId;
-
-    console.log(userId, id, title, addressLineOne, addressLineTwo, reciverName, reciverNumber, city, state, postalCode, country, latitude, longitude);
 
     await db.execute(sql`
       UPDATE user_address
@@ -244,14 +283,12 @@ export const editAddresses = async (req, res) => {
       WHERE user_id = ${userId} AND id = ${id}; 
     `);
 
-
     return res.status(200).json({
-      message: "Address updated successfully.",
+      message: 'Address updated successfully.',
     });
-
   } catch (err) {
-    console.error("Error updating address:", err);
-    return res.status(500).json({ error: "Internal server error." });
+    console.error('Error updating address:', err);
+    return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
@@ -277,7 +314,7 @@ export const setCurrentAddress = async (req, res) => {
     const { id } = data;
 
     if (!id) {
-      return res.status(400).json({ error: "Address ID is required." });
+      return res.status(400).json({ error: 'Address ID is required.' });
     }
 
     await db
@@ -294,8 +331,8 @@ export const setCurrentAddress = async (req, res) => {
       data: response,
     });
   } catch (err) {
-    console.error("Error saving address:", err);
-    return res.status(500).json({ error: "Internal server error." });
+    console.error('Error saving address:', err);
+    return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
@@ -304,60 +341,57 @@ export const deleteAddress = async (req, res) => {
     const { id } = req.body;
 
     if (!id) {
-      return res.status(400).json({ error: "addressId is required." });
+      return res.status(400).json({ error: 'addressId is required.' });
     }
 
     // Find address
     const address = await db.query.userAddresses.findFirst({
-      where: (userAddresses, { eq }) => eq(userAddresses.id, id)
+      where: (userAddresses, { eq }) => eq(userAddresses.id, id),
     });
 
     if (!address) {
-      return res.status(404).json({ error: "Address not found." });
+      return res.status(404).json({ error: 'Address not found.' });
     }
 
     // Delete address
-    await db.delete(userAddresses)
-      .where(eq(userAddresses.id, id));
+    await db.delete(userAddresses).where(eq(userAddresses.id, id));
 
-    return res.status(204).json({ message: "Address deleted successfully." });
-
+    return res.status(204).json({ message: 'Address deleted successfully.' });
   } catch (err) {
-    if (err?.cause?.code === "23503") {
+    if (err?.cause?.code === '23503') {
       return res.status(400).json({
         success: false,
-        message: "You cannot delete this address because it is set as your current address.",
+        message:
+          'You cannot delete this address because it is set as your current address.',
       });
     }
 
-    console.error("Error deleting address:", err);
-    return res.status(500).json({ error: "Error deleting address." });
+    console.error('Error deleting address:', err);
+    return res.status(500).json({ error: 'Error deleting address.' });
   }
 };
-
 
 export const cartHandler = async (req, res) => {
   try {
     const email = req.user?.email || req.body.email;
-   
+
     const user = await db.query.users.findFirst({
-      where: (user, { eq }) => eq(user.email, email)
-    });  
+      where: (user, { eq }) => eq(user.email, email),
+    });
 
     const userId = user.userId;
     if (!userId) {
-      return res.status(400).json({ error: "User ID required" });
+      return res.status(400).json({ error: 'User ID required' });
     }
 
     let userCart = await db.query.cart.findFirst({
       where: (t, { eq }) => eq(t.userId, userId),
     });
 
-    if (req.method === "GET") {
-      console.log('did he come this far')
+    if (req.method === 'GET') {
       if (!userCart) {
         return res.json({
-          message: "Cart is empty",
+          message: 'Cart is empty',
           cartId: null,
           items: [],
         });
@@ -373,19 +407,18 @@ export const cartHandler = async (req, res) => {
       });
     }
 
-    if (req.method === "POST") {
-
-    if (!userCart) {
+    if (req.method === 'POST') {
+      if (!userCart) {
         const newCart = await db.insert(cart).values({ userId }).returning();
         userCart = newCart[0];
       }
-    
-    const cartId = userCart.cartId;
 
-    const { productId, quantity } = req.body;
+      const cartId = userCart.cartId;
+
+      const { productId, quantity } = req.body;
 
       if (!productId || !quantity) {
-        return res.status(400).json({ error: "productId & quantity required" });
+        return res.status(400).json({ error: 'productId & quantity required' });
       }
 
       const existing = await db.query.cartItems.findFirst({
@@ -395,8 +428,7 @@ export const cartHandler = async (req, res) => {
 
       if (existing) {
         return res.json({
-          message: "item already exists"
-          
+          message: 'item already exists',
         });
       }
 
@@ -406,16 +438,16 @@ export const cartHandler = async (req, res) => {
         .returning();
 
       return res.json({
-        message: "Item added to cart",
+        message: 'Item added to cart',
         item: newItem[0],
       });
     }
 
-    if (req.method === "DELETE") {
+    if (req.method === 'DELETE') {
       const { cartItemId } = req.params;
 
       if (!cartItemId) {
-        return res.status(400).json({ error: "cartItemId required" });
+        return res.status(400).json({ error: 'cartItemId required' });
       }
 
       const item = await db.query.cartItems.findFirst({
@@ -423,31 +455,30 @@ export const cartHandler = async (req, res) => {
       });
 
       if (!item) {
-        return res.status(404).json({ error: "Item not found" });
+        return res.status(404).json({ error: 'Item not found' });
       }
-      
+
       await db
         .delete(cartItem)
         .where(eq(cartItem.cartItemId, Number(cartItemId)));
 
       return res.json({
-        message: "Item removed from cart",
+        message: 'Item removed from cart',
       });
     }
 
-    return res.status(405).json({ error: "Method not allowed" });
-
+    return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    console.error("Cart API Error:", err);
-    return res.status(500).json({ error: "Server error" });
+    console.error('Cart API Error:', err);
+    return res.status(500).json({ error: 'Server error' });
   }
 };
-export const profilePictureHandler  = async (req, res) => {
+export const profilePictureHandler = async (req, res) => {
   try {
     const email = req.user?.email || req.body.email;
 
     if (!email) {
-      return res.status(400).json({ error: "Email is required." });
+      return res.status(400).json({ error: 'Email is required.' });
     }
 
     const user = await db.query.users.findFirst({
@@ -455,14 +486,16 @@ export const profilePictureHandler  = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ error: "User not found." });
+      return res.status(404).json({ error: 'User not found.' });
     }
 
-    if (req.method === "POST") {
+    if (req.method === 'POST') {
       const { profileImage } = req.body;
 
       if (!profileImage) {
-        return res.status(400).json({ error: "Profile image URL is required." });
+        return res
+          .status(400)
+          .json({ error: 'Profile image URL is required.' });
       }
 
       await db
@@ -472,11 +505,11 @@ export const profilePictureHandler  = async (req, res) => {
         .returning();
 
       return res.status(200).json({
-        message: "Profile image saved successfully.",
+        message: 'Profile image saved successfully.',
       });
     }
 
- if (req.method === "DELETE") {
+    if (req.method === 'DELETE') {
       await db
         .update(users)
         .set({ profileImage: null })
@@ -484,96 +517,94 @@ export const profilePictureHandler  = async (req, res) => {
         .returning();
 
       return res.status(200).json({
-        message: "Profile image deleted successfully.",
+        message: 'Profile image deleted successfully.',
       });
     }
 
-      return res.status(405).json({ error: "Method not allowed." });
-
+    return res.status(405).json({ error: 'Method not allowed.' });
   } catch (err) {
-    console.error("Error updating profile image:", err);
-    return res.status(500).json({ error: "Internal server error." });
+    console.error('Error updating profile image:', err);
+    return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
-
 export const addReview = async (req, res) => {
   try {
-    const { eventId, eventRating, title, products } = req.body;
+    const { eventId, eventRating, description, products } = req.body;
 
-    if (!eventId) return res.status(400).json({ error: "eventId is required" });
-    if (!eventRating) return res.status(400).json({ error: "eventRating is required" });
-    if (!title) return res.status(400).json({ error: "title is required" });
+    if (!eventId) return res.status(400).json({ error: 'eventId is required' });
+    if (!eventRating)
+      return res.status(400).json({ error: 'eventRating is required' });
+    if (!description)
+      return res.status(400).json({ error: 'title is required' });
 
-    const userId = req.user["custom:user_id"];
+    const userId = req.user['custom:user_id'];
 
-    // create event rating 
+    // create event rating
     await db
       .insert(review)
       .values({
         userId,
-        eventId, 
+        eventId,
         rating: eventRating,
-        title,
+        description,
       })
       .returning();
 
-
     if (!products || products.length === 0) {
       return res.status(200).json({
-        message: "Event rating added",
+        message: 'Event rating added',
       });
     }
+    await Promise.all(
+      products.map(async (product) => {
+        const { productId, description, rating, media } = product;
 
-    for (const product of products) {
-      const { productId, description, rating, media } = product;
+        if (!productId || !rating) {
+          throw new Error('Product review data missing fields');
+        }
 
-      if (!productId || !rating) {
-        return res.status(400).json({
-          error: "Product review data missing fields",
+        const productData = await db.query.products.findFirst({
+          where: (product, { eq }) => eq(product.productId, productId),
         });
-      }
 
-      const productData = await db.query.products.findFirst({
-        where: (product, { eq }) => eq(product.productId, productId),
-      });
+        if (!productData) {
+          throw new Error(`Product ${productId} not found`);
+        }
 
-      if (!productData)
-        return res.status(404).json({ error: `Product ${productId} not found` });
+        const vendorId = productData.vendorId;
 
-      const vendorId = productData.vendorId;
+        const [reviews] = await db
+          .insert(review)
+          .values({
+            userId,
+            eventId,
+            vendorId,
+            productId,
+            rating,
+            description,
+          })
+          .returning();
 
-      const [reviews] = await db
-        .insert(review)
-        .values({
-          userId,
-          eventId,
-          vendorId,
-          productId,
-          rating,          
-          title,           
-          description
-        })
-        .returning();
+        const reviewId = reviews.reviewId;
 
-      const reviewId = reviews.reviewId;
+        if (media && media.length > 0) {
+          const mediaRows = media.map((file) => ({
+            reviewId,
+            mediaUrl: file.mediaUrl,
+            mediaType: file.mediaType,
+          }));
 
-      if (media && media.length > 0) {
-        const mediaRows = media.map((file) => ({
-          reviewId,
-          mediaUrl: file.mediaUrl,
-          mediaType: file.mediaType,
-        }));
-
-        await db.insert(reviewMedia).values(mediaRows);
-      }
-    }
+          await db.insert(reviewMedia).values(mediaRows);
+        }
+      })
+    );
 
     return res.status(200).json({
-      message: "Reviews saved successfully",
+      message: 'Reviews saved successfully',
     });
   } catch (err) {
-    console.error("Error while adding review:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error('Error while adding review:', err);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };

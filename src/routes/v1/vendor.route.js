@@ -11,11 +11,11 @@ import {
   updateOwnershipDetails,
   fetchVendorProducts,
   fetchProductPrice,
- fetchAllProductTypes,
+  fetchAllProductTypes,
   listProductsByType,
- getAllProductsByCategoryId,
+  getAllProductsByCategoryId,
   getAllFeaturedCategories,
-  fetchProductByProductId
+  fetchProductByProductId,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -58,8 +58,8 @@ router.post(
   fetchProductPrice
 );
 
-router.get("/list_product_type", confirmUserToken, fetchAllProductTypes);
-router.get("/get_product_by_id", confirmUserToken, listProductsByType);
+router.get('/list_product_type', confirmUserToken, fetchAllProductTypes);
+router.get('/get_product_by_id', confirmUserToken, listProductsByType);
 
 router.get(
   '/get_products_by_categoryId/:categoryId',

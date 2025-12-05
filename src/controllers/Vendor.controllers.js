@@ -230,7 +230,7 @@ export const createVendorEmpRequest = async (req, res) => {
     const { vendorId, note } = req.body;
     const userId = req.user['custom:user_id'];
     const vendorIds = req.user['custom:vendor_ids'];
-    console.log(vendorIds);
+
     if (vendorIds && vendorIds.length > 0)
       return res
         .status(400)
@@ -460,7 +460,9 @@ export const fetchVendorProducts = async (req, res) => {
 
     const data = vendorProducts.map((product) => ({
       ...product,
-      media: productMedia.filter((media) => media.productId === product.productId),
+      media: productMedia.filter(
+        (media) => media.productId === product.productId
+      ),
     }));
 
     return res.json({
@@ -528,53 +530,49 @@ export const fetchProductPrice = async (req, res) => {
   }
 };
 
-
 export const fetchAllProductTypes = async (req, res) => {
-
   try {
-
     const productTypes = await db.query.productTypes.findMany();
-      return res.json({
-        message: "product type fetched successfully",
-        productTypes: productTypes,
-      });
+    return res.json({
+      message: 'product type fetched successfully',
+      productTypes: productTypes,
+    });
   } catch (err) {
-    console.error("product type Fetch Error:", err);
-    return res.status(500).json({ error: "Server error fetching product type" });
+    console.error('product type Fetch Error:', err);
+    return res
+      .status(500)
+      .json({ error: 'Server error fetching product type' });
   }
 };
 
 export const listProductsByType = async (req, res) => {
   try {
-  
     const { productTypeId, page = 1, page_size = 12 } = req.query;
 
-    if (!productTypeId){
-        return res.status(400).json({ error: "productTypeId is required" });
+    if (!productTypeId) {
+      return res.status(400).json({ error: 'productTypeId is required' });
     }
 
-     const limit = Number(page_size);
-     const offset = (Number(page) - 1) * limit;
+    const limit = Number(page_size);
+    const offset = (Number(page) - 1) * limit;
 
-     const totalRows = await db
-    .select({ count: sql`CAST(count(*) AS INTEGER)` })
-    .from(products)
-    .where(eq(products.productTypeId, Number(productTypeId)));
+    const totalRows = await db
+      .select({ count: sql`CAST(count(*) AS INTEGER)` })
+      .from(products)
+      .where(eq(products.productTypeId, Number(productTypeId)));
 
     const total = totalRows[0].count;
 
-      const data = await db
+    const data = await db
       .select()
       .from(products)
       .where(eq(products.productTypeId, Number(productTypeId)))
       .limit(limit)
       .offset(offset);
 
-      console.log("data",data)
-
     return res.json({
       success: true,
-      message: "Products fetched successfully",
+      message: 'Products fetched successfully',
       pagination: {
         page: Number(page),
         page_size: limit,
@@ -584,13 +582,13 @@ export const listProductsByType = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error("Error fetching products by type:", error);
+    console.error('Error fetching products by type:', error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: 'Internal server error',
     });
   }
-}
+};
 
 export const getAllProductsByCategoryId = async (req, res) => {
   try {
@@ -759,19 +757,18 @@ export const getAllFeaturedCategories = async (req, res) => {
   }
 };
 
- export const fetchProductByProductId = async (req , res) => {
+export const fetchProductByProductId = async (req, res) => {
   try {
-      const { productTypeId } = req.params;
+    const { productTypeId } = req.params;
 
-      if (!productTypeId) {
-        return res.status(400).json({ error: 'productTypeId is required.' });
-      }
+    if (!productTypeId) {
+      return res.status(400).json({ error: 'productTypeId is required.' });
+    }
 
     const data = await db
       .select()
       .from(products)
       .where(eq(products.productTypeId, Number(productTypeId)));
-
 
     return res.json({
       message: 'Products fetched successfully',
@@ -780,5 +777,4 @@ export const getAllFeaturedCategories = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
-}
-
+};

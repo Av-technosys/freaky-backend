@@ -4,6 +4,7 @@ import {
   createEvent,
   createEventItem,
   deleteEventItem,
+  listAllEvents,
   listAllEventTypes,
   listAllServicesByEventTypeId,
 } from '../../controllers/Event.controller.js';
@@ -19,5 +20,6 @@ router.get(
 );
 router.post('/create_eventitem', confirmUserToken, createEventItem);
 router.delete('/eventitem/:itemId', confirmUserToken, deleteEventItem);
+router.get('/:eventid?', confirmUserToken, listAllEvents);
 
 export default router;

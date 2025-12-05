@@ -45,6 +45,31 @@ export const createEvent = async (req, res) => {
   }
 };
 
+export const listAllEvents = async (req, res) => {
+  try {
+    const { eventid } = req.params;
+    if (eventid) {
+      const event = await db
+        .select()
+        .from(events)
+        .where(eq(events.eventId, eventid));
+      return res.status(200).json({
+        message: 'Event details Fetched Successfully.',
+        data: event,
+      });
+    } else {
+      const event = await db.select().from(events).orderBy(asc(events.eventId));
+      return res.status(200).json({
+        message: 'Events Fetched Successfully.',
+        data: event,
+      });
+    }
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const listAllEventTypes = async (req, res) => {
   try {
     const response = await db

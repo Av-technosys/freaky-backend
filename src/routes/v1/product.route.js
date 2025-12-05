@@ -5,7 +5,7 @@ import {
   fetchProductByProductId,
   fetchProductPrice,
   getAllProductsByCategoryId,
-  listProductsType,
+  listProductsByType,
 } from '../../controllers/Vendor.controllers.js';
 
 const router = Router();
@@ -17,7 +17,7 @@ router.get(
   fetchProductByProductId
 );
 router.post('/product_price/:productId', confirmUserToken, fetchProductPrice);
-router.get('/products_type', confirmUserToken, listProductsType);
+router.get('/products_type', confirmUserToken, listProductsByType);
 router.get(
   '/products_by_categoryId/:categoryId',
   confirmUserToken,

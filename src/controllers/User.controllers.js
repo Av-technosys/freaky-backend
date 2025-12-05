@@ -1,8 +1,14 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
-import { reviewMedia, reviews, userAddresses, users } from '../../db/schema.js';
+import {
+  cart,
+  cartItems,
+  reviewMedia,
+  reviews,
+  userAddresses,
+  users,
+} from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
-import { cart, cartItem, review, reviewMedia } from '../../db/user.js';
 
 export const getUserInfo = async (req, res) => {
   try {
@@ -433,7 +439,7 @@ export const cartHandler = async (req, res) => {
       }
 
       const newItem = await db
-        .insert(cartItem)
+        .insert(cartItems)
         .values({ cartId, productId, quantity })
         .returning();
 
@@ -459,8 +465,8 @@ export const cartHandler = async (req, res) => {
       }
 
       await db
-        .delete(cartItem)
-        .where(eq(cartItem.cartItemId, Number(cartItemId)));
+        .delete(cartItems)
+        .where(eq(cartItems.cartItemId, Number(cartItemId)));
 
       return res.json({
         message: 'Item removed from cart',
@@ -542,7 +548,7 @@ export const addReview = async (req, res) => {
 
     // create event rating
     await db
-      .insert(review)
+      .insert(reviews)
       .values({
         userId,
         eventId,
@@ -575,7 +581,7 @@ export const addReview = async (req, res) => {
         const vendorId = productData.vendorId;
 
         const [reviews] = await db
-          .insert(review)
+          .insert(reviews)
           .values({
             userId,
             eventId,

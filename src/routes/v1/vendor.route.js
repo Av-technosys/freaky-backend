@@ -11,6 +11,7 @@ import {
   updateOwnershipDetails,
   fetchVendorProducts,
   getAllFeaturedCategories,
+  getVendorInfo,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -23,6 +24,7 @@ router.get(
   checkVendor,
   getCompanyProfile
 );
+router.get('/details/:id', confirmUserToken, getVendorInfo);
 router.get('/vendors', listAllVendors);
 router.post('/cerate_vendor', confirmUserToken, createVendor);
 // router.get('/update_vendor', confirmUserToken, updateVendor);

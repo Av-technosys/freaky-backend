@@ -563,7 +563,7 @@ export const fetchAllProductTypes = async (req, res) => {
   }
 };
 
-export const listProductsByType = async (req, res) => {
+export const productByProductId = async (req, res) => {
   try {
     const { productTypeId, page = 1, page_size = 12 } = req.query;
 

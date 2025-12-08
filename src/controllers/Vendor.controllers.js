@@ -581,13 +581,38 @@ export const productByTypeId = async (req, res) => {
 
     const total = totalRows[0].count;
 
-    const data = await db
+    const productsList = await db
       .select()
       .from(products)
       .where(eq(products.productTypeId, Number(productTypeId)))
       .limit(limit)
       .offset(offset);
 
+    const vendorIds = [
+      ...new Set(productsList.map((product) => product.vendorId)),
+    ];
+
+    const productIds = productsList.map((product) => product.productId);
+
+    const priceBooks = await db.query.priceBook.findMany({
+      where: (t, { eq, inArray, and }) =>
+        and(inArray(t.vendorId, vendorIds), eq(t.isActive, true)),
+    });
+
+    const priceBookIds = priceBooks.map((book) => book.id);
+
+    const priceEntries = await db.query.priceBookEntry.findMany({
+      where: (t, { inArray, and }) =>
+        and(
+          inArray(t.productId, productIds),
+          inArray(t.priceBookingId, priceBookIds)
+        ),
+    });
+
+    const data = productsList.map((product) => ({
+      ...product,
+      prices: priceEntries.filter((p) => p.productId === product.productId),
+    }));
     return res.json({
       success: true,
       message: 'Products fetched successfully',
@@ -822,9 +847,10 @@ export const fetchProductDetailById = async (req, res) => {
 
     return res.json({
       message: 'Product details & price fetched successfully',
-      product,
-      vendorId,
-      prices: productPrices,
+      product: {
+        ...product,
+        prices: productPrices,
+      },
     });
   } catch (err) {
     console.error('Price Fetch Error:', err);

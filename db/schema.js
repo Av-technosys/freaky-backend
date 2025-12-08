@@ -20,10 +20,14 @@ export const userAddresses = user.userAddress;
 export const subscriptions = user.subscription;
 export const cart = user.cart;
 export const cartItems = user.cartItem;
+export const cartBookings = user.cartBooking;
+export const cartItemBookings = user.cartItemBooking;
 export const reviews = user.review;
 export const reviewMedia = user.reviewMedia;
 export const pricingSettings = user.pricingSetting;
 export const taxZones = user.taxZone;
+export const payments = user.payment;
+export const paymentTransactions = user.paymentTransaction;
 
 export const eventType = event.eventType;
 export const eventProductType = event.eventProductType;
@@ -31,8 +35,8 @@ export const events = event.event;
 export const eventItems = event.eventItem;
 export const eventBooking = event.eventBooking;
 export const eventProductOrders = event.eventProductOrder;
-export const eventOrderTransactions = event.eventOrderTransaction;
 export const featuredEvents = event.featuredEvent;
+export const featuredBanners = event.featuredBanners;
 
 export const vendors = vendor.vendor;
 export const vendorNotifications = vendor.vendorNotification;
@@ -54,7 +58,6 @@ export const productAddons = vendor.productAddon;
 export const contractProductTypes = vendor.contractProductType;
 // export const contractProductType = vendor.contractProductType;
 // export const featuredCategoryProducts = vendor.featuredCategoryProduct;
-
 
 // export const testAddressVendor = pgTable(
 //     "test_address_vendor",

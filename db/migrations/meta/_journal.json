@@ -50,6 +50,13 @@
       "when": 1764829085021,
       "tag": "0006_sloppy_klaw",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1765192273678,
+      "tag": "0007_eminent_champions",
+      "breakpoints": true
     }
   ]
 }

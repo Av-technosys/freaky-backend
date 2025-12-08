@@ -78,7 +78,7 @@ export const vendorNotification = pgTable('vendor_notification', {
   status: boolean('status').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-})
+});
 
 export const vendorOwnership = pgTable('vendor_ownership', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
@@ -191,7 +191,7 @@ export const vendorContract = pgTable('vendor_contract', {
   endDate: timestamp('end_date').defaultNow(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-})
+});
 
 export const priceBook = pgTable('price_book', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
@@ -211,10 +211,9 @@ export const priceBookEntry = pgTable('price_book_entry', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
 
   productId: integer('product_id').references(() => product.productId),
-  priceBookingId: integer('price_booking_id').references(
-    () => priceBook.id,
-    { onDelete: 'cascade' }
-  ),
+  priceBookingId: integer('price_booking_id').references(() => priceBook.id, {
+    onDelete: 'cascade',
+  }),
 
   currency: varchar('currency', { length: 255 }),
 
@@ -272,6 +271,8 @@ export const product = pgTable('product', {
   maxQuantity: integer('max_quantity'),
 
   status: boolean('status').default(true).notNull(),
+  rating: integer('rating').default(4).notNull(),
+  bannerImage: varchar('banner_image', { length: 255 }),
 
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -320,9 +321,7 @@ export const productMedia = pgTable('product_media', {
 
 export const productAddon = pgTable('product_addon', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  mainProductId: integer('main_product_id').references(
-    () => product.productId
-  ),
+  mainProductId: integer('main_product_id').references(() => product.productId),
   addonProductId: integer('addon_product_id').references(
     () => product.productId
   ),

@@ -7,6 +7,7 @@ import {
   profilePictureHandler,
   addReview,
   deleteReview,
+  getUserNotification,
 } from '../../controllers/User.controllers.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
 import addressRouter from './user.address.route.js';
@@ -26,4 +27,6 @@ router.post('/profile_picture', confirmUserToken, profilePictureHandler);
 router.delete('/profile_picture', confirmUserToken, profilePictureHandler);
 router.post('/add_review', confirmUserToken, addReview);
 router.delete('/review', confirmUserToken, deleteReview);
+router.get('/notification', confirmUserToken, getUserNotification);
+router.post('/notification/read', confirmUserToken, markNotificationAsRead);
 export default router;

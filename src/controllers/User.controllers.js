@@ -6,6 +6,7 @@ import {
   reviewMedia,
   reviews,
   userAddresses,
+  userNotifications,
   users,
 } from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
@@ -674,6 +675,44 @@ export const deleteReview = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Review deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete review',
+    });
+  }
+};
+
+export const getUserNotification = async (req, res) => {
+  const response = await db.select().from(userNotifications);
+  try {
+    return res.status(200).json({
+      success: true,
+      message: 'Review deleted successfully',
+      data: response,
+    });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete review',
+    });
+  }
+};
+
+export const markNotificationAsRead = async (req, res) => {
+  const { notificationId } = req.body;
+  await db
+    .update(userNotifications)
+    .set({ status: true })
+    .where(eq(userNotifications.notificationId, notificationId))
+    .returning();
+  try {
+    return res.status(200).json({
+      success: true,
+      message: 'Successfully marked as true',
     });
   } catch (error) {
     console.error('Error deleting review:', error);

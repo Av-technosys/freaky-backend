@@ -13,6 +13,24 @@ import { commonVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
 
+export const getVendorInfo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('id is; ', id);
+    const [vendorData] = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.vendorId, id));
+    return res.status(200).json({
+      message: 'Vendor info fetched successfully.',
+      data: vendorData,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const getCompanyProfile = async (req, res) => {
   // try {
   //   const email = req.user?.email || req.body.email;

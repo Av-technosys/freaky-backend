@@ -3,6 +3,7 @@ import { db } from '../../db/db.js';
 import {
   cart,
   cartItems,
+  featuredBanners,
   reviewMedia,
   reviews,
   userAddresses,
@@ -687,6 +688,23 @@ export const deleteReview = async (req, res) => {
 
 export const getUserNotification = async (req, res) => {
   const response = await db.select().from(userNotifications);
+  try {
+    return res.status(200).json({
+      success: true,
+      message: 'Review deleted successfully',
+      data: response,
+    });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete review',
+    });
+  }
+};
+
+export const getBanner = async (req, res) => {
+  const response = await db.select().from(featuredBanners);
   try {
     return res.status(200).json({
       success: true,

@@ -845,11 +845,16 @@ export const fetchProductDetailById = async (req, res) => {
         .json({ error: 'Price not found for this product.' });
     }
 
+    const productMediaList = await db.query.productMedia.findMany({
+      where: (t, { eq }) => eq(t.productId, Number(productId)),
+    });
+
     return res.json({
       message: 'Product details & price fetched successfully',
       product: {
         ...product,
         prices: productPrices,
+        media: productMediaList,
       },
     });
   } catch (err) {

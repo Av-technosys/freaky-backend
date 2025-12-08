@@ -580,7 +580,7 @@ export const addReview = async (req, res) => {
 
         const vendorId = productData.vendorId;
 
-        const [reviews] = await db
+        const [reviewRecord] = await db
           .insert(reviews)
           .values({
             userId,
@@ -592,7 +592,7 @@ export const addReview = async (req, res) => {
           })
           .returning();
 
-        const reviewId = reviews.reviewId;
+        const reviewId = reviewRecord.reviewId;
 
         if (media && media.length > 0) {
           const mediaRows = media.map((file) => ({

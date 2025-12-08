@@ -8,6 +8,7 @@ import {
   listAllEventTypes,
   listAllServicesByEventTypeId,
   getFeaturedEvents,
+  getBanner,
 } from '../../controllers/Event.controller.js';
 
 const router = Router();
@@ -22,6 +23,7 @@ router.get(
 router.post('/create_eventitem', confirmUserToken, createEventItem);
 router.delete('/eventitem/:itemId', confirmUserToken, deleteEventItem);
 router.get('/featured', confirmUserToken, getFeaturedEvents);
+router.get('/banner', confirmUserToken, getBanner);
 router.get('/:eventid?', confirmUserToken, listAllEvents);
 
 export default router;

@@ -563,7 +563,7 @@ export const fetchAllProductTypes = async (req, res) => {
   }
 };
 
-export const listProductsByType = async (req, res) => {
+export const productByTypeId = async (req, res) => {
   try {
     const { productTypeId, page = 1, page_size = 12 } = req.query;
 
@@ -775,24 +775,61 @@ export const getAllFeaturedCategories = async (req, res) => {
   }
 };
 
-export const fetchProductByProductId = async (req, res) => {
+export const fetchProductDetailById = async (req, res) => {
   try {
-    const { productTypeId } = req.params;
+    const { productId } = req.query;
 
-    if (!productTypeId) {
-      return res.status(400).json({ error: 'productTypeId is required.' });
+    if (!productId) {
+      return res.status(400).json({ error: 'Product ID is required.' });
     }
 
-    const data = await db
-      .select()
-      .from(products)
-      .where(eq(products.productTypeId, Number(productTypeId)));
+    const product = await db.query.products.findFirst({
+      where: (t, { eq }) => eq(t.productId, Number(productId)),
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found.' });
+    }
+
+    const vendorId = product.vendorId;
+
+    const priceBooks = await db.query.priceBook.findMany({
+      where: (t, { eq, and }) =>
+        and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+    });
+
+    if (priceBooks.length === 0) {
+      return res
+        .status(404)
+        .json({ error: 'No active pricebook found for vendor.' });
+    }
+
+    const priceBookIds = priceBooks.map((pb) => pb.id);
+
+    const productPrices = await db.query.priceBookEntry.findMany({
+      where: (t, { eq, inArray, and }) =>
+        and(
+          eq(t.productId, Number(productId)),
+          inArray(t.priceBookingId, priceBookIds)
+        ),
+    });
+
+    if (productPrices.length === 0) {
+      return res
+        .status(404)
+        .json({ error: 'Price not found for this product.' });
+    }
 
     return res.json({
-      message: 'Products fetched successfully',
-      products: data,
+      message: 'Product details & price fetched successfully',
+      product,
+      vendorId,
+      prices: productPrices,
     });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
+  } catch (err) {
+    console.error('Price Fetch Error:', err);
+    return res
+      .status(500)
+      .json({ error: 'Server error fetching product price.' });
   }
 };

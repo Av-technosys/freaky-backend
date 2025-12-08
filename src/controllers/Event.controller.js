@@ -6,6 +6,7 @@ import {
   events,
   eventType,
   productTypes,
+  featuredEvents,
 } from '../../db/schema.js';
 
 export const createEvent = async (req, res) => {
@@ -29,7 +30,7 @@ export const createEvent = async (req, res) => {
       name: name,
       description: description,
       contactNumber: contactNumber,
-      eventDate: new Date(eventDate),
+      eventDate: new Date(eventDate).toISOString(),
       minGuestCount: minGuestCount,
       maxGuestCount: maxGuestCount,
       latitude: latitude,
@@ -162,5 +163,22 @@ export const deleteEventItem = async (req, res) => {
   } catch (error) {
     console.error('Error: ', error);
     return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getFeaturedEvents = async (req, res) => {
+  try {
+    const events = await db.select().from(featuredEvents);
+
+    return res.status(200).json({
+      success: true,
+      data: events,
+    });
+  } catch (err) {
+    console.error('Error fetching featured events:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch featured events',
+    });
   }
 };

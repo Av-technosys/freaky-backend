@@ -421,10 +421,30 @@ export const cartHandler = async (req, res) => {
 
       const cartId = userCart.cartId;
 
-      const { productId, quantity } = req.body;
+      const {
+        productId,
+        quantity,
+        name,
+        description,
+        contactNumber,
+        date,
+        minGuestCount,
+        maxGuestCount,
+        latitude,
+        longitude,
+      } = req.body;
 
-      if (!productId || !quantity) {
-        return res.status(400).json({ error: 'productId & quantity required' });
+      if (!productId) {
+        return res.status(400).json({ error: 'productId required' });
+      }
+      if (!quantity) {
+        return res.status(400).json({ error: 'quantity required' });
+      }
+      if (!cartId) {
+        return res.status(400).json({ error: 'CartId not Provided' });
+      }
+      if (!date) {
+        return res.status(400).json({ error: 'date is required' });
       }
 
       const existing = await db.query.cartItems.findFirst({
@@ -440,9 +460,20 @@ export const cartHandler = async (req, res) => {
 
       const newItem = await db
         .insert(cartItems)
-        .values({ cartId, productId, quantity })
+        .values({
+          cartId,
+          productId,
+          quantity,
+          name,
+          description,
+          contactNumber,
+          date: new Date(date),
+          minGuestCount,
+          maxGuestCount,
+          latitude,
+          longitude,
+        })
         .returning();
-
       return res.json({
         message: 'Item added to cart',
         item: newItem[0],

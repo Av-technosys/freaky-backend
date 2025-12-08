@@ -20,5 +20,5 @@ router.get(
 );
 router.post('/create_eventitem', confirmUserToken, createEventItem);
 router.delete('/eventitem/:itemId', confirmUserToken, deleteEventItem);
-router.get('/featured_events', confirmUserToken, getFeaturedEvents);
+router.get('/featured', confirmUserToken, getFeaturedEvents);
 export default router;

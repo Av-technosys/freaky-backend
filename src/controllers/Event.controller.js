@@ -1,4 +1,4 @@
-import { asc, eq, desc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
   eventItems,

@@ -46,6 +46,47 @@ export const createEvent = async (req, res) => {
   }
 };
 
+export const editEvent = async (req, res) => {
+  try {
+    const {
+      eventId,
+      eventTypeId,
+      name,
+      description,
+      contactNumber,
+      eventDate,
+      minGuestCount,
+      maxGuestCount,
+      latitude,
+      longitude,
+    } = req.body;
+
+    const data = await db
+      .update(events)
+      .set({
+        eventTypeId,
+        name,
+        description,
+        contactNumber,
+        eventDate,
+        minGuestCount,
+        maxGuestCount,
+        latitude,
+        longitude,
+      })
+      .where(eq(events.eventId, eventId))
+      .returning();
+
+    return res.status(201).json({
+      message: 'Event updated successfully...',
+      data: data,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const listAllEvents = async (req, res) => {
   try {
     const { eventid } = req.params;

@@ -8,12 +8,14 @@ import {
   listAllEventTypes,
   listAllServicesByEventTypeId,
   getFeaturedEvents,
+  editEvent,
   getBanner,
 } from '../../controllers/Event.controller.js';
 
 const router = Router();
 
 router.post('/create', confirmUserToken, createEvent);
+router.post('/edit', confirmUserToken, editEvent);
 router.get('/event_type', confirmUserToken, listAllEventTypes);
 router.get(
   '/service_type/:eventTypeId',

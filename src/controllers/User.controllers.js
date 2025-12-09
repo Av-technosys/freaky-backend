@@ -687,17 +687,18 @@ export const deleteReview = async (req, res) => {
 };
 
 export const getUserNotification = async (req, res) => {
-  const { page, limit } = req.query;
-  const userId = req.user['custom:user_id'];
-  const pageLimit = Number(limit) || 2;
-  const offset = (Number(page) - 1) * pageLimit;
-  const response = await db
-    .select()
-    .from(userNotifications)
-    .where(eq(userNotifications.userId, userId))
-    .limit(pageLimit)
-    .offset(offset);
   try {
+    const { page, limit } = req.query;
+    const userId = req.user['custom:user_id'];
+    const pageLimit = Number(limit) || 2;
+    const offset = (Number(page) - 1) * pageLimit;
+
+    const response = await db
+      .select()
+      .from(userNotifications)
+      .where(eq(userNotifications.userId, userId))
+      .limit(pageLimit)
+      .offset(offset);
     return res.status(200).json({
       success: true,
       message: 'Notification fetched successfully..',

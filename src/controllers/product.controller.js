@@ -1,6 +1,8 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import { reviewMedia, reviews } from '../../db/schema.js';
+import { products } from '../../db/schema.js';
+import { vendors } from '../../db/schema.js';
 
 export const getAllProductReviews = async (req, res) => {
   try {
@@ -42,5 +44,71 @@ export const getAllProductReviews = async (req, res) => {
   } catch (error) {
     console.error('Error:', error);
     return res.status(500).json({ error: error.message });
+  }
+};
+
+export const getAllProducts = async (req, res) => {
+  try {
+    const { text = '', page = 1, page_size = 12 } = req.query;
+    const limit = Number(page_size);
+    const offset = (Number(page) - 1) * limit;
+
+    const userId = req.user['custom:user_id'];
+
+    const vendorData = await db
+      .select({ vendorId: vendors.vendorId })
+      .from(vendors)
+      .where(eq(vendors.createdBy, userId));
+
+    if (vendorData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found for this user',
+        data: [],
+      });
+    }
+
+    const vId = vendorData[0].vendorId;
+
+    const filters = [eq(products.vendorId, vId)];
+
+    if (text && text.trim() !== '') {
+      filters.push(ilike(products.title, `%${text}%`));
+    }
+
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
+    const totalRows = await db
+      .select({ count: sql`CAST(count(*) AS INTEGER)` })
+      .from(products)
+      .where(whereClause);
+
+    const total = totalRows[0].count;
+
+    const productsList = await db
+      .select()
+      .from(products)
+      .where(whereClause)
+      .orderBy(products.createdAt)
+      .limit(limit)
+      .offset(offset);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Products fetched successfully',
+      pagination: {
+        page: Number(page),
+        page_size: limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      },
+      data: productsList,
+    });
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

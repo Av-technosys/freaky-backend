@@ -15,6 +15,7 @@ import {
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
+import { getAllProducts } from '../../controllers/product.controller.js';
 
 const router = Router();
 
@@ -43,5 +44,6 @@ router.put('/ownership_details', confirmUserToken, updateOwnershipDetails);
 router.get('/vendor_products/:vendorId', confirmUserToken, fetchVendorProducts);
 
 router.get('/featured_categories', confirmUserToken, getAllFeaturedCategories);
+router.get('/products', confirmUserToken, getAllProducts);
 
 export default router;

@@ -1,8 +1,7 @@
 import { eq, sql, and } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import { reviewMedia, reviews } from '../../db/schema.js';
-import { products } from '../../db/schema.js';
-import { vendors } from '../../db/schema.js';
+import { products, vendors } from '../../db/schema.js';
 
 export const getAllProductReviews = async (req, res) => {
   try {

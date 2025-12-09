@@ -1,9 +1,6 @@
 import { Router } from 'express';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
-import {
-  getAllProductReviews,
-  getAllProducts,
-} from '../../controllers/product.controller.js';
+import { getAllProductReviews } from '../../controllers/product.controller.js';
 import {
   fetchProductDetailById,
   fetchProductPrice,
@@ -12,7 +9,6 @@ import {
 } from '../../controllers/Vendor.controllers.js';
 
 const router = Router();
-router.get('/info', confirmUserToken, getAllProducts);
 router.get('/reviews/:productid', confirmUserToken, getAllProductReviews);
 router.get('/info', confirmUserToken, fetchProductDetailById);
 router.post('/product_price/:productId', confirmUserToken, fetchProductPrice);

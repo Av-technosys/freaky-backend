@@ -48,7 +48,7 @@ export const signup = async (req, res) => {
   try {
     const createUserCommand = new SignUpCommand(createUserParams);
     const createUserResult = await cognito.send(createUserCommand);
-    console.log(bodyData)
+
     const [userRes] = await db
       .insert(users)
       .values({
@@ -85,7 +85,6 @@ export const signup = async (req, res) => {
         .from(vendorInvites)
         .where(eq(vendorInvites.email, email));
 
-
       // vendorInviteId: integer('vendor_invite_id')
       //   .generatedAlwaysAsIdentity()
       //   .primaryKey(),
@@ -96,7 +95,6 @@ export const signup = async (req, res) => {
       // status: varchar('status', { length: 255 }),
       // permissions: text('permissions').array(),
       // employeeCode: varchar('employee_code', { length: 100 }),
-
 
       if (vendorInviteRes) {
         const [vendorEmployeesRes] = await db
@@ -228,11 +226,11 @@ export const signin = async (req, res) => {
 
     return res.json({
       message: 'Login successful.',
-      accessToken: response.AuthenticationResult.AccessToken,
-      idToken: response.AuthenticationResult.IdToken,
-      refreshToken: response.AuthenticationResult.RefreshToken,
-      expiresIn: response.AuthenticationResult.ExpiresIn,
-      tokenType: response.AuthenticationResult.TokenType,
+      accessToken: response.AuthenticationResult?.AccessToken,
+      idToken: response.AuthenticationResult?.IdToken,
+      refreshToken: response.AuthenticationResult?.RefreshToken,
+      expiresIn: response.AuthenticationResult?.ExpiresIn,
+      tokenType: response.AuthenticationResult?.TokenType,
     });
   } catch (err) {
     console.error(err);

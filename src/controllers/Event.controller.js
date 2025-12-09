@@ -7,6 +7,7 @@ import {
   eventType,
   productTypes,
   featuredEvents,
+  featuredBanners,
 } from '../../db/schema.js';
 
 export const createEvent = async (req, res) => {
@@ -220,6 +221,23 @@ export const getFeaturedEvents = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch featured events',
+    });
+  }
+};
+
+export const getBanner = async (req, res) => {
+  const response = await db.select().from(featuredBanners);
+  try {
+    return res.status(200).json({
+      success: true,
+      message: 'All Banner fetched successfully',
+      data: response,
+    });
+  } catch (error) {
+    console.error('Error', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };

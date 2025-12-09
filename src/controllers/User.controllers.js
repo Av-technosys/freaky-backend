@@ -687,35 +687,28 @@ export const deleteReview = async (req, res) => {
 };
 
 export const getUserNotification = async (req, res) => {
-  const response = await db.select().from(userNotifications);
   try {
-    return res.status(200).json({
-      success: true,
-      message: 'Review deleted successfully',
-      data: response,
-    });
-  } catch (error) {
-    console.error('Error deleting review:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to delete review',
-    });
-  }
-};
+    const { page, limit } = req.query;
+    const userId = req.user['custom:user_id'];
+    const pageLimit = Number(limit) || 2;
+    const offset = (Number(page) - 1) * pageLimit;
 
-export const getBanner = async (req, res) => {
-  const response = await db.select().from(featuredBanners);
-  try {
+    const response = await db
+      .select()
+      .from(userNotifications)
+      .where(eq(userNotifications.userId, userId))
+      .limit(pageLimit)
+      .offset(offset);
     return res.status(200).json({
       success: true,
-      message: 'Review deleted successfully',
+      message: 'Notification fetched successfully..',
       data: response,
     });
   } catch (error) {
     console.error('Error deleting review:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to delete review',
+      message: 'Internal Server error',
     });
   }
 };

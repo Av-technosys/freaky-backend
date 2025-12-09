@@ -8,7 +8,6 @@ import {
   addReview,
   deleteReview,
   getUserNotification,
-  getBanner,
   markNotificationAsRead,
 } from '../../controllers/User.controllers.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -31,5 +30,5 @@ router.post('/add_review', confirmUserToken, addReview);
 router.delete('/review', confirmUserToken, deleteReview);
 router.get('/notification', confirmUserToken, getUserNotification);
 router.post('/notification/read', confirmUserToken, markNotificationAsRead);
-router.get('/banner', confirmUserToken, getBanner);
+
 export default router;

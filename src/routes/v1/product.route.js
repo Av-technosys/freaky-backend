@@ -9,7 +9,6 @@ import {
 } from '../../controllers/Vendor.controllers.js';
 
 const router = Router();
-
 router.get('/reviews/:productid', confirmUserToken, getAllProductReviews);
 router.get('/info', confirmUserToken, fetchProductDetailById);
 router.post('/product_price/:productId', confirmUserToken, fetchProductPrice);

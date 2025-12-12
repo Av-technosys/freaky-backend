@@ -6,6 +6,7 @@ import {
   fetchProductPrice,
   getAllProductsByCategoryId,
   productByTypeId,
+  updateProductById,
 } from '../../controllers/Vendor.controllers.js';
 
 const router = Router();
@@ -18,5 +19,6 @@ router.get(
   confirmUserToken,
   getAllProductsByCategoryId
 );
+router.put('/update/:productId', confirmUserToken, updateProductById);
 
 export default router;

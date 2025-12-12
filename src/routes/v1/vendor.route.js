@@ -12,6 +12,9 @@ import {
   fetchVendorProducts,
   getAllFeaturedCategories,
   getVendorInfo,
+  listAllPriceBooksById,
+  deletePriceBookById,
+  updatePriceBookById,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -44,6 +47,9 @@ router.put('/ownership_details', confirmUserToken, updateOwnershipDetails);
 router.get('/vendor_products/:vendorId', confirmUserToken, fetchVendorProducts);
 
 router.get('/featured_categories', confirmUserToken, getAllFeaturedCategories);
+router.get('/pricebooks/:id', confirmUserToken, listAllPriceBooksById);
+router.delete('/pricebook/:priceBookId', confirmUserToken, deletePriceBookById);
+router.put('/pricebook/:priceBookId', confirmUserToken, updatePriceBookById);
 router.get('/products', confirmUserToken, getAllProducts);
 
 export default router;

@@ -8,6 +8,9 @@ import {
   products,
   featuredCategorys,
   featuredProdcuts,
+  priceBook,
+  priceBookEntry,
+  productMedia,
 } from '../../db/schema.js';
 import { commonVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
@@ -862,5 +865,160 @@ export const fetchProductDetailById = async (req, res) => {
     return res
       .status(500)
       .json({ error: 'Server error fetching product price.' });
+  }
+};
+
+export const listAllPriceBooksById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const priceBooks = await db
+      .select()
+      .from(priceBookEntry)
+      .innerJoin(priceBook, eq(priceBookEntry.priceBookingId, priceBook.id))
+      .where(eq(priceBookEntry.productId, id))
+      .then((data) => data.map((data) => data.price_book));
+
+    if (!priceBooks.length) {
+      return res.status(404).json({ message: 'No PriceBooks found.' });
+    }
+
+    return res.status(200).json({
+      message: 'All priceBooks fetched successfully...',
+      data: priceBooks,
+    });
+  } catch (error) {
+    console.error('Price Fetch Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const deletePriceBookById = async (req, res) => {
+  try {
+    const { priceBookId } = req.params;
+    const existing = await db
+      .select()
+      .from(priceBook)
+      .where(eq(priceBook.id, priceBookId));
+
+    if (!existing.length) {
+      return res.status(404).json({ message: 'Pricebook not found.' });
+    }
+
+    await db.delete(priceBook).where(eq(priceBook.id, priceBookId));
+
+    return res.status(200).json({
+      message: 'Pricebook deleted successfully!',
+    });
+  } catch (error) {
+    console.error('PriceBook Delete Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error.' });
+  }
+};
+
+export const updatePriceBookById = async (req, res) => {
+  try {
+    const { priceBookId } = req.params;
+    const { pricingType, listPrice, currency } = req.body;
+
+    const pricEntry = await db
+      .select()
+      .from(priceBookEntry)
+      .where(eq(priceBookEntry.priceBookingId, priceBookId));
+
+    if (pricEntry.length > 0) {
+      await db
+        .update(products)
+        .set({ pricingType: pricingType || 'tier' })
+        .where(eq(products.productId, pricEntry[0].productId));
+      if (pricingType == 'flat') {
+        await db
+          .delete(priceBookEntry)
+          .where(
+            eq(priceBookEntry.priceBookingId, pricEntry[0].priceBookingId)
+          );
+        await db.insert(priceBookEntry).values({
+          productId: pricEntry[0].productId,
+          priceBookingId: priceBookId,
+          currency: currency || 'USD',
+          lowerSlab: null,
+          upperSlab: null,
+          listPrice: listPrice,
+          discountPercentage: null,
+          salePrice: listPrice,
+        });
+      } else {
+        await db
+          .delete(priceBookEntry)
+          .where(
+            eq(priceBookEntry.priceBookingId, pricEntry[0].priceBookingId)
+          );
+
+        await Promise.all(
+          req.body.map(async (data) => {
+            return await db.insert(priceBookEntry).values({
+              productId: pricEntry[0].productId,
+              priceBookingId: priceBookId,
+              currency: data.currency,
+              lowerSlab: data.lowerSlab,
+              upperSlab: data.upperSlab,
+              listPrice: data.listPrice,
+              discountPercentage: data.discountPercentage,
+              salePrice: data.salePrice,
+            });
+          })
+        );
+      }
+    } else {
+      return res.status(404).json({
+        message: 'No Price entry found.',
+      });
+    }
+
+    return res.status(200).json({
+      message: 'priceBook updated successfully!',
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateProductById = async (req, res) => {
+  try {
+    const data = req.body;
+    const { productId } = req.params;
+    const product = await db
+      .select()
+      .from(products)
+      .where(eq(products.productId, productId));
+
+    if (!product.length) {
+      return res.status(404).json({
+        message: 'No service found.',
+      });
+    }
+
+    await db
+      .update(products)
+      .set({ bannerImage: data.bannerImage })
+      .where(eq(products.productId, productId))
+      .returning();
+
+    await Promise.all(
+      data?.additionalImages?.map(async (mediaUrl, index) => {
+        return await db.insert(productMedia).values({
+          productId: productId,
+          mediaType: 'image',
+          mediaUrl: mediaUrl,
+          sortOrder: index,
+        });
+      })
+    );
+    return res.status(200).json({
+      message: 'Service updated successfully!',
+    });
+  } catch (error) {
+    console.error('PriceBook Delete Error:', error);
+    return res.status(500).json({ error: error.message });
   }
 };

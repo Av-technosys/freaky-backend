@@ -953,20 +953,18 @@ export const updatePriceBookById = async (req, res) => {
             eq(priceBookEntry.priceBookingId, pricEntry[0].priceBookingId)
           );
 
-        await Promise.all(
-          req.body.map(async (data) => {
-            return await db.insert(priceBookEntry).values({
-              productId: pricEntry[0].productId,
-              priceBookingId: priceBookId,
-              currency: data.currency,
-              lowerSlab: data.lowerSlab,
-              upperSlab: data.upperSlab,
-              listPrice: data.listPrice,
-              discountPercentage: data.discountPercentage,
-              salePrice: data.salePrice,
-            });
-          })
-        );
+        const Entries = req.body.map((data) => ({
+          productId: pricEntry[0].productId,
+          priceBookingId: priceBookId,
+          currency: data.currency,
+          lowerSlab: data.lowerSlab,
+          upperSlab: data.upperSlab,
+          listPrice: data.listPrice,
+          discountPercentage: data.discountPercentage,
+          salePrice: data.salePrice,
+        }));
+
+        await db.insert(priceBookEntry).values(Entries);
       }
     } else {
       return res.status(404).json({
@@ -1004,16 +1002,17 @@ export const updateProductById = async (req, res) => {
       .where(eq(products.productId, productId))
       .returning();
 
-    await Promise.all(
-      data?.additionalImages?.map(async (mediaUrl, index) => {
-        return await db.insert(productMedia).values({
-          productId: productId,
-          mediaType: 'image',
-          mediaUrl: mediaUrl,
-          sortOrder: index,
-        });
-      })
-    );
+    const additionalImages = data?.additionalImages?.map((mediaUrl, index) => {
+      return {
+        productId: productId,
+        mediaType: 'image',
+        mediaUrl: mediaUrl,
+        sortOrder: index,
+      };
+    });
+
+    await db.insert(productMedia).values(additionalImages);
+
     return res.status(200).json({
       message: 'Service updated successfully!',
     });

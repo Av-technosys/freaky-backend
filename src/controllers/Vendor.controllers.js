@@ -984,6 +984,7 @@ export const updatePriceBookById = async (req, res) => {
 export const updateProductById = async (req, res) => {
   try {
     const data = req.body;
+
     const { productId } = req.params;
     const product = await db
       .select()
@@ -998,26 +999,74 @@ export const updateProductById = async (req, res) => {
 
     await db
       .update(products)
-      .set({ bannerImage: data.bannerImage })
+      .set({
+        bannerImage: data.bannerImage,
+        title: data.title,
+        description: data.description,
+        type: data.type,
+      })
       .where(eq(products.productId, productId))
       .returning();
+    if (data.videoUrl) {
+      const existingVideo = await db
+        .select()
+        .from(productMedia)
+        .where(
+          and(
+            eq(productMedia.productId, productId),
+            eq(productMedia.mediaType, 'video')
+          )
+        )
+        .limit(1);
 
-    const additionalImages = data?.additionalImages?.map((mediaUrl, index) => {
-      return {
-        productId: productId,
-        mediaType: 'image',
-        mediaUrl: mediaUrl,
-        sortOrder: index,
-      };
-    });
+      if (existingVideo.length > 0) {
+        await db
+          .update(productMedia)
+          .set({ mediaUrl: data.videoUrl })
+          .where(eq(productMedia.id, existingVideo[0].id));
+      } else {
+        await db.insert(productMedia).values({
+          productId: productId,
+          mediaType: 'video',
+          mediaUrl: data.videoUrl,
+          sortOrder: 3,
+        });
+      }
+    }
 
-    await db.insert(productMedia).values(additionalImages);
+    if (data.additionalImages.length > 0) {
+      const additionalImages = data?.additionalImages?.map(
+        (mediaUrl, index) => {
+          return {
+            productId: productId,
+            mediaType: 'image',
+            mediaUrl: mediaUrl,
+            sortOrder: index,
+          };
+        }
+      );
+
+      await db.insert(productMedia).values(additionalImages);
+    }
 
     return res.status(200).json({
       message: 'Service updated successfully!',
     });
   } catch (error) {
-    console.error('PriceBook Delete Error:', error);
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteProductImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.delete(productMedia).where(eq(productMedia.id, id));
+    return res.status(200).json({
+      message: 'Image deleted successfully!',
+    });
+  } catch (error) {
+    console.error(' Error:', error);
     return res.status(500).json({ error: error.message });
   }
 };

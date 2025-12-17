@@ -11,6 +11,7 @@ import {
   priceBook,
   priceBookEntry,
   productMedia,
+  vendorDocuments,
 } from '../../db/schema.js';
 import { commonVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
@@ -19,7 +20,6 @@ import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identi
 export const getVendorInfo = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('id is; ', id);
     const [vendorData] = await db
       .select()
       .from(vendors)
@@ -277,7 +277,12 @@ export const createVendorEmpRequest = async (req, res) => {
 
 export const updateAddressDetails = async (req, res) => {
   try {
-    const vendorId = req.user['custom:vendor_ids'];
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+    if (!vendorId) {
+      return res.status(504).json({ msg: 'Vendor not found' });
+    }
+
     const {
       streetAddressLine1,
       streetAddressLine2,
@@ -311,7 +316,12 @@ export const updateAddressDetails = async (req, res) => {
 
 export const updateBankDetails = async (req, res) => {
   try {
-    const vendorId = req.user['custom:vendor_ids'];
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+
+    if (!vendorId) {
+      return res.status(504).json({ msg: 'Vendor not found' });
+    }
     const { bankAccountNumber, bankName, payeeName, routingNumber, bankType } =
       req.body;
 
@@ -338,7 +348,11 @@ export const updateBankDetails = async (req, res) => {
 
 export const updateContactDetails = async (req, res) => {
   try {
-    const vendorId = req.user['custom:vendor_ids'];
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+    if (!vendorId) {
+      return res.status(504).json({ msg: 'Vendor not found' });
+    }
     const {
       primaryContactName,
       primaryEmail,
@@ -371,7 +385,11 @@ export const updateContactDetails = async (req, res) => {
 
 export const updateCompanyDetails = async (req, res) => {
   try {
-    const vendorId = req.user['custom:vendor_ids'];
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+    if (!vendorId) {
+      return res.status(504).json({ msg: 'Vendor not found' });
+    }
     const {
       businessName,
       websiteURL,
@@ -382,6 +400,7 @@ export const updateCompanyDetails = async (req, res) => {
       einNumber,
       businessType,
       incorporationDate,
+      companyLogo,
     } = req.body;
 
     await db
@@ -396,6 +415,7 @@ export const updateCompanyDetails = async (req, res) => {
         einNumber: einNumber,
         businessType: businessType,
         incorporationDate: new Date(incorporationDate),
+        logoUrl: companyLogo,
       })
       .where(eq(vendors.vendorId, vendorId));
 
@@ -411,7 +431,7 @@ export const updateCompanyDetails = async (req, res) => {
 export const updateOwnershipDetails = async (req, res) => {
   try {
     const vendorId = req.user['custom:vendor_ids'];
-    const ownershipDetailsArray = req.body;
+    const ownershipDetailsArray = req.body.owners;
 
     if (!vendorId) {
       return res.status(504).json({ msg: 'Vendor not found' });
@@ -1068,5 +1088,114 @@ export const deleteProductImage = async (req, res) => {
   } catch (error) {
     console.error(' Error:', error);
     return res.status(500).json({ error: error.message });
+  }
+};
+
+export const createVendorDocument = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    const { Documents } = req.body;
+
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'Vendor not found.',
+      });
+    }
+
+    if (Documents.length > 0) {
+      const documents = Documents?.map((doc) => {
+        return {
+          vendorId: vendorId,
+          documentUrl: doc.filePath,
+          documentType: doc.documentType,
+        };
+      });
+
+      await db.insert(vendorDocuments).values(documents);
+      return res.status(200).json({
+        message: 'Vendor document created successfully!',
+      });
+    } else {
+      return res.status(404).json({
+        message: 'please upload document.',
+      });
+    }
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteVendorDocument = async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (url) {
+      await db
+        .delete(vendorDocuments)
+        .where(eq(vendorDocuments.documentUrl, url));
+      return res.status(200).json({
+        message: 'Vendor document deleted successfully!',
+      });
+    }
+    return res.status(504).json({
+      message: 'document not found!',
+    });
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const getVendorDocuments = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'Vendor not found.',
+      });
+    }
+
+    const response = await db
+      .select()
+      .from(vendorDocuments)
+      .where(eq(vendorDocuments.vendorId, vendorId))
+      .orderBy(asc(vendorDocuments.documentType));
+    return res.status(200).json({
+      message: 'Vendor document fetched successfully!',
+      data: response,
+    });
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const getVendorCompanyInfo = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+    const [vendorData] = await db
+      .select()
+      .from(vendors)
+      .innerJoin(
+        vendorOwnerships,
+        eq(vendors.vendorId, vendorOwnerships.vendorId)
+      )
+      .where(eq(vendors.vendorId, vendorId));
+
+    return res.status(200).json({
+      message: 'Vendor info fetched successfully.',
+      data: vendorData,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
   }
 };

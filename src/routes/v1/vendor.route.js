@@ -19,6 +19,7 @@ import {
   getVendorCompanyInfo,
   getVendorDocuments,
   deleteVendorDocument,
+  getVendorOwnershipDetails,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -59,5 +60,6 @@ router.post('/create_document', confirmUserToken, createVendorDocument);
 router.get('/documents', confirmUserToken, getVendorDocuments);
 router.delete('/document/:id', confirmUserToken, deleteVendorDocument);
 router.get('/vendor_details', confirmUserToken, getVendorCompanyInfo);
+router.get('/ownership_details', confirmUserToken, getVendorOwnershipDetails);
 
 export default router;

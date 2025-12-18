@@ -1186,15 +1186,35 @@ export const getVendorCompanyInfo = async (req, res) => {
     const [vendorData] = await db
       .select()
       .from(vendors)
-      .innerJoin(
-        vendorOwnerships,
-        eq(vendors.vendorId, vendorOwnerships.vendorId)
-      )
       .where(eq(vendors.vendorId, vendorId));
 
     return res.status(200).json({
       message: 'Vendor info fetched successfully.',
       data: vendorData,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getVendorOwnershipDetails = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+    const ownershipData = await db
+      .select()
+      .from(vendorOwnerships)
+      .where(eq(vendorOwnerships.vendorId, vendorId));
+
+    return res.status(200).json({
+      message: 'Vendor ownership details fetched successfully.',
+      data: ownershipData,
     });
   } catch (error) {
     console.error('Error: ', error);

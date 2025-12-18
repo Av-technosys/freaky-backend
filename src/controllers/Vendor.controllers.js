@@ -395,9 +395,7 @@ export const updateCompanyDetails = async (req, res) => {
       websiteURL,
       logoUrl,
       description,
-      DBAname,
       legalEntityName,
-      einNumber,
       businessType,
       incorporationDate,
       companyLogo,
@@ -410,9 +408,7 @@ export const updateCompanyDetails = async (req, res) => {
         websiteURL: websiteURL,
         logoUrl: logoUrl,
         description: description,
-        DBAname: DBAname,
         legalEntityName: legalEntityName,
-        einNumber: einNumber,
         businessType: businessType,
         incorporationDate: new Date(incorporationDate),
         logoUrl: companyLogo,
@@ -430,8 +426,9 @@ export const updateCompanyDetails = async (req, res) => {
 
 export const updateOwnershipDetails = async (req, res) => {
   try {
-    const vendorId = req.user['custom:vendor_ids'];
-    const ownershipDetailsArray = req.body.owners;
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+    const ownershipDetailsArray = req.body;
 
     if (!vendorId) {
       return res.status(504).json({ msg: 'Vendor not found' });
@@ -451,7 +448,7 @@ export const updateOwnershipDetails = async (req, res) => {
           city: ownership.city,
           state: ownership.state,
           country: ownership.country,
-          isAuthorizedSignature: ownership.isAuthorizedSignature,
+          isAuthorizedSignature: ownership.isAuthorizedSignature || false,
           ownershipPercentage: ownership.ownershipPercentage,
         };
 
@@ -1095,7 +1092,7 @@ export const createVendorDocument = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
     const vendorId = parsed?.vendorId;
-    const { Documents } = req.body;
+    const allDocuments = req.body;
 
     if (!vendorId) {
       return res.status(404).json({
@@ -1103,8 +1100,8 @@ export const createVendorDocument = async (req, res) => {
       });
     }
 
-    if (Documents.length > 0) {
-      const documents = Documents?.map((doc) => {
+    if (allDocuments.length > 0) {
+      const documents = allDocuments?.map((doc) => {
         return {
           vendorId: vendorId,
           documentUrl: doc.filePath,
@@ -1129,18 +1126,23 @@ export const createVendorDocument = async (req, res) => {
 
 export const deleteVendorDocument = async (req, res) => {
   try {
-    const { url } = req.query;
-    if (url) {
-      await db
-        .delete(vendorDocuments)
-        .where(eq(vendorDocuments.documentUrl, url));
-      return res.status(200).json({
-        message: 'Vendor document deleted successfully!',
-      });
+    const { id } = req.params;
+    if (id) {
+      const document = await db
+        .select()
+        .from(vendorDocuments)
+        .where(eq(vendorDocuments.id, id));
+      if (document.length > 0) {
+        await db.delete(vendorDocuments).where(eq(vendorDocuments.id, id));
+        return res.status(200).json({
+          message: 'Vendor document deleted successfully!',
+        });
+      } else {
+        return res.status(504).json({
+          message: 'document not found!',
+        });
+      }
     }
-    return res.status(504).json({
-      message: 'document not found!',
-    });
   } catch (error) {
     console.error(' Error:', error);
     return res.status(500).json({ error: error.message });

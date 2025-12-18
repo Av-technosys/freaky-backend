@@ -759,7 +759,7 @@ export const getPersonalInfo = async (req, res) => {
 export const updateDetails = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
-    const { firstName, lastName, email, number, profileImage } = req.body;
+    const { firstName, lastName, number, profileImage } = req.body;
 
     if (userId) {
       await db
@@ -767,7 +767,6 @@ export const updateDetails = async (req, res) => {
         .set({
           firstName: firstName,
           lastName: lastName,
-          email: email,
           number: number,
           profileImage: profileImage,
         })

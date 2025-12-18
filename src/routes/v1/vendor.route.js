@@ -57,7 +57,7 @@ router.put('/pricebook/:priceBookId', confirmUserToken, updatePriceBookById);
 router.get('/products', confirmUserToken, getAllProducts);
 router.post('/create_document', confirmUserToken, createVendorDocument);
 router.get('/documents', confirmUserToken, getVendorDocuments);
-router.delete('/document', confirmUserToken, deleteVendorDocument);
+router.delete('/document/:id', confirmUserToken, deleteVendorDocument);
 router.get('/vendor_details', confirmUserToken, getVendorCompanyInfo);
 
 export default router;

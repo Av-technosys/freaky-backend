@@ -20,6 +20,11 @@ import {
   getVendorDocuments,
   deleteVendorDocument,
   getVendorOwnershipDetails,
+  updateVendorDocument,
+  getVendorEmployees,
+  updateEmployeePermissions,
+  deleteVendorEmployee,
+  createVendorEmployeeInvitation,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -57,9 +62,22 @@ router.delete('/pricebook/:priceBookId', confirmUserToken, deletePriceBookById);
 router.put('/pricebook/:priceBookId', confirmUserToken, updatePriceBookById);
 router.get('/products', confirmUserToken, getAllProducts);
 router.post('/create_document', confirmUserToken, createVendorDocument);
+router.put('/update_document', confirmUserToken, updateVendorDocument);
 router.get('/documents', confirmUserToken, getVendorDocuments);
 router.delete('/document/:id', confirmUserToken, deleteVendorDocument);
 router.get('/vendor_details', confirmUserToken, getVendorCompanyInfo);
 router.get('/ownership_details', confirmUserToken, getVendorOwnershipDetails);
+router.get('/employees', confirmUserToken, getVendorEmployees);
+router.post(
+  '/invite_employees',
+  confirmUserToken,
+  createVendorEmployeeInvitation
+);
+router.put(
+  '/update_employee_permissions/:employeeId',
+  confirmUserToken,
+  updateEmployeePermissions
+);
+router.delete('/employee/:id', confirmUserToken, deleteVendorEmployee);
 
 export default router;

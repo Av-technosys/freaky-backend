@@ -1,6 +1,5 @@
 import { vendors } from '../db/schema.js';
 
-
 export const commonVendorFields = {
   vendorId: vendors.vendorId,
   legalEntityName: vendors.legalEntityName,
@@ -27,6 +26,20 @@ export const commonVendorFields = {
   streetAddressLine1: vendors.streetAddressLine1,
   streetAddressLine2: vendors.streetAddressLine2,
   zipcode: vendors.zipcode,
+  city: vendors.city,
+  state: vendors.state,
+  country: vendors.country,
+
+  createdAt: vendors.createdAt,
+  updatedAt: vendors.updatedAt,
+};
+
+export const reducedVendorFields = {
+  vendorId: vendors.vendorId,
+  legalEntityName: vendors.legalEntityName,
+  logoUrl: vendors.logoUrl,
+
+  // Address (match EXACTLY)
   city: vendors.city,
   state: vendors.state,
   country: vendors.country,

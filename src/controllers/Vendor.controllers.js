@@ -15,7 +15,7 @@ import {
   users,
   vendorInvites,
 } from '../../db/schema.js';
-import { commonVendorFields } from '../../const/vendor.js';
+import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
 
@@ -68,6 +68,8 @@ export const listAllVendors = async (req, res) => {
     const { text = '', page = 1, page_size = 12 } = req.query;
     const limit = Number(page_size);
     const offset = (Number(page) - 1) * limit;
+
+    console.log('text', text);
 
     const filters = [];
 
@@ -1355,5 +1357,98 @@ export const deleteVendorEmployee = async (req, res) => {
   } catch (error) {
     console.error(' Error:', error);
     return res.status(500).json({ error: error.message });
+  }
+};
+
+export const getVendorInvites = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+
+    const userInviteFound = await db
+      .select()
+      .from(vendorInvites)
+      .where(eq(vendorInvites.email, userEmail));
+
+    if (userInviteFound.length > 0) {
+      const vendorInfo = (
+        await Promise.all(
+          userInviteFound.map((user) =>
+            db.select().from(vendors).where(eq(vendors.vendorId, user.vendorId))
+          )
+        )
+      ).flat();
+
+      return res.status(200).json({
+        message: 'Vendor invites fetched successfully.',
+        data: vendorInfo,
+      });
+    }
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const requestedVendors = async (req, res) => {
+  try {
+    const { text = '' } = req.query;
+    const filters = [];
+
+    if (text && text.trim() !== '') {
+      filters.push(ilike(vendors.legalEntityName, `%${text}%`));
+    }
+
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
+    const Vendors = await db
+      .select(reducedVendorFields)
+      .from(vendors)
+      .where(whereClause);
+
+    return res.json({
+      message: 'Vendors fetched successfully',
+      data: Vendors,
+    });
+  } catch (error) {
+    console.error('Error listing vendors:', error);
+    return res.status(500).json({
+      message: 'Internal server error',
+    });
+  }
+};
+
+export const createVendorEmployeeRequest = async (req, res) => {
+  try {
+    const userId = req.user?.['custom:user_id'];
+    const { vendorId } = req.body;
+
+    const EmployeeRequest = await db
+      .select()
+      .from(vendorEmployeeRequests)
+      .where(
+        and(
+          eq(vendorEmployeeRequests.userId, userId),
+          eq(vendorEmployeeRequests.vendorId, vendorId)
+        )
+      );
+
+    if (EmployeeRequest.length > 0) {
+      return res.status(409).json({
+        message: 'Request already exists',
+      });
+    } else {
+      await db
+        .insert(vendorEmployeeRequests)
+        .values({ vendorId: vendorId, userId: userId });
+
+      return res.status(200).json({
+        message: 'Employee request created successfully',
+      });
+    }
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };

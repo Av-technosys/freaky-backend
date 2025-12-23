@@ -25,6 +25,9 @@ import {
   updateEmployeePermissions,
   deleteVendorEmployee,
   createVendorEmployeeInvitation,
+  getVendorInvites,
+  requestedVendors,
+  createVendorEmployeeRequest,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -82,5 +85,8 @@ router.put(
   updateEmployeePermissions
 );
 router.delete('/employee/:id', confirmUserToken, deleteVendorEmployee);
+router.get('/invites', confirmUserToken, getVendorInvites);
+router.get('/request_vendors', requestedVendors);
+router.post('/employee_request', confirmUserToken, createVendorEmployeeRequest);
 
 export default router;

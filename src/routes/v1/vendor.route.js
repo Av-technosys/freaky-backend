@@ -24,7 +24,8 @@ import {
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
 import { getAllProducts } from '../../controllers/product.controller.js';
-
+import vendorReviewRouter from './vendor.review.router.js';
+import vendorcalendarRouter from './vendor.calendar.route.js';
 const router = Router();
 
 router.get(
@@ -33,6 +34,8 @@ router.get(
   checkVendor,
   getCompanyProfile
 );
+router.use('/review', vendorReviewRouter);
+router.use('/calendar', vendorcalendarRouter);
 router.get('/details/:id', confirmUserToken, getVendorInfo);
 router.get('/vendors', listAllVendors);
 router.post('/cerate_vendor', confirmUserToken, createVendor);

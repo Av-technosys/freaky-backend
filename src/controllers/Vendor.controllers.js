@@ -12,6 +12,8 @@ import {
   priceBookEntry,
   productMedia,
   vendorDocuments,
+  users,
+  vendorInvites,
 } from '../../db/schema.js';
 import { commonVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
@@ -1124,6 +1126,31 @@ export const createVendorDocument = async (req, res) => {
   }
 };
 
+export const updateVendorDocument = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    const { id, documentType, documentURL } = req.body;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'Vendor not found.',
+      });
+    }
+
+    await db
+      .update(vendorDocuments)
+      .set({ documentType: documentType, documentUrl: documentURL })
+      .where(eq(vendorDocuments.id, id));
+
+    return res.status(200).json({
+      message: 'Vendor document updated successfully!',
+    });
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 export const deleteVendorDocument = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1219,5 +1246,114 @@ export const getVendorOwnershipDetails = async (req, res) => {
   } catch (error) {
     console.error('Error: ', error);
     return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getVendorEmployees = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+    const employees = await db
+      .select()
+      .from(vendorEmployees)
+      .innerJoin(users, eq(vendorEmployees.userId, users.userId))
+      .where(eq(vendorEmployees.vendorId, vendorId));
+
+    return res.status(200).json({
+      message: 'Vendor employees fetched successfully.',
+      data: employees,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const createVendorEmployeeInvitation = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    const invitations = req.body;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+
+    if (invitations.length > 0) {
+      const invites = invitations.map((invit) => {
+        return {
+          vendorId: vendorId,
+          email: invit.email,
+          permissions: invit.permissions.map((permssion) => permssion.value),
+        };
+      });
+      await db.insert(vendorInvites).values(invites);
+    }
+
+    return res.status(200).json({
+      message: 'Employees Invitation sent successfully.',
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateEmployeePermissions = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    const permissions = req.body;
+    const { employeeId } = req.params;
+
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+
+    await db
+      .update(vendorEmployees)
+      .set({ permissions: permissions })
+      .where(eq(vendorEmployees.vendorEmployeeId, employeeId));
+    return res.status(200).json({
+      message: 'Permissions updated  successfully.',
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteVendorEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (id) {
+      const employee = await db
+        .select()
+        .from(vendorEmployees)
+        .where(eq(vendorEmployees.vendorEmployeeId, id));
+      if (employee.length > 0) {
+        await db
+          .delete(vendorEmployees)
+          .where(eq(vendorEmployees.vendorEmployeeId, id));
+        return res.status(200).json({
+          message: 'Vendor employee deleted successfully!',
+        });
+      } else {
+        return res.status(504).json({
+          message: 'employee not found!',
+        });
+      }
+    }
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
   }
 };

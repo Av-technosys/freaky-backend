@@ -12,6 +12,7 @@ import {
   mediaTypeEnum,
   productPricingTypeEnum,
   productTypeEnum,
+  vendorStatusEnum,
 } from './enum.js';
 
 export const vendor = pgTable('vendor', {
@@ -62,7 +63,7 @@ export const vendor = pgTable('vendor', {
   ),
 
   // status
-  status: boolean('status').default(true).notNull(),
+  status: vendorStatusEnum('status').notNull().default('pending_admin'),
   isAdminApproved: boolean('is_admin_approved').default(false).notNull(),
 
   createdAt: timestamp('created_at').defaultNow(),

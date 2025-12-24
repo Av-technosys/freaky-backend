@@ -279,7 +279,7 @@ export const createVendorEmpRequest = async (req, res) => {
 
 // export const createVendorEmpRequest = async (req, res) => {};
 
-export const updateAddressDetails = async (req, res) => {
+export const updateOrCreateAddressDetails = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user['custom:vendor_ids']);
     const vendorId = parsed.vendorId;
@@ -296,29 +296,48 @@ export const updateAddressDetails = async (req, res) => {
       zipcode,
     } = req.body;
 
-    await db
-      .update(vendors)
-      .set({
-        streetAddressLine1: streetAddressLine1,
-        streetAddressLine2: streetAddressLine2,
-        city: city,
-        state: state,
-        zipcode: zipcode,
-        country: country,
-      })
-      .where(eq(vendors.vendorId, vendorId))
-      .returning();
+    if (req.method === 'PUT') {
+      await db
+        .update(vendors)
+        .set({
+          streetAddressLine1: streetAddressLine1,
+          streetAddressLine2: streetAddressLine2,
+          city: city,
+          state: state,
+          zipcode: zipcode,
+          country: country,
+        })
+        .where(eq(vendors.vendorId, vendorId))
+        .returning();
 
-    return res.status(200).json({
-      message: 'Address Details Updated successfully.',
-    });
+      return res.status(200).json({
+        message: 'Address Details Updated successfully.',
+      });
+    } else {
+      await db
+        .insert(vendors)
+        .values({
+          streetAddressLine1: streetAddressLine1,
+          streetAddressLine2: streetAddressLine2,
+          city: city,
+          state: state,
+          zipcode: zipcode,
+          country: country,
+        })
+        .where(eq(vendors.vendorId, vendorId))
+        .returning();
+
+      return res.status(200).json({
+        message: 'Address Details Created successfully.',
+      });
+    }
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
-export const updateBankDetails = async (req, res) => {
+export const updateOrCreateBankDetails = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user['custom:vendor_ids']);
     const vendorId = parsed.vendorId;
@@ -329,28 +348,46 @@ export const updateBankDetails = async (req, res) => {
     const { bankAccountNumber, bankName, payeeName, routingNumber, bankType } =
       req.body;
 
-    await db
-      .update(vendors)
-      .set({
-        bankAccountNumber: bankAccountNumber,
-        bankName: bankName,
-        payeeName: payeeName,
-        routingNumber: routingNumber,
-        bankType: bankType,
-      })
-      .where(eq(vendors.vendorId, vendorId))
-      .returning();
+    if (req.method === 'PUT') {
+      await db
+        .update(vendors)
+        .set({
+          bankAccountNumber: bankAccountNumber,
+          bankName: bankName,
+          payeeName: payeeName,
+          routingNumber: routingNumber,
+          bankType: bankType,
+        })
+        .where(eq(vendors.vendorId, vendorId))
+        .returning();
 
-    return res.status(200).json({
-      message: 'Bank Details Updated successfully.',
-    });
+      return res.status(200).json({
+        message: 'Bank Details Updated successfully.',
+      });
+    } else {
+      await db
+        .insert(vendors)
+        .values({
+          bankAccountNumber: bankAccountNumber,
+          bankName: bankName,
+          payeeName: payeeName,
+          routingNumber: routingNumber,
+          bankType: bankType,
+        })
+        .where(eq(vendors.vendorId, vendorId))
+        .returning();
+
+      return res.status(200).json({
+        message: 'Bank Details Created successfully.',
+      });
+    }
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
-export const updateContactDetails = async (req, res) => {
+export const updateOrCreateContactDetails = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user['custom:vendor_ids']);
     const vendorId = parsed.vendorId;
@@ -366,28 +403,46 @@ export const updateContactDetails = async (req, res) => {
       facebookURL,
     } = req.body;
 
-    await db
-      .update(vendors)
-      .set({
-        primaryContactName: primaryContactName,
-        primaryEmail: primaryEmail,
-        primaryPhoneNumber: primaryPhoneNumber,
-        instagramURL: instagramURL,
-        youtubeURL: youtubeURL,
-        facebookURL: facebookURL,
-      })
-      .where(eq(vendors.vendorId, vendorId));
+    if (req.method === 'PUT') {
+      await db
+        .update(vendors)
+        .set({
+          primaryContactName: primaryContactName,
+          primaryEmail: primaryEmail,
+          primaryPhoneNumber: primaryPhoneNumber,
+          instagramURL: instagramURL,
+          youtubeURL: youtubeURL,
+          facebookURL: facebookURL,
+        })
+        .where(eq(vendors.vendorId, vendorId));
 
-    return res.status(200).json({
-      message: 'Contact Details Updated successfully.',
-    });
+      return res.status(200).json({
+        message: 'Contact Details Updated successfully.',
+      });
+    } else {
+      await db
+        .insert(vendors)
+        .values({
+          primaryContactName: primaryContactName,
+          primaryEmail: primaryEmail,
+          primaryPhoneNumber: primaryPhoneNumber,
+          instagramURL: instagramURL,
+          youtubeURL: youtubeURL,
+          facebookURL: facebookURL,
+        })
+        .where(eq(vendors.vendorId, vendorId));
+
+      return res.status(200).json({
+        message: 'Contact Details Created successfully.',
+      });
+    }
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
-export const updateCompanyDetails = async (req, res) => {
+export const updateOrCreateCompanyDetails = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user['custom:vendor_ids']);
     const vendorId = parsed.vendorId;
@@ -405,30 +460,50 @@ export const updateCompanyDetails = async (req, res) => {
       companyLogo,
     } = req.body;
 
-    await db
-      .update(vendors)
-      .set({
-        businessName: businessName,
-        websiteURL: websiteURL,
-        logoUrl: logoUrl,
-        description: description,
-        legalEntityName: legalEntityName,
-        businessType: businessType,
-        incorporationDate: new Date(incorporationDate),
-        logoUrl: companyLogo,
-      })
-      .where(eq(vendors.vendorId, vendorId));
+    if (req.method === 'PUT') {
+      await db
+        .update(vendors)
+        .set({
+          businessName: businessName,
+          websiteURL: websiteURL,
+          logoUrl: logoUrl,
+          description: description,
+          legalEntityName: legalEntityName,
+          businessType: businessType,
+          incorporationDate: new Date(incorporationDate),
+          logoUrl: companyLogo,
+        })
+        .where(eq(vendors.vendorId, vendorId));
 
-    return res.status(200).json({
-      message: 'Company Details Updated successfully.',
-    });
+      return res.status(200).json({
+        message: 'Company Details Updated successfully.',
+      });
+    } else {
+      await db
+        .insert(vendors)
+        .values({
+          businessName: businessName,
+          websiteURL: websiteURL,
+          logoUrl: logoUrl,
+          description: description,
+          legalEntityName: legalEntityName,
+          businessType: businessType,
+          incorporationDate: new Date(incorporationDate),
+          logoUrl: companyLogo,
+        })
+        .where(eq(vendors.vendorId, vendorId));
+
+      return res.status(200).json({
+        message: 'Company Details Created successfully.',
+      });
+    }
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: error.message });
   }
 };
 
-export const updateOwnershipDetails = async (req, res) => {
+export const updateOrCreateOwnershipDetails = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user['custom:vendor_ids']);
     const vendorId = parsed.vendorId;
@@ -461,16 +536,21 @@ export const updateOwnershipDetails = async (req, res) => {
             .update(vendorOwnerships)
             .set(ownerDetailSave)
             .where(eq(vendorOwnerships.id, ownerId));
+
+          return res.status(200).json({
+            message: 'Ownership Details Updated successfully.',
+          });
         } else {
           await db
             .insert(vendorOwnerships)
             .values({ ...ownerDetailSave, vendorId: vendorId });
+
+          return res.status(200).json({
+            message: 'Ownership Details Created successfully.',
+          });
         }
       })
     );
-    return res.status(200).json({
-      message: 'Ownership Details Updated successfully.',
-    });
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: error.message });

@@ -23,11 +23,12 @@ import {
   getVendorInvites,
   requestedVendors,
   createVendorEmployeeRequest,
-  updateOrCreateAddressDetails,
-  updateOrCreateBankDetails,
-  updateOrCreateContactDetails,
-  updateOrCreateCompanyDetails,
-  updateOrCreateOwnershipDetails,
+  updateBankDetails,
+  updateContactDetails,
+  updateCompanyDetails,
+  updateOwnershipDetails,
+  updateAddressDetails,
+  createCompanyDetails,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -53,25 +54,13 @@ router.post(
   confirmUserToken,
   createVendorEmpRequest
 );
-router.put('/address', confirmUserToken, updateOrCreateAddressDetails);
-router.put('/bank_details', confirmUserToken, updateOrCreateBankDetails);
-router.put('/contact_details', confirmUserToken, updateOrCreateContactDetails);
-router.put('/company_details', confirmUserToken, updateOrCreateCompanyDetails);
-router.put(
-  '/ownership_details',
-  confirmUserToken,
-  updateOrCreateOwnershipDetails
-);
+router.put('/address', confirmUserToken, updateAddressDetails);
+router.put('/bank_details', confirmUserToken, updateBankDetails);
+router.put('/contact_details', confirmUserToken, updateContactDetails);
+router.put('/company_details', confirmUserToken, updateCompanyDetails);
+router.put('/ownership_details', confirmUserToken, updateOwnershipDetails);
 
-router.post('/address', confirmUserToken, updateOrCreateAddressDetails);
-router.post('/bank_details', confirmUserToken, updateOrCreateBankDetails);
-router.post('/contact_details', confirmUserToken, updateOrCreateContactDetails);
-router.post('/company_details', confirmUserToken, updateOrCreateCompanyDetails);
-router.post(
-  '/ownership_details',
-  confirmUserToken,
-  updateOrCreateOwnershipDetails
-);
+router.post('/company_details', confirmUserToken, createCompanyDetails);
 // router.get("/create_vendor_emp_request", createVendorEmpRequest);
 
 router.get('/vendor_products/:vendorId', confirmUserToken, fetchVendorProducts);

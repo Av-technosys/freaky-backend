@@ -279,14 +279,8 @@ export const createVendorEmpRequest = async (req, res) => {
 
 // export const createVendorEmpRequest = async (req, res) => {};
 
-export const updateOrCreateAddressDetails = async (req, res) => {
+export const updateAddressDetails = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user['custom:vendor_ids']);
-    const vendorId = parsed.vendorId;
-    if (!vendorId) {
-      return res.status(504).json({ msg: 'Vendor not found' });
-    }
-
     const {
       streetAddressLine1,
       streetAddressLine2,
@@ -296,48 +290,34 @@ export const updateOrCreateAddressDetails = async (req, res) => {
       zipcode,
     } = req.body;
 
-    if (req.method === 'PUT') {
-      await db
-        .update(vendors)
-        .set({
-          streetAddressLine1: streetAddressLine1,
-          streetAddressLine2: streetAddressLine2,
-          city: city,
-          state: state,
-          zipcode: zipcode,
-          country: country,
-        })
-        .where(eq(vendors.vendorId, vendorId))
-        .returning();
-
-      return res.status(200).json({
-        message: 'Address Details Updated successfully.',
-      });
-    } else {
-      await db
-        .insert(vendors)
-        .values({
-          streetAddressLine1: streetAddressLine1,
-          streetAddressLine2: streetAddressLine2,
-          city: city,
-          state: state,
-          zipcode: zipcode,
-          country: country,
-        })
-        .where(eq(vendors.vendorId, vendorId))
-        .returning();
-
-      return res.status(200).json({
-        message: 'Address Details Created successfully.',
-      });
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+    if (!vendorId) {
+      return res.status(504).json({ msg: 'Vendor not found' });
     }
+    await db
+      .update(vendors)
+      .set({
+        streetAddressLine1: streetAddressLine1,
+        streetAddressLine2: streetAddressLine2,
+        city: city,
+        state: state,
+        zipcode: zipcode,
+        country: country,
+      })
+      .where(eq(vendors.vendorId, vendorId))
+      .returning();
+
+    return res.status(200).json({
+      message: 'Address Details Updated successfully.',
+    });
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
-export const updateOrCreateBankDetails = async (req, res) => {
+export const updateBankDetails = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user['custom:vendor_ids']);
     const vendorId = parsed.vendorId;
@@ -348,46 +328,28 @@ export const updateOrCreateBankDetails = async (req, res) => {
     const { bankAccountNumber, bankName, payeeName, routingNumber, bankType } =
       req.body;
 
-    if (req.method === 'PUT') {
-      await db
-        .update(vendors)
-        .set({
-          bankAccountNumber: bankAccountNumber,
-          bankName: bankName,
-          payeeName: payeeName,
-          routingNumber: routingNumber,
-          bankType: bankType,
-        })
-        .where(eq(vendors.vendorId, vendorId))
-        .returning();
+    await db
+      .update(vendors)
+      .set({
+        bankAccountNumber: bankAccountNumber,
+        bankName: bankName,
+        payeeName: payeeName,
+        routingNumber: routingNumber,
+        bankType: bankType,
+      })
+      .where(eq(vendors.vendorId, vendorId))
+      .returning();
 
-      return res.status(200).json({
-        message: 'Bank Details Updated successfully.',
-      });
-    } else {
-      await db
-        .insert(vendors)
-        .values({
-          bankAccountNumber: bankAccountNumber,
-          bankName: bankName,
-          payeeName: payeeName,
-          routingNumber: routingNumber,
-          bankType: bankType,
-        })
-        .where(eq(vendors.vendorId, vendorId))
-        .returning();
-
-      return res.status(200).json({
-        message: 'Bank Details Created successfully.',
-      });
-    }
+    return res.status(200).json({
+      message: 'Bank Details Updated successfully.',
+    });
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
-export const updateOrCreateContactDetails = async (req, res) => {
+export const updateContactDetails = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user['custom:vendor_ids']);
     const vendorId = parsed.vendorId;
@@ -403,46 +365,28 @@ export const updateOrCreateContactDetails = async (req, res) => {
       facebookURL,
     } = req.body;
 
-    if (req.method === 'PUT') {
-      await db
-        .update(vendors)
-        .set({
-          primaryContactName: primaryContactName,
-          primaryEmail: primaryEmail,
-          primaryPhoneNumber: primaryPhoneNumber,
-          instagramURL: instagramURL,
-          youtubeURL: youtubeURL,
-          facebookURL: facebookURL,
-        })
-        .where(eq(vendors.vendorId, vendorId));
+    await db
+      .update(vendors)
+      .set({
+        primaryContactName: primaryContactName,
+        primaryEmail: primaryEmail,
+        primaryPhoneNumber: primaryPhoneNumber,
+        instagramURL: instagramURL,
+        youtubeURL: youtubeURL,
+        facebookURL: facebookURL,
+      })
+      .where(eq(vendors.vendorId, vendorId));
 
-      return res.status(200).json({
-        message: 'Contact Details Updated successfully.',
-      });
-    } else {
-      await db
-        .insert(vendors)
-        .values({
-          primaryContactName: primaryContactName,
-          primaryEmail: primaryEmail,
-          primaryPhoneNumber: primaryPhoneNumber,
-          instagramURL: instagramURL,
-          youtubeURL: youtubeURL,
-          facebookURL: facebookURL,
-        })
-        .where(eq(vendors.vendorId, vendorId));
-
-      return res.status(200).json({
-        message: 'Contact Details Created successfully.',
-      });
-    }
+    return res.status(200).json({
+      message: 'Contact Details Updated successfully.',
+    });
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 };
 
-export const updateOrCreateCompanyDetails = async (req, res) => {
+export const updateCompanyDetails = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user['custom:vendor_ids']);
     const vendorId = parsed.vendorId;
@@ -460,50 +404,30 @@ export const updateOrCreateCompanyDetails = async (req, res) => {
       companyLogo,
     } = req.body;
 
-    if (req.method === 'PUT') {
-      await db
-        .update(vendors)
-        .set({
-          businessName: businessName,
-          websiteURL: websiteURL,
-          logoUrl: logoUrl,
-          description: description,
-          legalEntityName: legalEntityName,
-          businessType: businessType,
-          incorporationDate: new Date(incorporationDate),
-          logoUrl: companyLogo,
-        })
-        .where(eq(vendors.vendorId, vendorId));
+    await db
+      .update(vendors)
+      .set({
+        businessName: businessName,
+        websiteURL: websiteURL,
+        logoUrl: logoUrl,
+        description: description,
+        legalEntityName: legalEntityName,
+        businessType: businessType,
+        incorporationDate: new Date(incorporationDate),
+        logoUrl: companyLogo,
+      })
+      .where(eq(vendors.vendorId, vendorId));
 
-      return res.status(200).json({
-        message: 'Company Details Updated successfully.',
-      });
-    } else {
-      await db
-        .insert(vendors)
-        .values({
-          businessName: businessName,
-          websiteURL: websiteURL,
-          logoUrl: logoUrl,
-          description: description,
-          legalEntityName: legalEntityName,
-          businessType: businessType,
-          incorporationDate: new Date(incorporationDate),
-          logoUrl: companyLogo,
-        })
-        .where(eq(vendors.vendorId, vendorId));
-
-      return res.status(200).json({
-        message: 'Company Details Created successfully.',
-      });
-    }
+    return res.status(200).json({
+      message: 'Company Details Updated successfully.',
+    });
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: error.message });
   }
 };
 
-export const updateOrCreateOwnershipDetails = async (req, res) => {
+export const updateOwnershipDetails = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user['custom:vendor_ids']);
     const vendorId = parsed.vendorId;
@@ -556,6 +480,44 @@ export const updateOrCreateOwnershipDetails = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+export const createCompanyDetails = async (req, res) => {
+  try {
+    const {
+      businessName,
+      websiteURL,
+      logoUrl,
+      description,
+      legalEntityName,
+      businessType,
+      einNumber,
+      DBAname,
+      incorporationDate,
+    } = req.body;
+
+    const userId = req.user?.['custom:user_id'];
+    await db.insert(vendors).values({
+      einNumber: einNumber,
+      DBAname: DBAname,
+      businessName: businessName,
+      websiteURL: websiteURL,
+      logoUrl: logoUrl,
+      description: description,
+      legalEntityName: legalEntityName,
+      businessType: businessType,
+      incorporationDate: new Date(incorporationDate),
+      createdBy: userId,
+    });
+
+    return res.status(200).json({
+      message: 'Address Details Created successfully.',
+    });
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
 export const fetchVendorProducts = async (req, res) => {
   try {
     const { vendorId } = req.params;
@@ -1461,6 +1423,11 @@ export const getVendorInvites = async (req, res) => {
       return res.status(200).json({
         message: 'Vendor invites fetched successfully.',
         data: vendorInfo,
+      });
+    } else {
+      return res.status(200).json({
+        message: 'No vendor Invites found.',
+        data: [],
       });
     }
   } catch (error) {

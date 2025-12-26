@@ -35,6 +35,8 @@ import { confirmUserToken } from '../../middleware/user.middleware.js';
 import { getAllProducts } from '../../controllers/product.controller.js';
 import vendorReviewRouter from './vendor.review.router.js';
 import vendorcalendarRouter from './vendor.calendar.route.js';
+import { signUp } from '../../utils/email/signup.js';
+import { sendMail } from '../../utils/email/sendMail.js';
 const router = Router();
 
 router.get(
@@ -77,6 +79,18 @@ router.delete('/document/:id', confirmUserToken, deleteVendorDocument);
 router.get('/vendor_details', confirmUserToken, getVendorCompanyInfo);
 router.get('/ownership_details', confirmUserToken, getVendorOwnershipDetails);
 router.get('/employees', confirmUserToken, getVendorEmployees);
+router.post('/send_mail', async (req, res) => {
+  const { name, email, number } = req.body;
+  console.log(name, email, number);
+  try {
+    await sendMail({ to: email, subject: 'Hello', body: signUp(name) });
+    console.log('mail sent');
+    return res.status(200).json({ message: 'Mail sent successfully.' });
+  } catch (error) {
+    console.log(' error: ', error);
+    return res.status(500).json({ message: 'Error sending mail.' });
+  }
+});
 router.post(
   '/invite_employees',
   confirmUserToken,

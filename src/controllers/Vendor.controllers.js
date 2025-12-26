@@ -490,11 +490,15 @@ export const createCompanyDetails = async (req, res) => {
       description,
       legalEntityName,
       businessType,
+      einNumber,
+      DBAname,
       incorporationDate,
     } = req.body;
 
     const userId = req.user?.['custom:user_id'];
     await db.insert(vendors).values({
+      einNumber: einNumber,
+      DBAname: DBAname,
       businessName: businessName,
       websiteURL: websiteURL,
       logoUrl: logoUrl,

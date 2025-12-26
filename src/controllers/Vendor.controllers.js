@@ -1424,6 +1424,11 @@ export const getVendorInvites = async (req, res) => {
         message: 'Vendor invites fetched successfully.',
         data: vendorInfo,
       });
+    } else {
+      return res.status(200).json({
+        message: 'No vendor Invites found.',
+        data: [],
+      });
     }
   } catch (error) {
     console.error('Error: ', error);

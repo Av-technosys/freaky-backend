@@ -52,6 +52,7 @@ export const priceBook = vendor.priceBook;
 export const priceBookEntry = vendor.priceBookEntry;
 export const productTypes = vendor.productType;
 export const products = vendor.product;
+export const productReviewSummary = vendor.productReviewSummary;
 export const featuredCategorys = vendor.featuredCategory;
 export const featuredProdcuts = vendor.featuredProdcut;
 export const productMedia = vendor.productMedia;

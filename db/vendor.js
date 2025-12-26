@@ -279,6 +279,19 @@ export const product = pgTable('product', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+export const productReviewSummary = pgTable('product_review_summary', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+  productId: integer('product_id').references(() => product.productId),
+  reviewCount: integer('review_count').default(0),
+  rating1: integer('rating1').default(0),
+  rating2: integer('rating2').default(0),
+  rating3: integer('rating3').default(0),
+  rating4: integer('rating4').default(0),
+  rating5: integer('rating5').default(0),
+  averageRating: integer('average_rating').default(0),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 export const featuredCategory = pgTable('featured_category', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   name: varchar('name', { length: 255 }), // -- e.g. 'featured', 'most_popular', 'trending'

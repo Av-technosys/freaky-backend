@@ -71,6 +71,13 @@
       "when": 1766560703901,
       "tag": "0009_sparkling_karen_page",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1766743015643,
+      "tag": "0010_sparkling_jazinda",
+      "breakpoints": true
     }
   ]
 }

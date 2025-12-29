@@ -1343,6 +1343,43 @@ export const getVendorCompanyInfo = async (req, res) => {
   }
 };
 
+export const updatePriceBookEnteries = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+    const pricebooks = req.body;
+
+    await Promise.all(
+      pricebooks.map(async (pricebook) => {
+        await db
+          .update(priceBookEntry)
+          .set({
+            lowerSlab: pricebook.lowerSlab,
+            upperSlab: pricebook.upperSlab,
+
+            listPrice: pricebook.listPrice,
+
+            discountPercentage: pricebook.discountPercentage,
+            salePrice: pricebook.salePrice,
+          })
+          .where(eq(priceBookEntry.id, pricebook.priceBookEntryId));
+      })
+    );
+
+    return res.status(200).json({
+      message: 'Vendor ownership details fetched successfully.',
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const getVendorOwnershipDetails = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user?.['custom:vendor_ids']);

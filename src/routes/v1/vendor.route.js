@@ -37,6 +37,7 @@ import { confirmUserToken } from '../../middleware/user.middleware.js';
 import { getAllProducts } from '../../controllers/product.controller.js';
 import vendorReviewRouter from './vendor.review.router.js';
 import vendorcalendarRouter from './vendor.calendar.route.js';
+import vendorPricebookRouter from './vendor.pricrbook.route.js';
 import { signUp } from '../../utils/email/signup.js';
 import { sendMail } from '../../utils/email/sendMail.js';
 const router = Router();
@@ -49,6 +50,7 @@ router.get(
 );
 router.use('/review', vendorReviewRouter);
 router.use('/calendar', vendorcalendarRouter);
+router.use('/pricebook', vendorPricebookRouter);
 router.get('/details/:id', confirmUserToken, getVendorInfo);
 router.get('/vendors', listAllVendors);
 router.post('/cerate_vendor', confirmUserToken, createVendor);

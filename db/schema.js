@@ -13,6 +13,7 @@ export const bookingStatusEnum = enums.bookingStatusEnum;
 export const paymentStatusEnum = enums.paymentStatusEnum;
 export const eventStatusEnum = enums.eventStatusEnum;
 export const vendorStatusEnum = enums.vendorStatusEnum;
+export const eventProductOrderSourceEnum = enums.eventProductOrderSourceEnum;
 
 export const userTypes = user.userType;
 export const users = user.user;

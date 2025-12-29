@@ -10,6 +10,7 @@ import {
   getFeaturedEvents,
   editEvent,
   getBanner,
+  createEventExternalBooking,
 } from '../../controllers/Event.controller.js';
 
 const router = Router();
@@ -27,5 +28,10 @@ router.delete('/eventitem/:itemId', confirmUserToken, deleteEventItem);
 router.get('/featured', confirmUserToken, getFeaturedEvents);
 router.get('/banner', confirmUserToken, getBanner);
 router.get('/:eventid?', confirmUserToken, listAllEvents);
+router.get(
+  '/create_external_booking',
+  confirmUserToken,
+  createEventExternalBooking
+);
 
 export default router;

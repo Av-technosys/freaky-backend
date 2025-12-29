@@ -29,6 +29,8 @@ import {
   updateOwnershipDetails,
   updateAddressDetails,
   createCompanyDetails,
+  listAllPriceBooks,
+  listAllServicesByPricebookId,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -68,7 +70,9 @@ router.post('/company_details', confirmUserToken, createCompanyDetails);
 router.get('/vendor_products/:vendorId', confirmUserToken, fetchVendorProducts);
 
 router.get('/featured_categories', confirmUserToken, getAllFeaturedCategories);
-router.get('/pricebooks/:id', confirmUserToken, listAllPriceBooksById);
+router.get('/pricebooks', confirmUserToken, listAllPriceBooks);
+router.get('/pricebooks/:id', confirmUserToken, listAllServicesByPricebookId);
+// router.get('/pricebooks/:id', confirmUserToken, listAllPriceBooksById);
 router.delete('/pricebook/:priceBookId', confirmUserToken, deletePriceBookById);
 router.put('/pricebook/:priceBookId', confirmUserToken, updatePriceBookById);
 router.get('/products', confirmUserToken, getAllProducts);

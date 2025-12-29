@@ -20,6 +20,11 @@ export const userSubscriptionStatusEnum = pgEnum('subscription_status', [
   'cancelled',
 ]);
 
+export const eventProductOrderSourceEnum = pgEnum(
+  'event_product_order_source',
+  ['application', 'external']
+);
+
 export const bookingStatusEnum = pgEnum('booking_status', [
   'created', // user created event (cart/draft)
   'booked', // user submitted booking

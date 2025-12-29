@@ -113,6 +113,45 @@ export const listAllEvents = async (req, res) => {
   }
 };
 
+export const createEventExternalBooking = async (req, res) => {
+  const {
+    productId,
+    prodcutName,
+    productImage,
+    quantity,
+    lowerSlab,
+    upperSlab,
+    startDate,
+    endDate,
+    color,
+    productPrice,
+    serviceBookingPrice,
+  } = req.body;
+  try {
+    const response = await db.insert(eventProductType).values({
+      productId,
+      prodcutName,
+      productImage,
+      quantity,
+      lowerSlab,
+      upperSlab,
+      startDate,
+      endDate,
+      color,
+      productPrice,
+      serviceBookingPrice,
+    });
+
+    return res.status(200).json({
+      message: 'Event Type Fetched Successfully...',
+      data: response,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const listAllEventTypes = async (req, res) => {
   try {
     const response = await db

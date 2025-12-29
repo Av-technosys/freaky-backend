@@ -1,0 +1,2 @@
+CREATE TYPE "public"."event_product_order_source" AS ENUM('application', 'external');--> statement-breakpoint
+ALTER TABLE "event_product_order" ADD COLUMN "source" "event_product_order_source" DEFAULT 'application';

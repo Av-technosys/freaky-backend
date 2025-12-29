@@ -10,6 +10,7 @@ import { product, productType } from './vendor.js';
 import { user } from './user.js';
 import {
   bookingStatusEnum,
+  eventProductOrderSourceEnum,
   eventStatusEnum,
   paymentStatusEnum,
 } from './enum.js';
@@ -113,7 +114,7 @@ export const eventProductOrder = pgTable('event_product_order', {
 
   productName: varchar('product_name', { length: 255 }),
   productImage: varchar('product_image', { length: 255 }),
-
+  source: eventProductOrderSourceEnum('source').default('application'),
   vnedorName: varchar('vnedor_name', { length: 255 }),
 
   quantity: integer('quantity').default(1).notNull(),

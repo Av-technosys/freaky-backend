@@ -931,6 +931,80 @@ export const fetchProductDetailById = async (req, res) => {
   }
 };
 
+export const listAllPriceBooks = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+
+    const priceBooks = await db
+      .select({
+        id: priceBook.id,
+        isStandard: priceBook.isStandard,
+        isActive: priceBook.isActive,
+        name: priceBook.name,
+      })
+      .from(priceBook)
+      .where(eq(priceBook.vendorId, vendorId));
+
+    return res.status(200).json({
+      message: 'All priceBooks fetched successfully...',
+      data: priceBooks,
+    });
+  } catch (error) {
+    console.error('PriceBooks Fetch Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const listAllServicesByPricebookId = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+
+    const pricebookId = req.params.id;
+
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+
+    const productsData = await db
+      .select({
+        productId: products.productId,
+        productName: products.title,
+        pricingType: products.pricingType,
+        priceBookEntryId: priceBookEntry.id,
+        currency: priceBookEntry.currency,
+        lowerSlab: priceBookEntry.lowerSlab,
+        upperSlab: priceBookEntry.upperSlab,
+        listPrice: priceBookEntry.listPrice,
+        discountPercentage: priceBookEntry.discountPercentage,
+        salePrice: priceBookEntry.salePrice,
+      })
+      .from(products)
+      .leftJoin(
+        priceBookEntry,
+        eq(products.productId, priceBookEntry.productId)
+      )
+      .where(eq(priceBookEntry.priceBookingId, pricebookId));
+
+    return res.status(200).json({
+      message: 'All services fetched successfully...',
+      data: productsData,
+    });
+  } catch (error) {
+    console.error('PriceBooks Fetch Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 export const listAllPriceBooksById = async (req, res) => {
   try {
     const { id } = req.params;

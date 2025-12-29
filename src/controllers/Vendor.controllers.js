@@ -905,12 +905,6 @@ export const fetchProductDetailById = async (req, res) => {
         ),
     });
 
-    if (productPrices.length === 0) {
-      return res
-        .status(404)
-        .json({ error: 'Price not found for this product.' });
-    }
-
     const productMediaList = await db.query.productMedia.findMany({
       where: (t, { eq }) => eq(t.productId, Number(productId)),
     });
@@ -919,8 +913,8 @@ export const fetchProductDetailById = async (req, res) => {
       message: 'Product details & price fetched successfully',
       product: {
         ...product,
-        prices: productPrices,
-        media: productMediaList,
+        prices: productPrices || [],
+        media: productMediaList || [],
       },
     });
   } catch (err) {

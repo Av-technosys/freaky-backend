@@ -31,6 +31,7 @@ import {
   createCompanyDetails,
   listAllPriceBooks,
   listAllServicesByPricebookId,
+  getAllProdcutMeta,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -51,10 +52,11 @@ router.get(
 router.use('/review', vendorReviewRouter);
 router.use('/calendar', vendorcalendarRouter);
 router.use('/pricebook', vendorPricebookRouter);
+
 router.get('/details/:id', confirmUserToken, getVendorInfo);
+router.get('/product/meta', confirmUserToken, getAllProdcutMeta);
 router.get('/vendors', listAllVendors);
 router.post('/cerate_vendor', confirmUserToken, createVendor);
-// router.get('/update_vendor', confirmUserToken, updateVendor);
 router.post(
   '/create_vendor_emp_request',
   confirmUserToken,
@@ -67,14 +69,11 @@ router.put('/company_details', confirmUserToken, updateCompanyDetails);
 router.put('/ownership_details', confirmUserToken, updateOwnershipDetails);
 
 router.post('/company_details', confirmUserToken, createCompanyDetails);
-// router.get("/create_vendor_emp_request", createVendorEmpRequest);
 
 router.get('/vendor_products/:vendorId', confirmUserToken, fetchVendorProducts);
 
 router.get('/featured_categories', confirmUserToken, getAllFeaturedCategories);
-router.get('/pricebooks', confirmUserToken, listAllPriceBooks);
 router.get('/pricebooks/:id', confirmUserToken, listAllServicesByPricebookId);
-// router.get('/pricebooks/:id', confirmUserToken, listAllPriceBooksById);
 router.delete('/pricebook/:priceBookId', confirmUserToken, deletePriceBookById);
 router.put('/pricebook/:priceBookId', confirmUserToken, updatePriceBookById);
 router.get('/products', confirmUserToken, getAllProducts);

@@ -19,6 +19,29 @@ import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
 
+export const getAllProdcutMeta = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+
+    const productsMeta = await db
+      .select({
+        productId: products.productId,
+        productName: products.title,
+        bannerImage: products.bannerImage,
+      })
+      .from(products)
+      .where(eq(products.vendorId, vendorId));
+    return res.status(200).json({
+      message: 'ProdcutMeta info fetched successfully.',
+      data: productsMeta,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const getVendorInfo = async (req, res) => {
   try {
     const { id } = req.params;

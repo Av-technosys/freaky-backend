@@ -29,6 +29,8 @@ import {
   updateOwnershipDetails,
   updateAddressDetails,
   createCompanyDetails,
+  getVendorNotifications,
+  getAllSearchItems,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -105,5 +107,7 @@ router.delete('/employee/:id', confirmUserToken, deleteVendorEmployee);
 router.get('/invites', confirmUserToken, getVendorInvites);
 router.get('/request_vendors', requestedVendors);
 router.post('/employee_request', confirmUserToken, createVendorEmployeeRequest);
+router.get('/notifications', confirmUserToken, getVendorNotifications);
+router.get('/searchitems', confirmUserToken, getAllSearchItems);
 
 export default router;

@@ -14,10 +14,12 @@ import {
   vendorDocuments,
   users,
   vendorInvites,
+  vendorNotifications,
 } from '../../db/schema.js';
 import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { eventBooking } from '../../db/event.js';
 
 export const getVendorInfo = async (req, res) => {
   try {
@@ -1490,6 +1492,94 @@ export const createVendorEmployeeRequest = async (req, res) => {
 
       return res.status(200).json({
         message: 'Employee request created successfully',
+      });
+    }
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const getVendorNotifications = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+
+    if (!vendorId) {
+      return res.status(404).json({ message: 'No vendor found.' });
+    }
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const notifications = await db.execute(sql`
+  SELECT *,
+         COUNT(*) OVER()::int AS total_count
+  FROM vendor_notification
+  WHERE vendor_id = ${vendorId}
+  LIMIT ${limit} OFFSET ${offset}
+`);
+
+    const totalCount = notifications[0]?.total_count || 0;
+
+    const hasNextPage = offset + notifications.length < totalCount;
+
+    return res.status(200).json({
+      message: 'Notifications fetched successfully.',
+      data: notifications,
+      hasNextPage,
+      nextPage: hasNextPage ? page + 1 : null,
+      totalCount,
+    });
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getAllSearchItems = async (req, res) => {
+  try {
+    const { search_type, search_text } = req.query;
+    if (search_type === 'bookings') {
+      const userId = req.user?.['custom:user_id'];
+      const filters = [];
+
+      filters.push(eq(eventBooking.userId, userId));
+
+      if (search_text && search_text.trim() !== '') {
+        filters.push(ilike(eventBooking.name, `%${search_text}%`));
+      }
+
+      const searchItems = await db
+        .select()
+        .from(eventBooking)
+        .where(and(...filters));
+
+      return res.status(200).json({
+        message: 'Search items fetched successfully.',
+        data: searchItems,
+      });
+    } else {
+      const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+      const vendorId = parsed?.vendorId;
+      const filters = [];
+
+      filters.push(eq(products.vendorId, vendorId));
+
+      if (search_text && search_text.trim() !== '') {
+        filters.push(ilike(products.title, `%${search_text}%`));
+      }
+
+      const searchItems = await db
+        .select()
+        .from(products)
+        .where(and(...filters));
+      return res.status(200).json({
+        message: 'Search items fetched successfully.',
+        data: searchItems,
       });
     }
   } catch (error) {

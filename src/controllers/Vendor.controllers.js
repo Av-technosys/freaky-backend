@@ -8,15 +8,20 @@ import {
   products,
   featuredCategorys,
   featuredProdcuts,
+  priceBook,
+  priceBookEntry,
+  productMedia,
+  vendorDocuments,
+  users,
+  vendorInvites,
 } from '../../db/schema.js';
-import { commonVendorFields } from '../../const/vendor.js';
+import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
 
 export const getVendorInfo = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('id is; ', id);
     const [vendorData] = await db
       .select()
       .from(vendors)
@@ -63,6 +68,8 @@ export const listAllVendors = async (req, res) => {
     const { text = '', page = 1, page_size = 12 } = req.query;
     const limit = Number(page_size);
     const offset = (Number(page) - 1) * limit;
+
+    console.log('text', text);
 
     const filters = [];
 
@@ -274,7 +281,6 @@ export const createVendorEmpRequest = async (req, res) => {
 
 export const updateAddressDetails = async (req, res) => {
   try {
-    const vendorId = req.user['custom:vendor_ids'];
     const {
       streetAddressLine1,
       streetAddressLine2,
@@ -284,6 +290,11 @@ export const updateAddressDetails = async (req, res) => {
       zipcode,
     } = req.body;
 
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+    if (!vendorId) {
+      return res.status(504).json({ msg: 'Vendor not found' });
+    }
     await db
       .update(vendors)
       .set({
@@ -308,7 +319,12 @@ export const updateAddressDetails = async (req, res) => {
 
 export const updateBankDetails = async (req, res) => {
   try {
-    const vendorId = req.user['custom:vendor_ids'];
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+
+    if (!vendorId) {
+      return res.status(504).json({ msg: 'Vendor not found' });
+    }
     const { bankAccountNumber, bankName, payeeName, routingNumber, bankType } =
       req.body;
 
@@ -335,7 +351,11 @@ export const updateBankDetails = async (req, res) => {
 
 export const updateContactDetails = async (req, res) => {
   try {
-    const vendorId = req.user['custom:vendor_ids'];
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+    if (!vendorId) {
+      return res.status(504).json({ msg: 'Vendor not found' });
+    }
     const {
       primaryContactName,
       primaryEmail,
@@ -368,17 +388,20 @@ export const updateContactDetails = async (req, res) => {
 
 export const updateCompanyDetails = async (req, res) => {
   try {
-    const vendorId = req.user['custom:vendor_ids'];
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+    if (!vendorId) {
+      return res.status(504).json({ msg: 'Vendor not found' });
+    }
     const {
       businessName,
       websiteURL,
       logoUrl,
       description,
-      DBAname,
       legalEntityName,
-      einNumber,
       businessType,
       incorporationDate,
+      companyLogo,
     } = req.body;
 
     await db
@@ -388,11 +411,10 @@ export const updateCompanyDetails = async (req, res) => {
         websiteURL: websiteURL,
         logoUrl: logoUrl,
         description: description,
-        DBAname: DBAname,
         legalEntityName: legalEntityName,
-        einNumber: einNumber,
         businessType: businessType,
         incorporationDate: new Date(incorporationDate),
+        logoUrl: companyLogo,
       })
       .where(eq(vendors.vendorId, vendorId));
 
@@ -407,7 +429,8 @@ export const updateCompanyDetails = async (req, res) => {
 
 export const updateOwnershipDetails = async (req, res) => {
   try {
-    const vendorId = req.user['custom:vendor_ids'];
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
     const ownershipDetailsArray = req.body;
 
     if (!vendorId) {
@@ -428,7 +451,7 @@ export const updateOwnershipDetails = async (req, res) => {
           city: ownership.city,
           state: ownership.state,
           country: ownership.country,
-          isAuthorizedSignature: ownership.isAuthorizedSignature,
+          isAuthorizedSignature: ownership.isAuthorizedSignature || false,
           ownershipPercentage: ownership.ownershipPercentage,
         };
 
@@ -437,21 +460,64 @@ export const updateOwnershipDetails = async (req, res) => {
             .update(vendorOwnerships)
             .set(ownerDetailSave)
             .where(eq(vendorOwnerships.id, ownerId));
+
+          return res.status(200).json({
+            message: 'Ownership Details Updated successfully.',
+          });
         } else {
           await db
             .insert(vendorOwnerships)
             .values({ ...ownerDetailSave, vendorId: vendorId });
+
+          return res.status(200).json({
+            message: 'Ownership Details Created successfully.',
+          });
         }
       })
     );
-    return res.status(200).json({
-      message: 'Ownership Details Updated successfully.',
-    });
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: error.message });
   }
 };
+
+export const createCompanyDetails = async (req, res) => {
+  try {
+    const {
+      businessName,
+      websiteURL,
+      logoUrl,
+      description,
+      legalEntityName,
+      businessType,
+      einNumber,
+      DBAname,
+      incorporationDate,
+    } = req.body;
+
+    const userId = req.user?.['custom:user_id'];
+    await db.insert(vendors).values({
+      einNumber: einNumber,
+      DBAname: DBAname,
+      businessName: businessName,
+      websiteURL: websiteURL,
+      logoUrl: logoUrl,
+      description: description,
+      legalEntityName: legalEntityName,
+      businessType: businessType,
+      incorporationDate: new Date(incorporationDate),
+      createdBy: userId,
+    });
+
+    return res.status(200).json({
+      message: 'Address Details Created successfully.',
+    });
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
 export const fetchVendorProducts = async (req, res) => {
   try {
     const { vendorId } = req.params;
@@ -862,5 +928,574 @@ export const fetchProductDetailById = async (req, res) => {
     return res
       .status(500)
       .json({ error: 'Server error fetching product price.' });
+  }
+};
+
+export const listAllPriceBooksById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const priceBooks = await db
+      .select()
+      .from(priceBookEntry)
+      .innerJoin(priceBook, eq(priceBookEntry.priceBookingId, priceBook.id))
+      .where(eq(priceBookEntry.productId, id))
+      .then((data) => data.map((data) => data.price_book));
+
+    if (!priceBooks.length) {
+      return res.status(404).json({ message: 'No PriceBooks found.' });
+    }
+
+    return res.status(200).json({
+      message: 'All priceBooks fetched successfully...',
+      data: priceBooks,
+    });
+  } catch (error) {
+    console.error('Price Fetch Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const deletePriceBookById = async (req, res) => {
+  try {
+    const { priceBookId } = req.params;
+    const existing = await db
+      .select()
+      .from(priceBook)
+      .where(eq(priceBook.id, priceBookId));
+
+    if (!existing.length) {
+      return res.status(404).json({ message: 'Pricebook not found.' });
+    }
+
+    await db.delete(priceBook).where(eq(priceBook.id, priceBookId));
+
+    return res.status(200).json({
+      message: 'Pricebook deleted successfully!',
+    });
+  } catch (error) {
+    console.error('PriceBook Delete Error:', error);
+    return res.status(500).json({ error: 'Internal Server Error.' });
+  }
+};
+
+export const updatePriceBookById = async (req, res) => {
+  try {
+    const { priceBookId } = req.params;
+    const { pricingType, listPrice, currency } = req.body;
+
+    const pricEntry = await db
+      .select()
+      .from(priceBookEntry)
+      .where(eq(priceBookEntry.priceBookingId, priceBookId));
+
+    if (pricEntry.length > 0) {
+      await db
+        .update(products)
+        .set({ pricingType: pricingType || 'tier' })
+        .where(eq(products.productId, pricEntry[0].productId));
+      if (pricingType == 'flat') {
+        await db
+          .delete(priceBookEntry)
+          .where(
+            eq(priceBookEntry.priceBookingId, pricEntry[0].priceBookingId)
+          );
+        await db.insert(priceBookEntry).values({
+          productId: pricEntry[0].productId,
+          priceBookingId: priceBookId,
+          currency: currency || 'USD',
+          lowerSlab: null,
+          upperSlab: null,
+          listPrice: listPrice,
+          discountPercentage: null,
+          salePrice: listPrice,
+        });
+      } else {
+        await db
+          .delete(priceBookEntry)
+          .where(
+            eq(priceBookEntry.priceBookingId, pricEntry[0].priceBookingId)
+          );
+
+        const Entries = req.body.map((data) => ({
+          productId: pricEntry[0].productId,
+          priceBookingId: priceBookId,
+          currency: data.currency,
+          lowerSlab: data.lowerSlab,
+          upperSlab: data.upperSlab,
+          listPrice: data.listPrice,
+          discountPercentage: data.discountPercentage,
+          salePrice: data.salePrice,
+        }));
+
+        await db.insert(priceBookEntry).values(Entries);
+      }
+    } else {
+      return res.status(404).json({
+        message: 'No Price entry found.',
+      });
+    }
+
+    return res.status(200).json({
+      message: 'priceBook updated successfully!',
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateProductById = async (req, res) => {
+  try {
+    const data = req.body;
+
+    const { productId } = req.params;
+    const product = await db
+      .select()
+      .from(products)
+      .where(eq(products.productId, productId));
+
+    if (!product.length) {
+      return res.status(404).json({
+        message: 'No service found.',
+      });
+    }
+
+    await db
+      .update(products)
+      .set({
+        bannerImage: data.bannerImage,
+        title: data.title,
+        description: data.description,
+        type: data.type,
+      })
+      .where(eq(products.productId, productId))
+      .returning();
+    if (data.videoUrl) {
+      const existingVideo = await db
+        .select()
+        .from(productMedia)
+        .where(
+          and(
+            eq(productMedia.productId, productId),
+            eq(productMedia.mediaType, 'video')
+          )
+        )
+        .limit(1);
+
+      if (existingVideo.length > 0) {
+        await db
+          .update(productMedia)
+          .set({ mediaUrl: data.videoUrl })
+          .where(eq(productMedia.id, existingVideo[0].id));
+      } else {
+        await db.insert(productMedia).values({
+          productId: productId,
+          mediaType: 'video',
+          mediaUrl: data.videoUrl,
+          sortOrder: 3,
+        });
+      }
+    }
+
+    if (data.additionalImages.length > 0) {
+      const additionalImages = data?.additionalImages?.map(
+        (mediaUrl, index) => {
+          return {
+            productId: productId,
+            mediaType: 'image',
+            mediaUrl: mediaUrl,
+            sortOrder: index,
+          };
+        }
+      );
+
+      await db.insert(productMedia).values(additionalImages);
+    }
+
+    return res.status(200).json({
+      message: 'Service updated successfully!',
+    });
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteProductImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.delete(productMedia).where(eq(productMedia.id, id));
+    return res.status(200).json({
+      message: 'Image deleted successfully!',
+    });
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const createVendorDocument = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    const allDocuments = req.body;
+
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'Vendor not found.',
+      });
+    }
+
+    if (allDocuments.length > 0) {
+      const documents = allDocuments?.map((doc) => {
+        return {
+          vendorId: vendorId,
+          documentUrl: doc.filePath,
+          documentType: doc.documentType,
+        };
+      });
+
+      await db.insert(vendorDocuments).values(documents);
+      return res.status(200).json({
+        message: 'Vendor document created successfully!',
+      });
+    } else {
+      return res.status(404).json({
+        message: 'please upload document.',
+      });
+    }
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateVendorDocument = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    const { id, documentType, documentURL } = req.body;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'Vendor not found.',
+      });
+    }
+
+    await db
+      .update(vendorDocuments)
+      .set({ documentType: documentType, documentUrl: documentURL })
+      .where(eq(vendorDocuments.id, id));
+
+    return res.status(200).json({
+      message: 'Vendor document updated successfully!',
+    });
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteVendorDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (id) {
+      const document = await db
+        .select()
+        .from(vendorDocuments)
+        .where(eq(vendorDocuments.id, id));
+      if (document.length > 0) {
+        await db.delete(vendorDocuments).where(eq(vendorDocuments.id, id));
+        return res.status(200).json({
+          message: 'Vendor document deleted successfully!',
+        });
+      } else {
+        return res.status(504).json({
+          message: 'document not found!',
+        });
+      }
+    }
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const getVendorDocuments = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'Vendor not found.',
+      });
+    }
+
+    const response = await db
+      .select()
+      .from(vendorDocuments)
+      .where(eq(vendorDocuments.vendorId, vendorId))
+      .orderBy(asc(vendorDocuments.documentType));
+    return res.status(200).json({
+      message: 'Vendor document fetched successfully!',
+      data: response,
+    });
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const getVendorCompanyInfo = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+    const [vendorData] = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.vendorId, vendorId));
+
+    return res.status(200).json({
+      message: 'Vendor info fetched successfully.',
+      data: vendorData,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getVendorOwnershipDetails = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+    const ownershipData = await db
+      .select()
+      .from(vendorOwnerships)
+      .where(eq(vendorOwnerships.vendorId, vendorId));
+
+    return res.status(200).json({
+      message: 'Vendor ownership details fetched successfully.',
+      data: ownershipData,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getVendorEmployees = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+    const employees = await db
+      .select()
+      .from(vendorEmployees)
+      .innerJoin(users, eq(vendorEmployees.userId, users.userId))
+      .where(eq(vendorEmployees.vendorId, vendorId));
+
+    return res.status(200).json({
+      message: 'Vendor employees fetched successfully.',
+      data: employees,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const createVendorEmployeeInvitation = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    const invitations = req.body;
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+
+    if (invitations.length > 0) {
+      const invites = invitations.map((invit) => {
+        return {
+          vendorId: vendorId,
+          email: invit.email,
+          permissions: invit.permissions.map((permssion) => permssion.value),
+        };
+      });
+      await db.insert(vendorInvites).values(invites);
+    }
+
+    return res.status(200).json({
+      message: 'Employees Invitation sent successfully.',
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateEmployeePermissions = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+    const vendorId = parsed?.vendorId;
+    const permissions = req.body;
+    const { employeeId } = req.params;
+
+    if (!vendorId) {
+      return res.status(404).json({
+        message: 'No vendor found.',
+      });
+    }
+
+    await db
+      .update(vendorEmployees)
+      .set({ permissions: permissions })
+      .where(eq(vendorEmployees.vendorEmployeeId, employeeId));
+    return res.status(200).json({
+      message: 'Permissions updated  successfully.',
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteVendorEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (id) {
+      const employee = await db
+        .select()
+        .from(vendorEmployees)
+        .where(eq(vendorEmployees.vendorEmployeeId, id));
+      if (employee.length > 0) {
+        await db
+          .delete(vendorEmployees)
+          .where(eq(vendorEmployees.vendorEmployeeId, id));
+        return res.status(200).json({
+          message: 'Vendor employee deleted successfully!',
+        });
+      } else {
+        return res.status(504).json({
+          message: 'employee not found!',
+        });
+      }
+    }
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const getVendorInvites = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+
+    const userInviteFound = await db
+      .select()
+      .from(vendorInvites)
+      .where(eq(vendorInvites.email, userEmail));
+
+    if (userInviteFound.length > 0) {
+      const vendorInfo = (
+        await Promise.all(
+          userInviteFound.map((user) =>
+            db.select().from(vendors).where(eq(vendors.vendorId, user.vendorId))
+          )
+        )
+      ).flat();
+
+      return res.status(200).json({
+        message: 'Vendor invites fetched successfully.',
+        data: vendorInfo,
+      });
+    } else {
+      return res.status(200).json({
+        message: 'No vendor Invites found.',
+        data: [],
+      });
+    }
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const requestedVendors = async (req, res) => {
+  try {
+    const { text = '' } = req.query;
+    const filters = [];
+
+    if (text && text.trim() !== '') {
+      filters.push(ilike(vendors.legalEntityName, `%${text}%`));
+    }
+
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
+    const Vendors = await db
+      .select(reducedVendorFields)
+      .from(vendors)
+      .where(whereClause);
+
+    return res.json({
+      message: 'Vendors fetched successfully',
+      data: Vendors,
+    });
+  } catch (error) {
+    console.error('Error listing vendors:', error);
+    return res.status(500).json({
+      message: 'Internal server error',
+    });
+  }
+};
+
+export const createVendorEmployeeRequest = async (req, res) => {
+  try {
+    const userId = req.user?.['custom:user_id'];
+    const { vendorId } = req.body;
+
+    const EmployeeRequest = await db
+      .select()
+      .from(vendorEmployeeRequests)
+      .where(
+        and(
+          eq(vendorEmployeeRequests.userId, userId),
+          eq(vendorEmployeeRequests.vendorId, vendorId)
+        )
+      );
+
+    if (EmployeeRequest.length > 0) {
+      return res.status(409).json({
+        message: 'Request already exists',
+      });
+    } else {
+      await db
+        .insert(vendorEmployeeRequests)
+        .values({ vendorId: vendorId, userId: userId });
+
+      return res.status(200).json({
+        message: 'Employee request created successfully',
+      });
+    }
+  } catch (error) {
+    console.log('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };

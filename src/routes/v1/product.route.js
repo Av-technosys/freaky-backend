@@ -2,10 +2,12 @@ import { Router } from 'express';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
 import { getAllProductReviews } from '../../controllers/product.controller.js';
 import {
+  deleteProductImage,
   fetchProductDetailById,
   fetchProductPrice,
   getAllProductsByCategoryId,
   productByTypeId,
+  updateProductById,
 } from '../../controllers/Vendor.controllers.js';
 
 const router = Router();
@@ -18,5 +20,7 @@ router.get(
   confirmUserToken,
   getAllProductsByCategoryId
 );
+router.put('/update/:productId', confirmUserToken, updateProductById);
+router.delete('/image/:id', confirmUserToken, deleteProductImage);
 
 export default router;

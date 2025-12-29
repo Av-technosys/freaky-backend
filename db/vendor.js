@@ -12,6 +12,7 @@ import {
   mediaTypeEnum,
   productPricingTypeEnum,
   productTypeEnum,
+  vendorStatusEnum,
 } from './enum.js';
 
 export const vendor = pgTable('vendor', {
@@ -62,7 +63,7 @@ export const vendor = pgTable('vendor', {
   ),
 
   // status
-  status: boolean('status').default(true).notNull(),
+  status: vendorStatusEnum('status').notNull().default('pending_admin'),
   isAdminApproved: boolean('is_admin_approved').default(false).notNull(),
 
   createdAt: timestamp('created_at').defaultNow(),
@@ -275,6 +276,19 @@ export const product = pgTable('product', {
   bannerImage: varchar('banner_image', { length: 255 }),
 
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const productReviewSummary = pgTable('product_review_summary', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+  productId: integer('product_id').references(() => product.productId),
+  reviewCount: integer('review_count').default(0),
+  rating1: integer('rating1').default(0),
+  rating2: integer('rating2').default(0),
+  rating3: integer('rating3').default(0),
+  rating4: integer('rating4').default(0),
+  rating5: integer('rating5').default(0),
+  averageRating: integer('average_rating').default(0),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 

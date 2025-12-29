@@ -120,6 +120,10 @@ export const eventProductOrder = pgTable('event_product_order', {
   lowerSlab: integer('lower_slab'),
   upperSlab: integer('upper_slab'),
 
+  startDate: timestamp('start_date').defaultNow(),
+  endDate: timestamp('end_date').defaultNow(),
+  color: varchar('color', { length: 52 }).default('orange'),
+
   productPrice: decimal('product_price', { precision: 10, scale: 2 }),
   serviceBookingPrice: decimal('service_booking_price', {
     precision: 10,

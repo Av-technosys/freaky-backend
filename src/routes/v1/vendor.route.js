@@ -41,6 +41,7 @@ import vendorcalendarRouter from './vendor.calendar.route.js';
 import vendorPricebookRouter from './vendor.pricrbook.route.js';
 import { signUp } from '../../utils/email/signup.js';
 import { sendMail } from '../../utils/email/sendMail.js';
+import { bookingConfirmed } from '../../utils/email/bookingConfirmed.js';
 const router = Router();
 
 router.get(
@@ -88,7 +89,12 @@ router.post('/send_mail', async (req, res) => {
   const { name, email, number } = req.body;
   console.log(name, email, number);
   try {
-    await sendMail({ to: email, subject: 'Hello', body: signUp(name) });
+    // await sendMail({ to: email, subject: 'Hello', body: signUp(name) });
+    await sendMail({
+      to: email,
+      subject: 'Booking confirmed',
+      body: bookingConfirmed(),
+    });
     console.log('mail sent');
     return res.status(200).json({ message: 'Mail sent successfully.' });
   } catch (error) {

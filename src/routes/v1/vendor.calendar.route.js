@@ -62,4 +62,15 @@ calendarRouter.get('/get_events', confirmUserToken, async (req, res) => {
   }
 });
 
+calendarRouter.post('/add_events', confirmUserToken, async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+    return res.send({ msg: 'Event added successfully' });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.send({ message: 'Internal server error' });
+  }
+});
+
 export default calendarRouter;

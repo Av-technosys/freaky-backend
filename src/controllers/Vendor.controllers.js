@@ -29,6 +29,9 @@ export const getAllProdcutMeta = async (req, res) => {
         productId: products.productId,
         productName: products.title,
         bannerImage: products.bannerImage,
+        productType: products.type,
+        isProductAvailable: products.isAvailable,
+        priceType: products.pricingType,
       })
       .from(products)
       .where(eq(products.vendorId, vendorId));

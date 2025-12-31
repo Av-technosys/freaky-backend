@@ -1,7 +1,7 @@
 import { eq, sql, and } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import { reviewMedia, reviews } from '../../db/schema.js';
-import { products, vendors, priceBookEntry } from '../../db/schema.js';
+import { products, vendors } from '../../db/schema.js';
 
 export const getAllProductReviews = async (req, res) => {
   try {
@@ -109,27 +109,5 @@ export const getAllProducts = async (req, res) => {
       success: false,
       message: error.message,
     });
-  }
-};
-
-export const deleteProduct = async (req, res) => {
-  try {
-    return res.status(200).json({ message: 'Product deleted successfully' });
-
-    // while deleting product via id is not getting delete becouse id is forign key for others tables will do it later
-    // const { productId } = req.params;
-    // if (!productId) {
-    //   return res.status(400).json({ error: 'productId required' });
-    // }
-    // const product = await db.query.products.findFirst({
-    //   where: (t, { eq }) => eq(t.productId, Number(productId)),
-    // });
-    // if (!product) {
-    //   return res.status(404).json({ error: 'product not found' });
-    // }
-    // await db.delete(products).where(eq(products.productId, Number(productId)));
-  } catch (error) {
-    console.error('Delete Product API Error:', error);
-    return res.status(500).json({ error: 'Server error' });
   }
 };

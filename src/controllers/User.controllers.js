@@ -344,6 +344,49 @@ export const setCurrentAddress = async (req, res) => {
   }
 };
 
+export const fetchCurrentAddress = async (req, res) => {
+  try {
+    const addressId = Number(req.params.id);
+    const email = req.user?.email || req.body.email;
+
+    if (!addressId) {
+      return res.status(400).json({ error: 'Address ID is required.' });
+    }
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required.' });
+    }
+
+    const user = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.email, email),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const response = await db.query.userAddresses.findFirst({
+      where: (userAddresses, { eq, and }) =>
+        and(
+          eq(userAddresses.id, addressId),
+          eq(userAddresses.userId, user.userId)
+        ),
+    });
+
+    if (!response) {
+      return res.status(404).json({ error: 'Address not found.' });
+    }
+
+    return res.status(200).json({
+      message: 'Address fetched successfully.',
+      data: response,
+    });
+  } catch (err) {
+    console.error('Error fetching address:', err);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
 export const deleteAddress = async (req, res) => {
   try {
     const { id } = req.body;

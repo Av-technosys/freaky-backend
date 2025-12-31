@@ -1,6 +1,6 @@
 import { AdminSetUserPasswordCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
-import { vendors } from '../../db/schema.js';
+import { users, vendors } from '../../db/schema.js';
 import { db } from '../../db/db.js';
 import { eq, sql } from 'drizzle-orm';
 
@@ -18,9 +18,80 @@ export const adminResetPassword = async (req, res) => {
   return res.json({ message: 'adminResetPassword', data: response });
 };
 
-export const listAllVendorsForAdminpanel = async (req, res) => {
+export const listAllRequestedVendors = async (req, res) => {
   try {
-    const vendorsFullData = await db.execute(sql`
+    const requestedVendors = await db
+      .select({
+        businessName: vendors.businessName,
+        status: vendors.status,
+        createdAt: vendors.createdAt,
+        vendorId: vendors.vendorId,
+      })
+      .from(vendors)
+      .where(eq(vendors.status, 'pending_admin'));
+    return res.status(200).json({
+      message: 'vendors fetched successfully.',
+      data: requestedVendors,
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const listAllVendors = async (req, res) => {
+  try {
+    const vendorsData = await db
+      .select({
+        businessName: vendors.businessName,
+        status: vendors.status,
+        createdAt: vendors.createdAt,
+        vendorId: vendors.vendorId,
+      })
+      .from(vendors);
+    return res.status(200).json({
+      message: 'vendors fetched successfully.',
+      data: vendorsData,
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const listAllUsers = async (req, res) => {
+  try {
+    const usersData = await db
+      .select({
+        firstName: users.firstName,
+        lastName: users.lastName,
+        number: users.number,
+        createdAt: users.createdAt,
+        userId: users.userId,
+        isActive: users.isActive,
+      })
+      .from(users);
+    return res.status(200).json({
+      message: 'vendors fetched successfully.',
+      data: usersData,
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const vendorDetailsById = async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+
+    const vendorFullData = await db.execute(sql`
   SELECT
     v.*,
 
@@ -42,14 +113,34 @@ export const listAllVendorsForAdminpanel = async (req, res) => {
   LEFT JOIN vendor_document vd
     ON vd.vendor_id = v.id
 
-  WHERE v.status = 'pending_admin'
+  WHERE v.id = ${vendorId}
   GROUP BY v.id
-  ORDER BY v.business_name ASC
 `);
 
     return res.status(200).json({
-      message: 'vendors fetched successfully.',
-      data: vendorsFullData,
+      message: 'vendors details fetched successfully.',
+      data: vendorFullData[0],
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const userDetailsById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const vendorFullData = await db
+      .select()
+      .from(users)
+      .where(eq(users.userId, userId));
+
+    return res.status(200).json({
+      message: 'User details fetched successfully.',
+      data: vendorFullData[0],
     });
   } catch (error) {
     console.error('error', error);

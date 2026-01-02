@@ -1,6 +1,6 @@
 import { AdminSetUserPasswordCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
-import { vendors } from '../../db/schema.js';
+import { eventType, users, vendors } from '../../db/schema.js';
 import { db } from '../../db/db.js';
 import { eq, sql } from 'drizzle-orm';
 
@@ -75,6 +75,61 @@ export const updateVendorStatus = async (req, res) => {
     });
   } catch (error) {
     console.log('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const createEventType = async (req, res) => {
+  try {
+    const { name, description, image } = req.body;
+    await db
+      .insert(eventType)
+      .values({ name: name, description: description, image: image });
+
+    return res.status(200).json({
+      message: 'Event Type created successfully.',
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const updateEventTypeById = async (req, res) => {
+  try {
+    const { eventTypeId } = req.params;
+    const { name, description, image } = req.body;
+    await db
+      .update(eventType)
+      .set({ name: name, description: description, image: image })
+      .where(eq(eventType.id, eventTypeId))
+      .returning();
+
+    return res.status(200).json({
+      message: 'Event Type details updated successfully.',
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const deleteEventTypeById = async (req, res) => {
+  try {
+    const { eventTypeId } = req.params;
+    await db.delete(eventType).where(eq(eventType.id, eventTypeId));
+
+    return res.status(200).json({
+      message: 'Event Type  deleted successfully.',
+    });
+  } catch (error) {
+    console.error('error', error);
     return res.status(500).json({
       message: error.message,
     });

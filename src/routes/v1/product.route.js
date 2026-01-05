@@ -3,6 +3,7 @@ import { confirmUserToken } from '../../middleware/user.middleware.js';
 import {
   deleteProductById,
   getAllProductReviews,
+  getAllProductTypes,
 } from '../../controllers/product.controller.js';
 import {
   deleteProductImage,

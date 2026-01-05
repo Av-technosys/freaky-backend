@@ -9,6 +9,8 @@ const corsOptions = {
   origin: [
     'https://freaky-web-vendor-new.vercel.app/',
     'http://localhost:5173',
+    'https://dev.vendor.freakychimp.com/',
+    'https://dev.admin.freakychimp.com/',
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,

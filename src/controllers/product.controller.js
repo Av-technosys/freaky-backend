@@ -111,3 +111,24 @@ export const getAllProducts = async (req, res) => {
     });
   }
 };
+
+export const getAllProductTypes = async (req, res) => {
+  try {
+    const productTypes = await db
+      .select()
+      .from(productTypes)
+      .orderBy(asc(productTypes.createdAt));
+
+    return res.status(200).json({
+      success: true,
+      message: 'Product types fetched successfully',
+      data: productTypes,
+    });
+  } catch (error) {
+    console.error('Error fetching product types:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

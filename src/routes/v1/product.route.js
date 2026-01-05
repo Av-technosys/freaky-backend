@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
 import { getAllProductReviews } from '../../controllers/product.controller.js';
+import { getAllProductTypes } from '../../controllers/product.controller.js';
 import {
   deleteProductImage,
   fetchProductDetailById,
@@ -14,6 +15,8 @@ const router = Router();
 router.get('/reviews/:productid', confirmUserToken, getAllProductReviews);
 router.get('/info', confirmUserToken, fetchProductDetailById);
 router.post('/product_price/:productId', confirmUserToken, fetchProductPrice);
+router.get('/products_type', confirmUserToken, getAllProductTypes);
+
 router.get('/by_product_type_id', confirmUserToken, productByTypeId);
 router.get(
   '/products_by_categoryId/:categoryId',

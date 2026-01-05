@@ -1,6 +1,6 @@
-import { eq, sql, and } from 'drizzle-orm';
+import { eq, sql, and, asc, isNull } from 'drizzle-orm';
 import { db } from '../../db/db.js';
-import { reviewMedia, reviews } from '../../db/schema.js';
+import { productTypes, reviewMedia, reviews } from '../../db/schema.js';
 import { products, vendors } from '../../db/schema.js';
 
 export const getAllProductReviews = async (req, res) => {
@@ -105,6 +105,33 @@ export const getAllProducts = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching products:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const getAllProductTypes = async (req, res) => {
+  try {
+    const data = await db
+      .select({
+        id: productTypes.id,
+        name: productTypes.name,
+        mediaURL: productTypes.mediaURL,
+        altText: productTypes.altText,
+      })
+      .from(productTypes)
+      .where(isNull(productTypes.productParentId))
+      .orderBy(asc(productTypes.createdAt));
+
+    return res.status(200).json({
+      success: true,
+      message: 'Product types fetched successfully',
+      data: data,
+    });
+  } catch (error) {
+    console.error('Error fetching product types:', error);
     return res.status(500).json({
       success: false,
       message: error.message,

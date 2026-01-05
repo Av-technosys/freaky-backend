@@ -1,4 +1,4 @@
-import { eq, sql, and, asc } from 'drizzle-orm';
+import { eq, sql, and, asc, isNull } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import { productTypes, reviewMedia, reviews } from '../../db/schema.js';
 import { products, vendors } from '../../db/schema.js';

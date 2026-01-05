@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
-import { getAllProductReviews } from '../../controllers/product.controller.js';
+import {
+  deleteProductById,
+  getAllProductReviews,
+} from '../../controllers/product.controller.js';
 import {
   deleteProductImage,
   fetchProductDetailById,
@@ -22,5 +25,6 @@ router.get(
 );
 router.put('/update/:productId', confirmUserToken, updateProductById);
 router.delete('/image/:id', confirmUserToken, deleteProductImage);
+router.delete('/delete/:productId', confirmUserToken, deleteProductById);
 
 export default router;

@@ -111,3 +111,19 @@ export const getAllProducts = async (req, res) => {
     });
   }
 };
+
+export const deleteProductById = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    await db.delete(products).where(eq(products.productId, productId));
+    return res.status(200).json({
+      message: 'Product Deleted Successfully.',
+    });
+  } catch (error) {
+    console.error('Error while deleting product:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

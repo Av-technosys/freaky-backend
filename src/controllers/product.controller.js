@@ -2,6 +2,7 @@ import { eq, sql, and, asc, isNull } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import { productTypes, reviewMedia, reviews } from '../../db/schema.js';
 import { products, vendors } from '../../db/schema.js';
+import { paginate } from '../helpers/paginate.js';
 
 export const getAllProductReviews = async (req, res) => {
   try {
@@ -49,8 +50,6 @@ export const getAllProductReviews = async (req, res) => {
 export const getAllProducts = async (req, res) => {
   try {
     const { text = '', page = 1, page_size = 12 } = req.query;
-    const limit = Number(page_size);
-    const offset = (Number(page) - 1) * limit;
 
     const userId = req.user['custom:user_id'];
 
@@ -59,7 +58,7 @@ export const getAllProducts = async (req, res) => {
       .from(vendors)
       .where(eq(vendors.createdBy, userId));
 
-    if (vendorData.length === 0) {
+    if (!vendorData.length) {
       return res.status(404).json({
         success: false,
         message: 'Vendor not found for this user',
@@ -71,37 +70,25 @@ export const getAllProducts = async (req, res) => {
 
     const filters = [eq(products.vendorId, vId)];
 
-    if (text && text.trim() !== '') {
+    if (text.trim()) {
       filters.push(ilike(products.title, `%${text}%`));
     }
 
-    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+    const whereClause = and(...filters);
 
-    const totalRows = await db
-      .select({ count: sql`CAST(count(*) AS INTEGER)` })
-      .from(products)
-      .where(whereClause);
-
-    const total = totalRows[0].count;
-
-    const productsList = await db
-      .select()
-      .from(products)
-      .where(whereClause)
-      .orderBy(products.createdAt)
-      .limit(limit)
-      .offset(offset);
+    const result = await paginate({
+      table: products,
+      select: products,
+      where: whereClause,
+      orderBy: products.createdAt,
+      page,
+      page_size,
+    });
 
     return res.status(200).json({
       success: true,
       message: 'Products fetched successfully',
-      pagination: {
-        page: Number(page),
-        page_size: limit,
-        total,
-        total_pages: Math.ceil(total / limit),
-      },
-      data: productsList,
+      ...result,
     });
   } catch (error) {
     console.error('Error fetching products:', error);

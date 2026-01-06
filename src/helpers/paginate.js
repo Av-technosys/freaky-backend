@@ -4,6 +4,7 @@ import { db } from '../../db/db.js';
 export async function paginate({
   table,
   select,
+  where,
   orderBy,
   page = 1,
   page_size = 10,
@@ -13,13 +14,15 @@ export async function paginate({
 
   const totalRows = await db
     .select({ count: sql`CAST(count(*) AS INTEGER)` })
-    .from(table);
+    .from(table)
+    .where(where);
 
-  const total = totalRows[0].count ?? 0;
+  const total = totalRows[0]?.count ?? 0;
 
   const data = await db
     .select(select)
     .from(table)
+    .where(where)
     .orderBy(orderBy)
     .limit(limit)
     .offset(offset);

@@ -11,6 +11,7 @@ import {
   users,
 } from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
+import { paginate } from '../helpers/paginate.js';
 
 export const getUserInfo = async (req, res) => {
   try {
@@ -733,19 +734,21 @@ export const getUserNotification = async (req, res) => {
   try {
     const { page, limit } = req.query;
     const userId = req.user['custom:user_id'];
-    const pageLimit = Number(limit) || 2;
-    const offset = (Number(page) - 1) * pageLimit;
+    const page_size = Number(limit) || 20;
 
-    const response = await db
-      .select()
-      .from(userNotifications)
-      .where(eq(userNotifications.userId, userId))
-      .limit(pageLimit)
-      .offset(offset);
+    const result = await paginate({
+      table: userNotifications,
+      select: userNotifications,
+      where: eq(userNotifications.userId, userId),
+      orderBy: userNotifications.createdAt,
+      page,
+      page_size,
+    });
+
     return res.status(200).json({
       success: true,
       message: 'Notification fetched successfully..',
-      data: response,
+      ...result,
     });
   } catch (error) {
     console.error('Error deleting review:', error);

@@ -20,6 +20,7 @@ import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { eventBooking } from '../../db/event.js';
+import { paginate } from '../helpers/paginate.js';
 
 export const getVendorInfo = async (req, res) => {
   try {
@@ -68,10 +69,6 @@ export const getCompanyProfile = async (req, res) => {
 export const listAllVendors = async (req, res) => {
   try {
     const { text = '', page = 1, page_size = 12 } = req.query;
-    const limit = Number(page_size);
-    const offset = (Number(page) - 1) * limit;
-
-    console.log('text', text);
 
     const filters = [];
 
@@ -81,31 +78,19 @@ export const listAllVendors = async (req, res) => {
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
-    const totalRows = await db
-      .select({ count: sql`CAST(count(*) AS INTEGER)` })
-      .from(vendors)
-      .where(whereClause);
-
-    const total = totalRows[0].count;
-
-    const data = await db
-      .select(commonVendorFields)
-      .from(vendors)
-      .where(whereClause)
-      .orderBy(vendors.createdAt)
-      .limit(limit)
-      .offset(offset);
+    const result = await paginate({
+      table: vendors,
+      select: commonVendorFields,
+      where: whereClause,
+      orderBy: vendors.createdAt,
+      page,
+      page_size,
+    });
 
     return res.json({
       success: true,
       message: 'Vendors fetched successfully',
-      pagination: {
-        page: Number(page),
-        page_size: limit,
-        total,
-        total_pages: Math.ceil(total / limit),
-      },
-      data,
+      ...result,
     });
   } catch (error) {
     console.error('Error listing vendors:', error);
@@ -639,23 +624,16 @@ export const productByTypeId = async (req, res) => {
       return res.status(400).json({ error: 'productTypeId is required' });
     }
 
-    const limit = Number(page_size);
-    const offset = (Number(page) - 1) * limit;
+    const result = await paginate({
+      table: products,
+      select: products,
+      where: eq(products.productTypeId, Number(productTypeId)),
+      orderBy: products.createdAt,
+      page: Number(page),
+      page_size: Number(page_size),
+    });
 
-    const totalRows = await db
-      .select({ count: sql`CAST(count(*) AS INTEGER)` })
-      .from(products)
-      .where(eq(products.productTypeId, Number(productTypeId)));
-
-    const total = totalRows[0].count;
-
-    const productsList = await db
-      .select()
-      .from(products)
-      .where(eq(products.productTypeId, Number(productTypeId)))
-      .limit(limit)
-      .offset(offset);
-
+    const productsList = result.data;
     const vendorIds = [
       ...new Set(productsList.map((product) => product.vendorId)),
     ];
@@ -681,15 +659,10 @@ export const productByTypeId = async (req, res) => {
       ...product,
       prices: priceEntries.filter((p) => p.productId === product.productId),
     }));
-    return res.json({
+    return res.status(200).json({
       success: true,
       message: 'Products fetched successfully',
-      pagination: {
-        page: Number(page),
-        page_size: limit,
-        total,
-        total_pages: Math.ceil(total / limit),
-      },
+      pagination: result.pagination,
       data,
     });
   } catch (error) {

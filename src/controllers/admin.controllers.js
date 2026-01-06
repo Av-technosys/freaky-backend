@@ -3,6 +3,7 @@ import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { eventType, users, vendors } from '../../db/schema.js';
 import { db } from '../../db/db.js';
 import { eq, sql } from 'drizzle-orm';
+import { paginate } from '../helpers/paginate.js';
 
 export const adminResetPassword = async (req, res) => {
   const { user, password } = req.body;
@@ -43,47 +44,55 @@ export const listAllRequestedVendors = async (req, res) => {
 
 export const listAllVendors = async (req, res) => {
   try {
-    const vendorsData = await db
-      .select({
+    const result = await paginate({
+      table: vendors,
+      select: {
         businessName: vendors.businessName,
         status: vendors.status,
         createdAt: vendors.createdAt,
         vendorId: vendors.vendorId,
-      })
-      .from(vendors);
+      },
+      where: '',
+      orderBy: vendors.createdAt,
+      page: req.query.page,
+      page_size: req.query.page_size,
+    });
+
     return res.status(200).json({
-      message: 'vendors fetched successfully.',
-      data: vendorsData,
+      message: 'vendors fetched successfully',
+      ...result,
     });
   } catch (error) {
     console.error('error', error);
-    return res.status(500).json({
-      message: error.message,
-    });
+    return res.status(500).json({ message: error.message });
   }
 };
 
 export const listAllUsers = async (req, res) => {
   try {
-    const usersData = await db
-      .select({
+    const result = await paginate({
+      table: users,
+      select: {
         firstName: users.firstName,
         lastName: users.lastName,
         number: users.number,
         createdAt: users.createdAt,
         userId: users.userId,
         isActive: users.isActive,
-      })
-      .from(users);
+      },
+      where: '',
+      orderBy: users.createdAt,
+      page: req.query.page,
+      page_size: req.query.page_size,
+    });
+
     return res.status(200).json({
-      message: 'vendors fetched successfully.',
-      data: usersData,
+      message: 'users fetched successfully',
+      ...result,
     });
   } catch (error) {
     console.error('error', error);
-    return res.status(500).json({
-      message: error.message,
-    });
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -134,7 +143,16 @@ export const userDetailsById = async (req, res) => {
     const { userId } = req.params;
 
     const vendorFullData = await db
-      .select()
+      .select({
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImage: users.profileImage,
+        number: users.number,
+        email: users.email,
+        status: users.status,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+      })
       .from(users)
       .where(eq(users.userId, userId));
 

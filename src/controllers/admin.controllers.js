@@ -267,7 +267,7 @@ export const getAllUserReviews = async (req, res) => {
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.userId, users.userId))
-      .orderBy(asc(reviews.title))
+      .orderBy(asc(reviews.createdAt))
       .limit(limit)
       .offset(offset);
 

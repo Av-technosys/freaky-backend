@@ -1,8 +1,8 @@
 import { AdminSetUserPasswordCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
-import { eventType, users, vendors } from '../../db/schema.js';
+import { eventType, reviews, users, vendors } from '../../db/schema.js';
 import { db } from '../../db/db.js';
-import { eq, sql } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { paginate } from '../helpers/paginate.js';
 
 export const adminResetPassword = async (req, res) => {
@@ -236,6 +236,67 @@ export const deleteEventTypeById = async (req, res) => {
 
     return res.status(200).json({
       message: 'Event Type  deleted successfully.',
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const getAllUserReviews = async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const reviewsData = await db
+      .select({
+        id: reviews.reviewId,
+        productId: reviews.productId,
+        vendorId: reviews.vendorId,
+        title: reviews.title,
+        description: reviews.description,
+        rating: reviews.rating,
+        createdAt: reviews.createdAt,
+        userId: reviews.userId,
+        userName: users.firstName,
+        userImage: users.profileImage,
+        totalCount: sql`COUNT(*) OVER()`.as('totalCount'),
+      })
+      .from(reviews)
+      .innerJoin(users, eq(reviews.userId, users.userId))
+      .orderBy(asc(reviews.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCount = reviewsData.length > 0 ? reviewsData[0].totalCount : 0;
+
+    const hasNextPage = offset + reviewsData.length < totalCount;
+
+    return res.status(200).json({
+      message: 'User Reviews fetched successfully.',
+      data: reviewsData,
+      hasNextPage,
+      nextPage: hasNextPage ? page + 1 : null,
+      totalCount,
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const deleteReviewById = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    await db.delete(reviews).where(eq(reviews.reviewId, reviewId));
+
+    return res.status(200).json({
+      message: 'User Review  deleted successfully.',
     });
   } catch (error) {
     console.error('error', error);

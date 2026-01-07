@@ -3,6 +3,8 @@ import {
   adminResetPassword,
   createEventType,
   deleteEventTypeById,
+  deleteReviewById,
+  getAllUserReviews,
   listAllRequestedVendors,
   listAllUsers,
   listAllVendors,
@@ -26,5 +28,7 @@ router.get('/event_type', listAllEventTypes);
 router.put('/event_type/:eventTypeId', updateEventTypeById);
 router.post('/event_type', createEventType);
 router.delete('/event_type/:eventTypeId', deleteEventTypeById);
+router.get('/reviews', getAllUserReviews);
+router.delete('/review/:reviewId', deleteReviewById);
 
 export default router;

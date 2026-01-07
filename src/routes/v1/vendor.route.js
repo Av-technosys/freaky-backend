@@ -39,6 +39,12 @@ import vendorReviewRouter from './vendor.review.router.js';
 import vendorcalendarRouter from './vendor.calendar.route.js';
 import { signUp } from '../../utils/email/signup.js';
 import { sendMail } from '../../utils/email/sendMail.js';
+import { welcome } from '../../utils/email/welcome.js';
+import { bookingConfirmed } from '../../utils/email/bookingConfirmation.js';
+import { shareFeedback } from '../../utils/email/shareFeedback.js';
+import { refund } from '../../utils/email/refund.js';
+import { completePayment } from '../../utils/email/completePayment.js';
+import { completeProfileVendor } from '../../utils/email/completeProfileVendor.js';
 const router = Router();
 
 router.get(
@@ -85,7 +91,33 @@ router.post('/send_mail', async (req, res) => {
   const { name, email, number } = req.body;
   console.log(name, email, number);
   try {
-    await sendMail({ to: email, subject: 'Hello', body: signUp(name) });
+    // await sendMail({
+    //   to: email,
+    //   subject: 'bookingConfirmeds',
+    //   body: bookingConfirmed(name),
+    // }); //
+    // await sendMail({ to: email, subject: 'signup', body: signUp(name) });
+    // await sendMail({ to: email, subject: 'welcome', body: welcome(name) }); // ✅
+    // await sendMail({
+    //   to: email,
+    //   subject: 'completeProfileVendor',
+    //   body: completeProfileVendor(name),
+    // }); // ✅
+    // await sendMail({
+    //   to: email,
+    //   subject: 'shareFeedback',
+    //   body: shareFeedback(name),
+    // }); //✅
+    // await sendMail({
+    //   to: email,
+    //   subject: 'completePayment',
+    //   body: completePayment(name),
+    // }); //✅
+    await sendMail({
+      to: email,
+      subject: 'refund',
+      body: refund(name),
+    }); //
     console.log('mail sent');
     return res.status(200).json({ message: 'Mail sent successfully.' });
   } catch (error) {

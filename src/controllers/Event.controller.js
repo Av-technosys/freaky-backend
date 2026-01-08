@@ -226,12 +226,16 @@ export const getFeaturedEvents = async (req, res) => {
 };
 
 export const getBanner = async (req, res) => {
-  const response = await db.select().from(featuredBanners);
+  const response = await db
+    .select()
+    .from(featuredBanners)
+    .orderBy(asc(featuredBanners.priority));
   try {
     return res.status(200).json({
       success: true,
       message: 'All Banner fetched successfully',
       data: response,
+      count: response.length,
     });
   } catch (error) {
     console.error('Error', error);

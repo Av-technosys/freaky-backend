@@ -2,18 +2,26 @@ import { Router } from 'express';
 import {
   adminResetPassword,
   createEventType,
+  createProductType,
   deleteEventTypeById,
+  deleteProductTypeById,
   deleteReviewById,
+  getAllProductTypes,
   getAllUserReviews,
   listAllRequestedVendors,
   listAllUsers,
   listAllVendors,
   updateEventTypeById,
+  updateFeaturedBannerPriority,
+  updateProductTypeById,
   updateVendorStatus,
   userDetailsById,
   vendorDetailsById,
 } from '../../controllers/admin.controllers.js';
-import { listAllEventTypes } from '../../controllers/Event.controller.js';
+import {
+  getBanner,
+  listAllEventTypes,
+} from '../../controllers/Event.controller.js';
 
 const router = Router();
 
@@ -30,5 +38,13 @@ router.post('/event_type', createEventType);
 router.delete('/event_type/:eventTypeId', deleteEventTypeById);
 router.get('/reviews', getAllUserReviews);
 router.delete('/review/:reviewId', deleteReviewById);
+
+router.post('/product_type', createProductType);
+router.get('/product_types', getAllProductTypes);
+router.put('/product_type/:productTypeId', updateProductTypeById);
+router.delete('/product_type/:productTypeId', deleteProductTypeById);
+
+router.get('/banner', getBanner);
+router.put('/banner/:bannerId', updateFeaturedBannerPriority);
 
 export default router;

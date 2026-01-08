@@ -1,8 +1,15 @@
 import { AdminSetUserPasswordCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
-import { eventType, reviews, users, vendors } from '../../db/schema.js';
+import {
+  eventType,
+  featuredBanners,
+  productTypes,
+  reviews,
+  users,
+  vendors,
+} from '../../db/schema.js';
 import { db } from '../../db/db.js';
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 import { paginate } from '../helpers/paginate.js';
 
 export const adminResetPassword = async (req, res) => {
@@ -297,6 +304,111 @@ export const deleteReviewById = async (req, res) => {
 
     return res.status(200).json({
       message: 'User Review  deleted successfully.',
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const createProductType = async (req, res) => {
+  try {
+    const { name, description, mediaURL, altText } = req.body;
+    await db.insert(productTypes).values({
+      name: name,
+      description: description,
+      mediaURL: mediaURL,
+      altText: altText,
+    });
+
+    return res.status(200).json({
+      message: 'Product Type created successfully.',
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const getAllProductTypes = async (req, res) => {
+  try {
+    const productTypesData = await db
+      .select()
+      .from(productTypes)
+      .orderBy(asc(productTypes.name));
+    return res.status(200).json({
+      message: 'Product types fetched successfully.',
+      data: productTypesData,
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const updateProductTypeById = async (req, res) => {
+  try {
+    const { productTypeId } = req.params;
+    const { name, description, mediaURL } = req.body;
+    await db
+      .update(productTypes)
+      .set({ name: name, description: description, mediaURL: mediaURL })
+      .where(eq(productTypes.id, productTypeId))
+      .returning();
+
+    return res.status(200).json({
+      message: 'Product type updated successfully.',
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const deleteProductTypeById = async (req, res) => {
+  try {
+    const { productTypeId } = req.params;
+    await db.delete(productTypes).where(eq(productTypes.id, productTypeId));
+
+    return res.status(200).json({
+      message: 'Product Type deleted successfully.',
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const updateFeaturedBannerPriority = async (req, res) => {
+  try {
+    const { bannerId } = req.params;
+    const { currentBannerPriority, nextBannerPriority } = req.body;
+
+    await db.execute(sql`
+  UPDATE ${featuredBanners}
+  SET priority = CASE
+    WHEN ${featuredBanners.id} = ${Number(bannerId)}
+      THEN ${Number(nextBannerPriority)}
+    WHEN ${featuredBanners.priority} = ${Number(nextBannerPriority)}
+      THEN ${Number(currentBannerPriority)}
+    ELSE ${featuredBanners.priority}
+  END
+  WHERE ${featuredBanners.id} = ${Number(bannerId)}
+     OR ${featuredBanners.priority} = ${Number(nextBannerPriority)};
+`);
+
+    return res.status(200).json({
+      message: 'Featured banner updated successfully.',
     });
   } catch (error) {
     console.error('error', error);

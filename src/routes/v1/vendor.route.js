@@ -39,10 +39,22 @@ import vendorReviewRouter from './vendor.review.router.js';
 import vendorcalendarRouter from './vendor.calendar.route.js';
 import { signUp } from '../../utils/email/signup.js';
 import { sendMail } from '../../utils/email/sendMail.js';
+import { secureEvent } from '../../utils/email/secureEvent.js';
+import { resumeProfile } from '../../utils/email/resumeProfile.js';
+import { paymentReceived } from '../../utils/email/paymentReceived.js';
+import { passwordChanged } from '../../utils/email/passwordChanged.js';
+import { receivedReview } from '../../utils/email/receivedReview.js';
+import { otpForSignIn } from '../../utils/email/otpForSignIn.js';
+import { eventComing } from '../../utils/email/eventComing.js';
+import { otpForResetPassword } from '../../utils/email/otpForResetPassword.js';
 import { welcome } from '../../utils/email/welcome.js';
 import { bookingConfirmed } from '../../utils/email/bookingConfirmation.js';
 import { shareFeedback } from '../../utils/email/shareFeedback.js';
 import { refund } from '../../utils/email/refund.js';
+import { paymentConfirmation } from '../../utils/email/paymentConfirmation.js';
+import { bookingCanceled } from '../../utils/email/bookingCanceled.js';
+import { bookingReceived } from '../../utils/email/bookingReceived.js';
+import { bookingUpdated } from '../../utils/email/bookingUpdated.js';
 import { completePayment } from '../../utils/email/completePayment.js';
 import { completeProfileVendor } from '../../utils/email/completeProfileVendor.js';
 const router = Router();
@@ -113,11 +125,18 @@ router.post('/send_mail', async (req, res) => {
     //   subject: 'completePayment',
     //   body: completePayment(name),
     // }); //✅
+    // await sendMail({
+    //   to: email,
+    //   subject: 'refund',
+    //   body: refund(name),
+    // }); //
+
     await sendMail({
       to: email,
-      subject: 'refund',
-      body: refund(name),
-    }); //
+      subject: 'secureEvent',
+      body: secureEvent(name),
+    });
+
     console.log('mail sent');
     return res.status(200).json({ message: 'Mail sent successfully.' });
   } catch (error) {

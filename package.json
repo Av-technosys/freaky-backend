@@ -4,7 +4,7 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "dev": "nodemon --exec serverless offline",
+    "dev": "nodemon --exec npx serverless offline",
     "seed": "node ./db/seeding/main.js",
     "deploy:dev": "npx serverless deploy --stage dev",
     "deploy:prod": "npx serverless deploy --stage prod",

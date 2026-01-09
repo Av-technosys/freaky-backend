@@ -19,7 +19,7 @@ import {
 import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
-import { eventBooking } from '../../db/event.js';
+import { bookingDraft } from '../../db/schema.js';
 import { paginate } from '../helpers/paginate.js';
 
 export const getVendorInfo = async (req, res) => {
@@ -1520,15 +1520,15 @@ export const getAllSearchItems = async (req, res) => {
       const userId = req.user?.['custom:user_id'];
       const filters = [];
 
-      filters.push(eq(eventBooking.userId, userId));
+      filters.push(eq(bookingDraft.userId, userId));
 
       if (search_text && search_text.trim() !== '') {
-        filters.push(ilike(eventBooking.name, `%${search_text}%`));
+        filters.push(ilike(bookingDraft.name, `%${search_text}%`));
       }
 
       const searchItems = await db
         .select()
-        .from(eventBooking)
+        .from(bookingDraft)
         .where(and(...filters));
 
       return res.status(200).json({

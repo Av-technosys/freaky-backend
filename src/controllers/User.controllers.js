@@ -2,7 +2,6 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
   cart,
-  cartItems,
   featuredBanners,
   reviewMedia,
   reviews,
@@ -10,8 +9,11 @@ import {
   userNotifications,
   users,
 } from '../../db/schema.js';
+
 import removePassowrd from '../helpers/User.helper.js';
 import { paginate } from '../helpers/paginate.js';
+import { sendNotificationToUser } from '../helpers/SendNotification.js';
+import { bookingDraft } from '../../db/schema.js';
 
 export const getUserInfo = async (req, res) => {
   try {
@@ -449,8 +451,8 @@ export const cartHandler = async (req, res) => {
         });
       }
 
-      const items = await db.query.cartItems.findMany({
-        where: (t, { eq }) => eq(t.cartId, userCart.cartId),
+      const items = await db.query.bookingDraft.findMany({
+        where: (t, { eq }) => eq(t.sourceId, userCart.cartId),
       });
 
       return res.json({
@@ -471,7 +473,6 @@ export const cartHandler = async (req, res) => {
         productId,
         quantity,
         name,
-        description,
         contactNumber,
         date,
         minGuestCount,
@@ -492,10 +493,9 @@ export const cartHandler = async (req, res) => {
       if (!date) {
         return res.status(400).json({ error: 'date is required' });
       }
-
-      const existing = await db.query.cartItems.findFirst({
+      const existing = await db.query.bookingDraft.findFirst({
         where: (t, { eq, and }) =>
-          and(eq(t.cartId, cartId), eq(t.productId, productId)),
+          and(eq(t.sourceId, cartId), eq(t.productId, productId)),
       });
 
       if (existing) {
@@ -504,22 +504,22 @@ export const cartHandler = async (req, res) => {
         });
       }
 
-      const newItem = await db
-        .insert(cartItems)
-        .values({
-          cartId,
-          productId,
-          quantity,
-          name,
-          description,
-          contactNumber,
-          date: new Date(date),
-          minGuestCount,
-          maxGuestCount,
-          latitude,
-          longitude,
-        })
-        .returning();
+      const newItem = await createBookingDraft({
+        source: 'CART',
+        sourceId: cartId,
+        productId,
+        quantity,
+        status: 'HOLD',
+
+        contactName: name,
+        contactNumber,
+        startTime: new Date(date),
+        minGuestCount,
+        maxGuestCount,
+        latitude,
+        longitude,
+      });
+
       return res.json({
         message: 'Item added to cart',
         item: newItem[0],
@@ -527,14 +527,14 @@ export const cartHandler = async (req, res) => {
     }
 
     if (req.method === 'DELETE') {
-      const { cartItemId } = req.params;
+      const { bookingDraftId } = req.params;
 
-      if (!cartItemId) {
-        return res.status(400).json({ error: 'cartItemId required' });
+      if (!bookingDraftId) {
+        return res.status(400).json({ error: 'booking draft id required' });
       }
 
-      const item = await db.query.cartItems.findFirst({
-        where: (t, { eq }) => eq(t.cartItemId, Number(cartItemId)),
+      const item = await db.query.bookingDraft.findFirst({
+        where: (t, { eq }) => eq(t.bookingDraftId, Number(bookingDraftId)),
       });
 
       if (!item) {
@@ -542,8 +542,8 @@ export const cartHandler = async (req, res) => {
       }
 
       await db
-        .delete(cartItems)
-        .where(eq(cartItems.cartItemId, Number(cartItemId)));
+        .delete(bookingDraft)
+        .where(eq(bookingDraft.bookingDraftId, Number(bookingDraftId)));
 
       return res.json({
         message: 'Item removed from cart',
@@ -556,6 +556,7 @@ export const cartHandler = async (req, res) => {
     return res.status(500).json({ error: 'Server error' });
   }
 };
+
 export const profilePictureHandler = async (req, res) => {
   try {
     const email = req.user?.email || req.body.email;
@@ -827,5 +828,58 @@ export const updateDetails = async (req, res) => {
   } catch (error) {
     console.error('Error fetching user info:', err);
     return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+export const saveFcmToken = async (req, res) => {
+  try {
+    const { userId, fcmToken, platform } = req.body;
+
+    if (!userId || !fcmToken || !platform) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+      });
+    }
+
+    await db
+      .update(users)
+      .set({
+        firebaseToken: fcmToken,
+        platform: platform,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.userId, userId));
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('FCM TOKEN SAVE ERROR', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
+// just for testing purpose
+export const Notify = async (req, res) => {
+  try {
+    const { fcmToken, title, body, data } = req.body;
+
+    const result = await sendNotificationToUser({
+      fcmToken,
+      title,
+      body,
+      data,
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Notify error:', error.message);
+
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

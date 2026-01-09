@@ -1,8 +1,4 @@
-const EXPIRY_MINUTES_MAP = {
-  CART: 10,
-  EVENT: 25,
-  EXTERNAL: 30,
-};
+import { EXPIRY_MINUTES_MAP } from '../../const/expire.js';
 
 export function getBookingExpiryTime(source) {
   const minutes = EXPIRY_MINUTES_MAP[source];

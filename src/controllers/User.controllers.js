@@ -14,7 +14,7 @@ import removePassowrd from '../helpers/User.helper.js';
 import { paginate } from '../helpers/paginate.js';
 import { sendNotificationToUser } from '../helpers/SendNotification.js';
 import { bookingDraft } from '../../db/schema.js';
-
+import { createBookingDraft } from '../helpers/createBookingDraft.js';
 export const getUserInfo = async (req, res) => {
   try {
     const email = req.user?.email || req.body.email;

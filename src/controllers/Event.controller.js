@@ -8,7 +8,7 @@ import {
   featuredBanners,
 } from '../../db/schema.js';
 import { createBookingDraft } from '../helpers/createBookingDraft.js';
-
+import { db } from '../../db/db.js';
 export const createEvent = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
@@ -157,7 +157,7 @@ export const listAllServicesByEventTypeId = async (req, res) => {
 export const createEventItem = async (req, res) => {
   try {
     const { eventId, productId, quantity } = req.body;
-
+    console.log({ eventId, productId, quantity });
     if (!eventId || !productId) {
       return res.status(400).json({
         message: 'eventId and productId are required',
@@ -171,7 +171,7 @@ export const createEventItem = async (req, res) => {
       quantity,
       status: 'HOLD',
     });
-
+    console.log('item', item);
     return res.status(201).json({
       message: 'Event item created successfully',
       data: item,

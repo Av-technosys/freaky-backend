@@ -1,4 +1,4 @@
-import { bookingDraft } from '../db/schema.js';
+import { bookingDraft } from '../../db/schema.js';
 import { getBookingExpiryTime } from './getBookingExpiry.js';
 import { db } from '../../db/db.js';
 
@@ -39,8 +39,8 @@ export async function createBookingDraft({
       source,
       sourceId,
       productId,
-      status, // ✅ mandatory column
-      quantity, // ✅ mandatory column
+      status,
+      quantity,
       expiredAt,
 
       // optional fields

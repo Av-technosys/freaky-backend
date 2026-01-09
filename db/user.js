@@ -1,3 +1,5 @@
+// user.js
+
 import {
   pgTable,
   varchar,
@@ -7,12 +9,16 @@ import {
   decimal,
   jsonb,
 } from 'drizzle-orm/pg-core';
-import { event, eventBooking } from './event.js';
+import { event, eventType } from './event.js';
 import { product, vendor } from './vendor.js';
 import {
+  bookingSourceEnum,
   bookingStatusEnum,
   mediaTypeEnum,
+  paymentPendingTrackerStatusEnum,
   paymentStatusEnum,
+  paymentTypeEnum,
+  platformEnum,
   userSubscriptionStatusEnum,
 } from './enum.js';
 
@@ -35,6 +41,8 @@ export const user = pgTable('user', {
   password: varchar('password', { length: 255 }).notNull(),
 
   loggedIn: boolean('logged_in'),
+  firebaseToken: varchar('firebase_token', { length: 255 }),
+  platform: platformEnum('platform'),
   tokenFacebook: varchar('token_facebook', { length: 255 }),
   tokenTwitter: varchar('token_twitter', { length: 255 }),
   userToken: varchar('user_token', { length: 255 }),
@@ -92,7 +100,7 @@ export const subscription = pgTable('subscription', {
   }),
   startDate: timestamp('start_date', { withTimezone: false }).notNull(),
   endDate: timestamp('end_date', { withTimezone: false }).notNull(),
-  status: userSubscriptionStatusEnum('status').default('active').notNull(),
+  status: userSubscriptionStatusEnum('status').default('ACTIVE').notNull(),
 });
 
 export const cart = pgTable('cart', {
@@ -102,63 +110,163 @@ export const cart = pgTable('cart', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const cartItem = pgTable('cart_item', {
-  cartItemId: integer('cart_item_id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  cartId: integer('cart_id').references(() => cart.cartId),
+// items
+export const bookingDraft = pgTable('booking_draft', {
+  bookingDraftId: integer('booking_draft_id')
+    .generatedAlwaysAsIdentity()
+    .primaryKey(), // auto-increment
+  source: bookingSourceEnum('source').notNull(),
+
+  sourceId: integer('source_id'),
   productId: integer('product_id').references(() => product.productId),
+  status: bookingStatusEnum('status').notNull(),
+  expiredAt: timestamp('expired_at').defaultNow(),
 
-  name: varchar('name', { length: 255 }).notNull(),
-  description: varchar('description'),
-  contactNumber: varchar('contact_number', { length: 255 }),
-
-  date: timestamp('date').defaultNow(),
+  // more specific to CART
+  contactName: varchar('contact_name', { length: 255 }),
+  contactNumber: integer('contact_number'),
+  startTime: timestamp('start_time').defaultNow(),
+  endTime: timestamp('end_time').defaultNow(),
   minGuestCount: integer('min_guest_count').default(1),
   maxGuestCount: integer('max_guest_count').default(1),
 
   // location: varchar('location', { length: 255 }),
-  latitude: decimal('latitude', { precision: 10, scale: 7 }),
-  longitude: decimal('longitude', { precision: 10, scale: 7 }),
+  latitude: varchar('latitude', { length: 255 }),
+  longitude: varchar('longitude', { length: 255 }),
 
-  // bookingStatus: bookingStatusEnum('booking_status').default('created'),
-  // paymentStatus: paymentStatusEnum('payment_status').default('pending'),
+  bookingStatus: bookingStatusEnum('booking_status').default('HOLD'),
 
   quantity: integer('quantity').notNull(),
-  addedAt: timestamp('added_at').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const cartBooking = pgTable('cart_booking', {
-  cartBookingId: integer('cart_booking_id')
-    .generatedAlwaysAsIdentity()
-    .primaryKey(), // auto-increment
+// booking
+export const booking = pgTable('booking', {
+  bookingId: integer('booking_id').generatedAlwaysAsIdentity().primaryKey(),
   userId: integer('user_id').references(() => user.userId),
+  eventTypeId: integer('event_type_id').references(() => eventType.id),
+  source: bookingSourceEnum('source').notNull(),
+
+  contactName: varchar('contact_name', { length: 255 }),
+  contactNumber: integer('contact_number'),
+  description: varchar('description'),
+
+  startTime: timestamp('start_time').defaultNow(),
+  endTime: timestamp('end_time').defaultNow(),
+  minGuestCount: integer('min_guest_count').default(1),
+  maxGuestCount: integer('max_guest_count').default(1),
+
+  // location: varchar('location', { length: 255 }),
+  latitude: varchar('latitude', { length: 255 }),
+  longitude: varchar('longitude', { length: 255 }),
+
+  bookingStatus: bookingStatusEnum('booking_status').default('HOLD'),
+  paymentStatus: paymentStatusEnum('payment_status').default('PENDING'),
+
+  // amount amoint paid and all
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }), // tootal of all product + service amount + admin commission
+  adminCommissionPercentage: decimal('admin_commission_percentage', {
+    precision: 10,
+    scale: 2,
+  }),
+
+  platformFees: decimal('platform_fees', {
+    precision: 10,
+    scale: 2,
+  }),
+  bookedAt: timestamp('booked_at').defaultNow(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const cartItemBooking = pgTable('cart_item_booking', {
-  cartItemId: integer('cart_item_id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  cartBookingId: integer('cart_booking_id').references(
-    () => cartBooking.cartBookingId
-  ),
-  productId: integer('product_id').references(() => product.productId),
+// booking Item
+export const bookingItem = pgTable('booking_item', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+  bookingId: integer('booking_id').references(() => booking.bookingId),
+  productId: integer('product_id')
+    .references(() => product.productId)
+    .notNull(),
 
-  name: varchar('name', { length: 255 }).notNull(),
-  description: varchar('description'),
-  contactNumber: varchar('contact_number', { length: 255 }),
-
-  date: timestamp('date').defaultNow(),
+  // more specific to CART
+  contactName: varchar('contact_name', { length: 255 }),
+  contactNumber: integer('contact_number'),
+  startTime: timestamp('start_time').defaultNow(),
+  endTime: timestamp('end_time').defaultNow(),
   minGuestCount: integer('min_guest_count').default(1),
   maxGuestCount: integer('max_guest_count').default(1),
 
   // location: varchar('location', { length: 255 }),
-  latitude: decimal('latitude', { precision: 10, scale: 7 }),
-  longitude: decimal('longitude', { precision: 10, scale: 7 }),
+  latitude: varchar('latitude', { length: 255 }),
+  longitude: varchar('longitude', { length: 255 }),
 
-  bookingStatus: bookingStatusEnum('booking_status').default('created'),
-  paymentStatus: paymentStatusEnum('payment_status').default('pending'),
+  bookingStatus: bookingStatusEnum('booking_status').default('HOLD'),
+  paymentStatus: paymentStatusEnum('payment_status').default('PENDING'),
 
   quantity: integer('quantity').notNull(),
-  addedAt: timestamp('added_at').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// payment table.
+export const payment = pgTable('payment', {
+  paymentId: integer('payment_id').generatedAlwaysAsIdentity().primaryKey(),
+
+  bookingId: integer('booking_id')
+    .references(() => booking.bookingId)
+    .notNull(),
+
+  userId: integer('user_id')
+    .references(() => user.userId)
+    .notNull(),
+
+  provider: varchar('provider', { length: 50 }),
+  // razorpay | stripe | cash | external
+
+  providerPaymentId: varchar('provider_payment_id', { length: 255 }),
+  providerOrderId: varchar('provider_order_id', { length: 255 }),
+
+  paymentType: paymentTypeEnum('payment_type').notNull(),
+  paymentMeta: jsonb('payment_meta'),
+  remarks: varchar('remarks', { length: 255 }),
+  paymentStatus: paymentStatusEnum('payment_status').default('PENDING'),
+
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD'),
+
+  initiatedAt: timestamp('initiated_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
+
+  metadata: jsonb('metadata'),
+
+  errorCode: varchar('error_code', { length: 100 }),
+  failureReason: varchar('failure_reason', { length: 255 }),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// partial reminder table for payment pending with expire time.
+export const paymentPendingTracker = pgTable('payment_pending_tracker', {
+  trackerId: integer('tracker_id').generatedAlwaysAsIdentity().primaryKey(),
+
+  bookingId: integer('booking_id')
+    .references(() => booking.bookingId)
+    .notNull(),
+
+  userId: integer('user_id')
+    .references(() => user.userId)
+    .notNull(),
+
+  pendingAmount: decimal('pending_amount', {
+    precision: 10,
+    scale: 2,
+  }).notNull(),
+
+  status: paymentPendingTrackerStatusEnum('tracker_status').default('ACTIVE'),
+
+  nextReminderAt: timestamp('next_reminder_at'),
+  lastReminderAt: timestamp('last_reminder_at'),
+  reminderCount: integer('reminder_count').default(0),
+
+  expiresAt: timestamp('expires_at'), // optional cutoff (eg: booking date)
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -221,46 +329,46 @@ export const taxZone = pgTable('tax_zone', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const payment = pgTable('payment', {
-  paymentId: integer('payment_id').generatedAlwaysAsIdentity().primaryKey(),
+// export const payment = pgTable('payment', {
+//   paymentId: integer('payment_id').generatedAlwaysAsIdentity().primaryKey(),
 
-  userId: integer('user_id').references(() => user.userId),
-  cartBookingId: integer('cart_booking_id').references(
-    () => cartBooking.cartBookingId
-  ),
-  eventBookingId: integer('order_booking_id').references(() => eventBooking.id),
+//   userId: integer('user_id').references(() => user.userId),
+//   cartBookingId: integer('cart_booking_id').references(
+//     () => cartBooking.cartBookingId
+//   ),
+//   eventBookingId: integer('order_booking_id').references(() => eventBooking.id),
 
-  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }),
-  paidAmout: decimal('paid_amount', { precision: 10, scale: 2 }),
-  remainingAmount: decimal('remaining_amount', { precision: 10, scale: 2 }),
+//   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }),
+//   paidAmout: decimal('paid_amount', { precision: 10, scale: 2 }),
+//   remainingAmount: decimal('remaining_amount', { precision: 10, scale: 2 }),
 
-  paymentStatus: paymentStatusEnum('payment_status').default('pending'),
+//   paymentStatus: paymentStatusEnum('payment_status').default('pending'),
 
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+//   createdAt: timestamp('created_at').defaultNow(),
+//   updatedAt: timestamp('updated_at').defaultNow(),
+// });
 
-export const paymentTransaction = pgTable('payment_transaction', {
-  id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  transactionId: varchar('transaction_id', { length: 255 }),
-  paymentId: integer('payment_id').references(() => payment.paymentId),
+// export const paymentTransaction = pgTable('payment_transaction', {
+//   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+//   transactionId: varchar('transaction_id', { length: 255 }),
+//   paymentId: integer('payment_id').references(() => payment.paymentId),
 
-  paymentMethod: varchar('payment_method', { length: 255 }),
-  transactionStatus: varchar('transaction_status', { length: 255 }),
+//   paymentMethod: varchar('payment_method', { length: 255 }),
+//   transactionStatus: varchar('transaction_status', { length: 255 }),
 
-  paymentStatus: varchar('payment_status', { length: 50 }).notNull(),
-  paymentType: varchar('payment_type', { length: 50 }),
-  paymentMeta: jsonb('payment_meta'),
+//   paymentStatus: varchar('payment_status', { length: 50 }).notNull(),
+//   paymentType: varchar('payment_type', { length: 50 }),
+//   paymentMeta: jsonb('payment_meta'),
 
-  remarks: varchar('remarks', { length: 255 }),
+//   remarks: varchar('remarks', { length: 255 }),
 
-  referenceNumber: varchar('reference_number', { length: 255 }),
+//   referenceNumber: varchar('reference_number', { length: 255 }),
 
-  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
-  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+//   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+//   currency: varchar('currency', { length: 10 }).default('USD').notNull(),
 
-  transactionTime: timestamp('transaction_time').defaultNow().notNull(),
+//   transactionTime: timestamp('transaction_time').defaultNow().notNull(),
 
-  errorCode: varchar('error_code', { length: 100 }),
-  failureReason: varchar('failure_reason', { length: 255 }),
-});
+//   errorCode: varchar('error_code', { length: 100 }),
+//   failureReason: varchar('failure_reason', { length: 255 }),
+// });

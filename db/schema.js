@@ -1,3 +1,5 @@
+// schemajs
+
 import * as vendor from './vendor.js';
 import * as user from './user.js';
 import * as event from './event.js';
@@ -13,6 +15,11 @@ export const bookingStatusEnum = enums.bookingStatusEnum;
 export const paymentStatusEnum = enums.paymentStatusEnum;
 export const eventStatusEnum = enums.eventStatusEnum;
 export const vendorStatusEnum = enums.vendorStatusEnum;
+export const platformEnum = enums.platformEnum;
+export const paymentPendingTrackerStatusEnum =
+  enums.paymentPendingTrackerStatusEnum;
+export const paymentTypeEnum = enums.paymentTypeEnum;
+export const bookingSourceEnum = enums.bookingSourceEnum;
 
 export const userTypes = user.userType;
 export const users = user.user;
@@ -20,22 +27,19 @@ export const userNotifications = user.userNotification;
 export const userAddresses = user.userAddress;
 export const subscriptions = user.subscription;
 export const cart = user.cart;
-export const cartItems = user.cartItem;
-export const cartBookings = user.cartBooking;
-export const cartItemBookings = user.cartItemBooking;
+export const bookingDraft = user.bookingDraft;
+export const booking = user.booking;
+export const bookingItem = user.bookingItem;
+export const payment = user.payment;
+export const paymentPendingTracker = user.paymentPendingTracker;
 export const reviews = user.review;
 export const reviewMedia = user.reviewMedia;
 export const pricingSettings = user.pricingSetting;
 export const taxZones = user.taxZone;
-export const payments = user.payment;
-export const paymentTransactions = user.paymentTransaction;
 
 export const eventType = event.eventType;
 export const eventProductType = event.eventProductType;
 export const events = event.event;
-export const eventItems = event.eventItem;
-export const eventBooking = event.eventBooking;
-export const eventProductOrders = event.eventProductOrder;
 export const featuredEvents = event.featuredEvent;
 export const featuredBanners = event.featuredBanners;
 
@@ -58,6 +62,7 @@ export const featuredProdcuts = vendor.featuredProdcut;
 export const productMedia = vendor.productMedia;
 export const productAddons = vendor.productAddon;
 export const contractProductTypes = vendor.contractProductType;
+
 // export const contractProductType = vendor.contractProductType;
 // export const featuredCategoryProducts = vendor.featuredCategoryProduct;
 

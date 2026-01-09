@@ -63,7 +63,7 @@ export const vendor = pgTable('vendor', {
   ),
 
   // status
-  status: vendorStatusEnum('status').notNull().default('pending_admin'),
+  status: vendorStatusEnum('status').notNull().default('PENDING_ADMIN'),
   isAdminApproved: boolean('is_admin_approved').default(false).notNull(),
 
   createdAt: timestamp('created_at').defaultNow(),
@@ -248,7 +248,7 @@ export const productType = pgTable('product_types', {
 export const product = pgTable('product', {
   productId: integer('product_id').generatedAlwaysAsIdentity().primaryKey(),
 
-  type: productTypeEnum('type').notNull().default('product'),
+  type: productTypeEnum('type').notNull().default('PRODUCT'),
 
   vendorId: integer('vendor_id').references(() => vendor.vendorId),
   productTypeId: integer('product_type_id').references(() => productType.id),

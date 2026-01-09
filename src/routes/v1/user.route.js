@@ -11,6 +11,7 @@ import {
   markNotificationAsRead,
   getPersonalInfo,
   updateDetails,
+  Notify,
 } from '../../controllers/User.controllers.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
 import addressRouter from './user.address.route.js';
@@ -34,5 +35,5 @@ router.get('/notification', confirmUserToken, getUserNotification);
 router.post('/notification/read', confirmUserToken, markNotificationAsRead);
 router.get('/personal_details', confirmUserToken, getPersonalInfo);
 router.put('/update_details', confirmUserToken, updateDetails);
-
+router.post('/testing_notification', Notify);
 export default router;

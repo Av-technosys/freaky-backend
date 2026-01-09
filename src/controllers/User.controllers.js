@@ -12,6 +12,7 @@ import {
 } from '../../db/schema.js';
 import removePassowrd from '../helpers/User.helper.js';
 import { paginate } from '../helpers/paginate.js';
+import { sendNotificationToUser } from '../helpers/SendNotification.js';
 
 export const getUserInfo = async (req, res) => {
   try {
@@ -827,5 +828,57 @@ export const updateDetails = async (req, res) => {
   } catch (error) {
     console.error('Error fetching user info:', err);
     return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+export const saveFcmToken = async (req, res) => {
+  try {
+    const { userId, fcmToken, platform } = req.body;
+
+    if (!userId || !fcmToken || !platform) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+      });
+    }
+
+    await db
+      .update(users)
+      .set({
+        tokenFacebook: fcmToken,
+        tokenTwitter: platform,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.userId, userId));
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('FCM TOKEN SAVE ERROR', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
+export const Notify = async (req, res) => {
+  try {
+    const { fcmToken, title, body, data } = req.body;
+
+    const result = await sendNotificationToUser({
+      fcmToken,
+      title,
+      body,
+      data,
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Notify error:', error.message);
+
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

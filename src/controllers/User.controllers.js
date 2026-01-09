@@ -9,9 +9,11 @@ import {
   userNotifications,
   users,
 } from '../../db/schema.js';
+
 import removePassowrd from '../helpers/User.helper.js';
 import { paginate } from '../helpers/paginate.js';
 import { sendNotificationToUser } from '../helpers/SendNotification.js';
+import { bookingDraft } from '../../db/schema.js';
 
 export const getUserInfo = async (req, res) => {
   try {
@@ -471,7 +473,6 @@ export const cartHandler = async (req, res) => {
         productId,
         quantity,
         name,
-        description,
         contactNumber,
         date,
         minGuestCount,
@@ -492,7 +493,6 @@ export const cartHandler = async (req, res) => {
       if (!date) {
         return res.status(400).json({ error: 'date is required' });
       }
-
       const existing = await db.query.bookingDraft.findFirst({
         where: (t, { eq, and }) =>
           and(eq(t.sourceId, cartId), eq(t.productId, productId)),
@@ -504,23 +504,22 @@ export const cartHandler = async (req, res) => {
         });
       }
 
-      const newItem = await db
-        .insert(bookingDraft)
-        .values({
-          source: 'CART',
-          sourceId: cartId,
-          productId: productId,
-          quantity,
-          name,
-          description,
-          contactNumber,
-          date: new Date(date),
-          minGuestCount,
-          maxGuestCount,
-          latitude,
-          longitude,
-        })
-        .returning();
+      const newItem = await createBookingDraft({
+        source: 'CART',
+        sourceId: cartId,
+        productId,
+        quantity,
+        status: 'HOLD',
+
+        contactName: name,
+        contactNumber,
+        startTime: new Date(date),
+        minGuestCount,
+        maxGuestCount,
+        latitude,
+        longitude,
+      });
+
       return res.json({
         message: 'Item added to cart',
         item: newItem[0],

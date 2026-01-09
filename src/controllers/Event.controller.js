@@ -1,5 +1,4 @@
 import { asc, eq } from 'drizzle-orm';
-import { db } from '../../db/db.js';
 import {
   eventProductType,
   events,
@@ -8,7 +7,7 @@ import {
   featuredEvents,
   featuredBanners,
 } from '../../db/schema.js';
-import { getBookingExpiryTime } from '../helpers/getBookingExpiry.js';
+import { createBookingDraft } from '../helpers/createBookingDraft.js';
 
 export const createEvent = async (req, res) => {
   try {
@@ -157,24 +156,31 @@ export const listAllServicesByEventTypeId = async (req, res) => {
 
 export const createEventItem = async (req, res) => {
   try {
-    const { eventId, productId } = req.body;
-    const quantity = req.body.quantity || 1;
-    const expiredAt = getBookingExpiryTime();
+    const { eventId, productId, quantity } = req.body;
 
-    await db.insert(bookingDraft).values({
+    if (!eventId || !productId) {
+      return res.status(400).json({
+        message: 'eventId and productId are required',
+      });
+    }
+
+    const item = await createBookingDraft({
       source: 'EVENT',
       sourceId: eventId,
       productId,
       quantity,
-      expiredAt,
+      status: 'HOLD',
     });
 
     return res.status(201).json({
-      message: 'Event item created successfully...',
+      message: 'Event item created successfully',
+      data: item,
     });
   } catch (error) {
-    console.error('Error: ', error);
-    return res.status(500).json({ message: error.message });
+    console.error('Error:', error);
+    return res.status(400).json({
+      message: error.message,
+    });
   }
 };
 

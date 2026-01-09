@@ -3,52 +3,67 @@ import { pgEnum } from 'drizzle-orm/pg-core';
 export const mediaTypeEnum = pgEnum('media_type_enum', ['image', 'video']);
 
 export const productTypeEnum = pgEnum('product_type_enum', [
-  'product',
-  'addon',
+  'PRODUCT',
+  'ADDON',
 ]);
 
 export const productPricingTypeEnum = pgEnum('pricing_type_enum', [
-  'flat',
-  'percentage',
-  'tier',
-  'modular',
+  'FLAT',
+  'PERCENTAGE',
+  'TIRE',
+  'MODULAR',
 ]);
 
-export const userSubscriptionStatusEnum = pgEnum('subscription_status', [
-  'active',
-  'expired',
-  'cancelled',
+export const platformEnum = pgEnum('platform', ['ANDROID', 'IOS', 'WEB']);
+export const paymentPendingTrackerStatusEnum = pgEnum('tracker_status', [
+  'ACTIVE',
+  'PAID',
+  'STOPPED',
+  'EXPIRED',
 ]);
-
-export const bookingStatusEnum = pgEnum('booking_status', [
-  'created', // user created event (cart/draft)
-  'booked', // user submitted booking
-  'confirmed', // admin/vendor confirmed
-  'in_progress', // event happening / work started
-  'completed', // event is done
-  'cancelled', // event cancelled
-]);
-
 export const paymentStatusEnum = pgEnum('payment_status', [
-  'pending', // no payment yet
-  'partial', // half/advance received
-  'paid', // full payment done
-  'refunded', // refunded
+  'PENDING',
+  'SUCCESS',
+  'FAILED',
+  'REFUNDED',
 ]);
-
+export const paymentTypeEnum = pgEnum('payment_type', [
+  'FULL',
+  'PARTIAL',
+  'REFUND',
+]);
+export const bookingStatusEnum = pgEnum('status', [
+  'HOLD',
+  'EXPIRED',
+  'CANCLED',
+  'CONFIRMED',
+  'COMPLETED',
+  'IN_PROGRESS',
+  'BOOKED',
+]);
+export const bookingSourceEnum = pgEnum('source', [
+  'CART',
+  'EVENT',
+  'EXTERNAL',
+]);
+export const userSubscriptionStatusEnum = pgEnum('subscription_status', [
+  'ACTIVE',
+  'EXPIRED',
+  'CANCELLED',
+]);
 export const eventStatusEnum = pgEnum('event_status', [
-  'booked', // booking confirmed
-  'will_start', // upcoming / scheduled but not started
-  'ongoing', // event is happening now
-  'completed', // event finished
-  'cancelled', // event cancelled anytime
+  'BOOKED', // booking confirmed
+  'WILL_START', // upcoming / scheduled but not started
+  'ONGOING', // event is happening now
+  'COMPLETED', // event finished
+  'CANCLED', // event cancelled anytime
 ]);
 
 export const vendorStatusEnum = pgEnum('vendor_status', [
-  'scraped',
-  'pending_vendor',
-  'pending_admin',
-  'approved',
-  'rejected',
-  'suspended',
+  'SCRAPED',
+  'PENDING_VENDOR',
+  'PENDING_ADMIN',
+  'APPROVED',
+  'REJECTED',
+  'SUSPENDED',
 ]);

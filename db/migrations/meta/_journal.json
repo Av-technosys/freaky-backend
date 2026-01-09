@@ -5,78 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1764250356603,
-      "tag": "0000_lovely_mimic",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1764583077691,
-      "tag": "0001_slimy_bloodaxe",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1764583077692,
-      "tag": "0002_add_postgis_location",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1764588025243,
-      "tag": "0003_cooing_darkhawk",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1764588126967,
-      "tag": "0004_awesome_kinsey_walden",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1764758082699,
-      "tag": "0005_past_barracuda",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1764829085021,
-      "tag": "0006_sloppy_klaw",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1765192273678,
-      "tag": "0007_eminent_champions",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1766043268253,
-      "tag": "0008_sloppy_luke_cage",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1766560703901,
-      "tag": "0009_sparkling_karen_page",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1766743015643,
-      "tag": "0010_sparkling_jazinda",
+      "when": 1767934479783,
+      "tag": "0000_tearful_romulus",
       "breakpoints": true
     }
   ]

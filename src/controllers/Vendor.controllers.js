@@ -24,7 +24,7 @@ import { paginate } from '../helpers/paginate.js';
 
 export const getVendorInfo = async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.vendor.vendorId;
     const [vendorData] = await db
       .select()
       .from(vendors)
@@ -1533,7 +1533,7 @@ export const getAllSearchItems = async (req, res) => {
 
       return res.status(200).json({
         message: 'Search items fetched successfully.',
-        data: searchItems,
+        // data: searchItems,
       });
     } else {
       const parsed = JSON.parse(req.user?.['custom:vendor_ids']);

@@ -5,13 +5,13 @@ import { products } from '../../../db/schema.js';
 
 import { and, eq, gt, gte, lte } from 'drizzle-orm';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
+import { checkVendor } from '../../middleware/vendor.middleware.js';
 const calendarRouter = Router();
 
-calendarRouter.get('/get_events', confirmUserToken, async (req, res) => {
-  try {
-    const parsed = JSON.parse(req.user['custom:vendor_ids']);
-    const vendorId = parsed.vendorId;
-    console.log(req.query.date);
+calendarRouter.get('/get_events', checkVendor, async (req, res) => {
+  try { 
+    const vendorId = req.vendor.vendorId;
+    console.log(vendorId)
     const now = new Date();
     const startTime = req.query.date
       ? new Date(req.query.date)

@@ -1,5 +1,6 @@
 import { asc, eq } from 'drizzle-orm';
 import {
+  // eventItems,
   eventProductType,
   events,
   eventType,
@@ -30,7 +31,7 @@ export const createEvent = async (req, res) => {
       name: name,
       description: description,
       contactNumber: contactNumber,
-      eventDate: new Date(eventDate).toISOString(),
+      eventDate: new Date(eventDate),
       minGuestCount: minGuestCount,
       maxGuestCount: maxGuestCount,
       latitude: latitude,
@@ -156,13 +157,11 @@ export const listAllServicesByEventTypeId = async (req, res) => {
 
 export const createEventItem = async (req, res) => {
   try {
-    const { eventId, productId, quantity } = req.body;
-    console.log({ eventId, productId, quantity });
-    if (!eventId || !productId) {
-      return res.status(400).json({
-        message: 'eventId and productId are required',
-      });
-    }
+    const { eventId, productId } = req.body;
+    const quantity = req.body.quantity || 1;
+    // await db
+    //   .insert(eventItems)
+    //   .values({ eventId: eventId, productId: productId, quantity: quantity });
 
     const item = await createBookingDraft({
       source: 'EVENT',
@@ -189,50 +188,31 @@ export const deleteEventItem = async (req, res) => {
     const { itemId } = req.params;
     const userId = req.user['custom:user_id'];
 
-    const bookingItem = await db
-      .select()
-      .from(bookingDraft)
-      .where(eq(bookingDraft.bookingDraftId, itemId));
+    // const eventItem = await db
+    //   .select()
+    //   .from(eventItems)
+    //   .where(eq(eventItems.id, itemId));
 
-    if (!bookingItem.length) {
-      return res.status(404).json({
-        message: 'Event item not found.',
-      });
-    }
-
-    const item = bookingItem[0];
-
-    if (item.source !== 'EVENT') {
-      return res.status(400).json({
-        message: 'Invalid booking source.',
-      });
-    }
-
-    const event = await db
-      .select({ userId: events.userId })
-      .from(events)
-      .where(eq(events.eventId, item.sourceId));
-
-    if (!event.length || event[0].userId !== userId) {
-      return res.status(401).json({
-        message: 'You are not authorized to delete this event item.',
-      });
-    }
-
-    // // recheck  that what status are  allowed to be delete
-    // if (item.bookingStatus !== 'HOLD') {
-    //   return res.status(400).json({
-    //     message: 'Only HOLD event items can be deleted.',
+    // if (eventItem.length > 0) {
+    //   const event = await db
+    //     .select({ userId: events.userId })
+    //     .from(events)
+    //     .where(eq(events.eventId, eventItem[0].eventId));
+    //   if (event[0].userId == userId) {
+    //     await db.delete(eventItems).where(eq(eventItems.id, eventItem[0].id));
+    //     return res.status(200).json({
+    //       message: 'Event item deleted successfully.',
+    //     });
+    //   } else {
+    //     return res.status(401).json({
+    //       message: 'You are not authorized to delete event item.',
+    //     });
+    //   }
+    // } else {
+    //   return res.status(500).json({
+    //     message: 'Event item not found.',
     //   });
     // }
-
-    await db
-      .delete(bookingDraft)
-      .where(eq(bookingDraft.bookingDraftId, itemId));
-
-    return res.status(200).json({
-      message: 'Event item deleted successfully.',
-    });
   } catch (error) {
     console.error('Error: ', error);
     return res.status(500).json({ message: error.message });

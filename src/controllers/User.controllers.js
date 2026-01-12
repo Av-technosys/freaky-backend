@@ -1,16 +1,14 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
-  cart,
-  featuredBanners,
+  cart,  
   reviewMedia,
   reviews,
   userAddresses,
   userNotifications,
   users,
 } from '../../db/schema.js';
-
-import removePassowrd from '../helpers/User.helper.js';
+import { removePassowrd } from '../helpers/User.helper.js';
 import { paginate } from '../helpers/paginate.js';
 import { sendNotificationToUser } from '../helpers/SendNotification.js';
 import { bookingDraft } from '../../db/schema.js';
@@ -457,7 +455,7 @@ export const cartHandler = async (req, res) => {
 
       return res.json({
         cartId: userCart.cartId,
-        items,
+        // items,
       });
     }
 
@@ -522,7 +520,7 @@ export const cartHandler = async (req, res) => {
 
       return res.json({
         message: 'Item added to cart',
-        item: newItem[0],
+        // item: newItem[0],
       });
     }
 
@@ -537,9 +535,9 @@ export const cartHandler = async (req, res) => {
         where: (t, { eq }) => eq(t.bookingDraftId, Number(bookingDraftId)),
       });
 
-      if (!item) {
-        return res.status(404).json({ error: 'Item not found' });
-      }
+      // if (!item) {
+      //   return res.status(404).json({ error: 'Item not found' });
+      // }
 
       await db
         .delete(bookingDraft)

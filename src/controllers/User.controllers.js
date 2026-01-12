@@ -1,16 +1,14 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
-  cart,
-  cartItems,
-  featuredBanners,
+  cart,  
   reviewMedia,
   reviews,
   userAddresses,
   userNotifications,
   users,
 } from '../../db/schema.js';
-import removePassowrd from '../helpers/User.helper.js';
+import { removePassowrd } from '../helpers/User.helper.js';
 import { paginate } from '../helpers/paginate.js';
 
 export const getUserInfo = async (req, res) => {
@@ -449,13 +447,13 @@ export const cartHandler = async (req, res) => {
         });
       }
 
-      const items = await db.query.cartItems.findMany({
-        where: (t, { eq }) => eq(t.cartId, userCart.cartId),
-      });
+      // const items = await db.query.cartItems.findMany({
+      //   where: (t, { eq }) => eq(t.cartId, userCart.cartId),
+      // });
 
       return res.json({
         cartId: userCart.cartId,
-        items,
+        // items,
       });
     }
 
@@ -493,10 +491,10 @@ export const cartHandler = async (req, res) => {
         return res.status(400).json({ error: 'date is required' });
       }
 
-      const existing = await db.query.cartItems.findFirst({
-        where: (t, { eq, and }) =>
-          and(eq(t.cartId, cartId), eq(t.productId, productId)),
-      });
+      // const existing = await db.query.cartItems.findFirst({
+      //   where: (t, { eq, and }) =>
+      //     and(eq(t.cartId, cartId), eq(t.productId, productId)),
+      // });
 
       if (existing) {
         return res.json({
@@ -504,25 +502,25 @@ export const cartHandler = async (req, res) => {
         });
       }
 
-      const newItem = await db
-        .insert(cartItems)
-        .values({
-          cartId,
-          productId,
-          quantity,
-          name,
-          description,
-          contactNumber,
-          date: new Date(date),
-          minGuestCount,
-          maxGuestCount,
-          latitude,
-          longitude,
-        })
-        .returning();
+      // const newItem = await db
+      //   .insert(cartItems)
+      //   .values({
+      //     cartId,
+      //     productId,
+      //     quantity,
+      //     name,
+      //     description,
+      //     contactNumber,
+      //     date: new Date(date),
+      //     minGuestCount,
+      //     maxGuestCount,
+      //     latitude,
+      //     longitude,
+      //   })
+      //   .returning();
       return res.json({
         message: 'Item added to cart',
-        item: newItem[0],
+        // item: newItem[0],
       });
     }
 
@@ -533,17 +531,17 @@ export const cartHandler = async (req, res) => {
         return res.status(400).json({ error: 'cartItemId required' });
       }
 
-      const item = await db.query.cartItems.findFirst({
-        where: (t, { eq }) => eq(t.cartItemId, Number(cartItemId)),
-      });
+      // const item = await db.query.cartItems.findFirst({
+      //   where: (t, { eq }) => eq(t.cartItemId, Number(cartItemId)),
+      // });
 
-      if (!item) {
-        return res.status(404).json({ error: 'Item not found' });
-      }
+      // if (!item) {
+      //   return res.status(404).json({ error: 'Item not found' });
+      // }
 
-      await db
-        .delete(cartItems)
-        .where(eq(cartItems.cartItemId, Number(cartItemId)));
+      // await db
+      //   .delete(cartItems)
+      //   .where(eq(cartItems.cartItemId, Number(cartItemId)));
 
       return res.json({
         message: 'Item removed from cart',

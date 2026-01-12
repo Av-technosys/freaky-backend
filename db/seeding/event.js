@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { db } from '../db.js';
 import {
-  eventBooking,
+  // eventBooking,
   eventOrderTransactions,
   eventProductOrders,
   events,
@@ -69,7 +69,7 @@ export async function seedEventBooking() {
     bookedAt: faker.date.anytime(),
   }));
 
-  await db.insert(eventBooking).values(data);
+  // await db.insert(eventBooking).values(data);
 }
 
 // export async function seedFeaturedEventTypes() {

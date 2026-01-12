@@ -1,14 +1,18 @@
 // drizzle.config.ts
-import { defineConfig } from "drizzle-kit";
-const dotenv = require("dotenv");
-dotenv.config();
+import { defineConfig } from 'drizzle-kit';
+import { DATABASE_URL } from './const/env.js';
 
 export default defineConfig({
-  dialect: "postgresql",
-  schema: "./db/schema.js",
-  out: "./db/migrations",
+  dialect: 'postgresql',
+  schema: './db/schema.js',
+  out: './db/migrations',
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: DATABASE_URL,
   },
-  tablesFilter: ["public.*", "!spatial_ref_sys", "!geography_columns", "!geometry_columns"],
+  tablesFilter: [
+    'public.*',
+    '!spatial_ref_sys',
+    '!geography_columns',
+    '!geometry_columns',
+  ],
 });

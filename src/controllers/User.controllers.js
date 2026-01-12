@@ -2,19 +2,19 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
   cart,
-  featuredBanners,
   reviewMedia,
   reviews,
   userAddresses,
   userNotifications,
   users,
 } from '../../db/schema.js';
-
-import removePassowrd from '../helpers/User.helper.js';
+import { removePassowrd } from '../helpers/User.helper.js';
 import { paginate } from '../helpers/paginate.js';
 import { sendNotificationToUser } from '../helpers/SendNotification.js';
 import { bookingDraft } from '../../db/schema.js';
 import { createBookingDraft } from '../helpers/createBookingDraft.js';
+import { SOURCE, STATUS } from '../../const/global.js';
+
 export const getUserInfo = async (req, res) => {
   try {
     const email = req.user?.email || req.body.email;
@@ -451,9 +451,10 @@ export const cartHandler = async (req, res) => {
         });
       }
 
-      const items = await db.query.bookingDraft.findMany({
-        where: (t, { eq }) => eq(t.sourceId, userCart.cartId),
-      });
+      const items = await db
+        .select()
+        .from(bookingDraft)
+        .where(eq(bookingDraft.sourceId, userCart.cartId));
 
       return res.json({
         cartId: userCart.cartId,
@@ -505,11 +506,11 @@ export const cartHandler = async (req, res) => {
       }
 
       const newItem = await createBookingDraft({
-        source: 'CART',
+        source: SOURCE.CART,
         sourceId: cartId,
         productId,
         quantity,
-        status: 'HOLD',
+        status: STATUS.HOLD,
 
         contactName: name,
         contactNumber,
@@ -522,7 +523,7 @@ export const cartHandler = async (req, res) => {
 
       return res.json({
         message: 'Item added to cart',
-        item: newItem[0],
+        // item: newItem[0],
       });
     }
 
@@ -537,9 +538,9 @@ export const cartHandler = async (req, res) => {
         where: (t, { eq }) => eq(t.bookingDraftId, Number(bookingDraftId)),
       });
 
-      if (!item) {
-        return res.status(404).json({ error: 'Item not found' });
-      }
+      // if (!item) {
+      //   return res.status(404).json({ error: 'Item not found' });
+      // }
 
       await db
         .delete(bookingDraft)
@@ -861,7 +862,6 @@ export const saveFcmToken = async (req, res) => {
   }
 };
 
-// just for testing purpose
 export const Notify = async (req, res) => {
   try {
     const { fcmToken, title, body, data } = req.body;

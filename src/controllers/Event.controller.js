@@ -1,5 +1,4 @@
 import { asc, eq } from 'drizzle-orm';
-import { db } from '../../db/db.js';
 import {
   // eventItems,
   eventProductType,
@@ -9,7 +8,10 @@ import {
   featuredEvents,
   featuredBanners,
 } from '../../db/schema.js';
+import { createBookingDraft } from '../helpers/createBookingDraft.js';
+import { SOURCE, STATUS } from '../../const/global.js';
 
+import { db } from '../../db/db.js';
 export const createEvent = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
@@ -163,12 +165,22 @@ export const createEventItem = async (req, res) => {
     //   .insert(eventItems)
     //   .values({ eventId: eventId, productId: productId, quantity: quantity });
 
+    const item = await createBookingDraft({
+      source: SOURCE.EVENT,
+      sourceId: eventId,
+      productId,
+      quantity,
+      status: STATUS.HOLD,
+    });
     return res.status(201).json({
-      message: 'Event item created successfully...',
+      message: 'Event item created successfully',
+      data: item,
     });
   } catch (error) {
-    console.error('Error: ', error);
-    return res.status(500).json({ message: error.message });
+    console.error('Error:', error);
+    return res.status(400).json({
+      message: error.message,
+    });
   }
 };
 

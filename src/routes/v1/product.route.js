@@ -6,6 +6,7 @@ import {
   getAllProductTypes,
 } from '../../controllers/product.controller.js';
 import {
+  createProduct,
   deleteProductImage,
   fetchProductDetailById,
   fetchProductPrice,
@@ -27,6 +28,7 @@ router.get(
   getAllProductsByCategoryId
 );
 router.put('/update/:productId', confirmUserToken, updateProductById);
+router.post('/create', confirmUserToken, createProduct);
 router.delete('/image/:id', confirmUserToken, deleteProductImage);
 router.delete('/delete/:productId', confirmUserToken, deleteProductById);
 

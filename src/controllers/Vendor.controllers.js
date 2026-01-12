@@ -864,26 +864,18 @@ export const fetchProductDetailById = async (req, res) => {
         and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
     });
 
-    if (priceBooks.length === 0) {
-      return res
-        .status(404)
-        .json({ error: 'No active pricebook found for vendor.' });
-    }
+    let productPrices = [];
 
-    const priceBookIds = priceBooks.map((pb) => pb.id);
+    if (priceBooks.length > 0) {
+      const priceBookIds = priceBooks.map((pb) => pb.id);
 
-    const productPrices = await db.query.priceBookEntry.findMany({
-      where: (t, { eq, inArray, and }) =>
-        and(
-          eq(t.productId, Number(productId)),
-          inArray(t.priceBookingId, priceBookIds)
-        ),
-    });
-
-    if (productPrices.length === 0) {
-      return res
-        .status(404)
-        .json({ error: 'Price not found for this product.' });
+      productPrices = await db.query.priceBookEntry.findMany({
+        where: (t, { eq, inArray, and }) =>
+          and(
+            eq(t.productId, Number(productId)),
+            inArray(t.priceBookingId, priceBookIds)
+          ),
+      });
     }
 
     const productMediaList = await db.query.productMedia.findMany({
@@ -1041,7 +1033,9 @@ export const updateProductById = async (req, res) => {
         bannerImage: data.bannerImage,
         title: data.title,
         description: data.description,
-        type: data.type,
+        type: data.type?.toUpperCase(),
+        maxQuantity: data.maxBooking,
+        deliveryRadius: data.deleveryRadius,
       })
       .where(eq(products.productId, productId))
       .returning();
@@ -1093,6 +1087,62 @@ export const updateProductById = async (req, res) => {
   } catch (error) {
     console.error(' Error:', error);
     return res.status(500).json({ error: error.message });
+  }
+};
+
+export const createProduct = async (req, res) => {
+  try {
+    const data = req.body;
+    const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
+
+    const insertedProduct = await db
+      .insert(products)
+      .values({
+        bannerImage: data.bannerImage,
+        title: data.title,
+        description: data.description,
+        maxQuantity: data.maxBooking,
+        deliveryRadius: data.deleveryRadius,
+        type: data.type?.toUpperCase(),
+        pricingType: data.pricingType,
+        vendorId: vendorId,
+      })
+      .returning({ productId: products.productId });
+
+    const productId = insertedProduct[0].productId;
+
+    if (data.videoUrl) {
+      await db.insert(productMedia).values({
+        productId: productId,
+        mediaType: 'video',
+        mediaUrl: data.videoUrl,
+        sortOrder: 3,
+      });
+    }
+
+    if (
+      Array.isArray(data.additionalImages) &&
+      data.additionalImages.length > 0
+    ) {
+      const additionalImages = data.additionalImages.map((mediaUrl, index) => ({
+        productId: productId,
+        mediaType: 'image',
+        mediaUrl: mediaUrl,
+        sortOrder: index,
+      }));
+
+      await db.insert(productMedia).values(additionalImages);
+    }
+
+    return res.status(201).json({
+      message: 'Service created successfully!',
+      productId,
+    });
+  } catch (error) {
+    console.error('Create Product Error:', error);
+    return res.status(500).json({
+      error: error.message,
+    });
   }
 };
 

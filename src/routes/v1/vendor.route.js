@@ -47,7 +47,7 @@ router.get(
   checkVendor,
   getCompanyProfile
 );
-router.use('/review', vendorReviewRouter);
+router.use('/review', confirmUserToken, vendorReviewRouter);
 router.use('/calendar', vendorcalendarRouter);
 router.get('/detail', checkVendor, getVendorInfo);
 router.get('/vendors', listAllVendors);

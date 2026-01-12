@@ -1,6 +1,11 @@
 import { eq, sql, and, asc, isNull } from 'drizzle-orm';
 import { db } from '../../db/db.js';
-import { productTypes, reviewMedia, reviews } from '../../db/schema.js';
+import {
+  productMedia,
+  productTypes,
+  reviewMedia,
+  reviews,
+} from '../../db/schema.js';
 import { products, vendors } from '../../db/schema.js';
 import { paginate } from '../helpers/paginate.js';
 
@@ -51,24 +56,9 @@ export const getAllProducts = async (req, res) => {
   try {
     const { text = '', page = 1, page_size = 12 } = req.query;
 
-    const userId = req.user['custom:user_id'];
+    const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
 
-    const vendorData = await db
-      .select({ vendorId: vendors.vendorId })
-      .from(vendors)
-      .where(eq(vendors.createdBy, userId));
-
-    if (!vendorData.length) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found for this user',
-        data: [],
-      });
-    }
-
-    const vId = vendorData[0].vendorId;
-
-    const filters = [eq(products.vendorId, vId)];
+    const filters = [eq(products.vendorId, vendorId)];
 
     if (text.trim()) {
       filters.push(ilike(products.title, `%${text}%`));
@@ -127,11 +117,20 @@ export const getAllProductTypes = async (req, res) => {
 };
 
 export const deleteProductById = async (req, res) => {
+  const { productId } = req.params;
+
   try {
-    const { productId } = req.params;
-    await db.delete(products).where(eq(products.productId, productId));
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(productMedia)
+        .where(eq(productMedia.productId, productId));
+
+      await tx.delete(products).where(eq(products.productId, productId));
+    });
+
     return res.status(200).json({
-      message: 'Product Deleted Successfully.',
+      success: true,
+      message: 'Product Deleted Successfully',
     });
   } catch (error) {
     console.error('Error while deleting product:', error);

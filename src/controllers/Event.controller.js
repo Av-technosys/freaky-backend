@@ -30,7 +30,7 @@ export const createEvent = async (req, res) => {
       name: name,
       description: description,
       contactNumber: contactNumber,
-      eventDate: new Date(eventDate).toISOString(),
+      eventDate: new Date(eventDate),
       minGuestCount: minGuestCount,
       maxGuestCount: maxGuestCount,
       latitude: latitude,

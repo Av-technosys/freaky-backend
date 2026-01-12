@@ -9,6 +9,8 @@ import {
   featuredBanners,
 } from '../../db/schema.js';
 import { createBookingDraft } from '../helpers/createBookingDraft.js';
+import { SOURCE, STATUS } from '../../const/global.js';
+
 import { db } from '../../db/db.js';
 export const createEvent = async (req, res) => {
   try {
@@ -164,13 +166,12 @@ export const createEventItem = async (req, res) => {
     //   .values({ eventId: eventId, productId: productId, quantity: quantity });
 
     const item = await createBookingDraft({
-      source: 'EVENT',
+      source: SOURCE.EVENT,
       sourceId: eventId,
       productId,
       quantity,
-      status: 'HOLD',
+      status: STATUS.HOLD,
     });
-    console.log('item', item);
     return res.status(201).json({
       message: 'Event item created successfully',
       data: item,

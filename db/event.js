@@ -22,7 +22,7 @@ export const event = pgTable('event', {
   eventTypeId: integer('event_type_id').references(() => eventType.id),
 
   contactName: varchar('contact_name', { length: 255 }),
-  contactNumber: varchar('contact_number', { length: 255 }),
+  contactNumber: varchar('contact_number', { length: 32 }),
   description: varchar('description'),
 
   startTime: timestamp('start_time').defaultNow(),

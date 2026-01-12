@@ -1,16 +1,14 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import s3Client from '../../lib/s3-client.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { AWS_S3_BUCKET } from '../../const/env.js';
 
 export const uploadUrl = async (req, res) => {
   try {
     const { fileName, fileType, path } = req.body;
     const key = `uploads/${path}/${Date.now()}-${fileName}`;
     const command = new PutObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET,
+      Bucket: AWS_S3_BUCKET,
       Key: key,
       ContentType: fileType,
       ACL: 'public-read',

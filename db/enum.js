@@ -26,6 +26,7 @@ export const paymentStatusEnum = pgEnum('payment_status', [
   'SUCCESS',
   'FAILED',
   'REFUNDED',
+  'PARTIAL',
 ]);
 export const paymentTypeEnum = pgEnum('payment_type', [
   'FULL',

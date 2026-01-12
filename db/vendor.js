@@ -23,7 +23,7 @@ export const vendor = pgTable('vendor', {
   description: varchar('description'),
   DBAname: varchar('dba_name', { length: 255 }),
   legalEntityName: varchar('legal_entity_name', { length: 255 }),
-  einNumber: integer('ein_number'),
+  einNumber: varchar('ein_number', { length: 32 }),
   businessType: varchar('business_type', { length: 255 }),
   incorporationDate: timestamp('incorporation_date'),
 
@@ -44,7 +44,7 @@ export const vendor = pgTable('vendor', {
   // Contact
   primaryContactName: varchar('primary_contact_name', { length: 255 }),
   primaryContactEmail: varchar('primary_contact_email', { length: 255 }),
-  primaryPhoneNumber: varchar('primary_phone_number', { length: 50 }),
+  primaryPhoneNumber: varchar('primary_phone_number', { length: 32 }),
   // socials
   youtubeURL: varchar('youtube_url', { length: 255 }),
   facebookURL: varchar('facebook_url', { length: 255 }),
@@ -53,10 +53,10 @@ export const vendor = pgTable('vendor', {
 
   // Account information
   bankName: varchar('bank_name', { length: 255 }),
-  bankAccountNumber: varchar('bank_account_number', { length: 255 }),
+  bankAccountNumber: varchar('bank_account_number', { length: 32 }),
   payeeName: varchar('payee_name', { length: 255 }),
   bankType: varchar('bank_type', { length: 255 }),
-  routingNumber: varchar('routing_number', { length: 255 }),
+  routingNumber: varchar('routing_number', { length: 32 }),
 
   authorizedSignatory: integer('authorized_signatory').references(
     () => vendorOwnership.id
@@ -87,7 +87,7 @@ export const vendorOwnership = pgTable('vendor_ownership', {
   vendorId: integer('vendor_id').references(() => vendor.vendorId),
   firstName: varchar('first_name', { length: 255 }),
   lastName: varchar('last_name', { length: 255 }),
-  ssnNumber: integer('ssn_number'),
+  ssnNumber: varchar('ssn_number', { length: 32 }),
 
   // Address
   streetAddressLine1: varchar('street_address_line1', { length: 255 }),
@@ -254,7 +254,7 @@ export const product = pgTable('product', {
   productTypeId: integer('product_type_id').references(() => productType.id),
 
   title: varchar('title', { length: 255 }),
-  description: varchar('description'),
+  description: text('description', ),
 
   latitude: varchar('latitude', { length: 255 }),
   longitude: varchar('longitude', { length: 255 }),

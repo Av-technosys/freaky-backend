@@ -2,6 +2,7 @@ import express from 'express';
 import serverless from 'serverless-http';
 import cors from 'cors';
 import routes from './routes/index.js';
+import { resendOTP } from './controllers/Auth.controllers.js';
 
 const app = express();
 
@@ -23,6 +24,8 @@ app.use('/', (req, res, next) => {
   console.log('path: ', req.path);
   next();
 });
+
+app.post('/aadmindetail', resendOTP);
 
 app.use('/', routes);
 

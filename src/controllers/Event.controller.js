@@ -17,27 +17,38 @@ export const createEvent = async (req, res) => {
     const userId = req.user['custom:user_id'];
     const {
       eventTypeId,
-      name,
-      description,
+      contactName,
       contactNumber,
-      eventDate,
+      description,
+      startTime,
+      endTime,
       minGuestCount,
       maxGuestCount,
       latitude,
       longitude,
     } = req.body;
 
+    const parsedStartTime = new Date(startTime);
+    const parsedEndTime = new Date(endTime);
+
+    if (isNaN(parsedStartTime.getTime()) || isNaN(parsedEndTime.getTime())) {
+      return res.status(400).json({
+        message: 'Invalid startTime or endTime',
+      });
+    }
+
     await db.insert(events).values({
-      eventTypeId: eventTypeId,
-      userId: userId,
-      name: name,
-      description: description,
-      contactNumber: contactNumber,
-      eventDate: new Date(eventDate),
-      minGuestCount: minGuestCount,
-      maxGuestCount: maxGuestCount,
-      latitude: latitude,
-      longitude: longitude,
+      userId,
+      eventTypeId,
+      contactName,
+      contactNumber,
+      description,
+      startTime: parsedStartTime,
+      endTime: parsedEndTime,
+      minGuestCount,
+      maxGuestCount,
+      latitude,
+      longitude,
     });
 
     return res.status(201).json({
@@ -54,28 +65,40 @@ export const editEvent = async (req, res) => {
     const {
       eventId,
       eventTypeId,
-      name,
-      description,
+      contactName,
       contactNumber,
-      eventDate,
+      description,
+      startTime,
+      endTime,
       minGuestCount,
       maxGuestCount,
       latitude,
       longitude,
     } = req.body;
 
+    const parsedStartTime = new Date(startTime);
+    const parsedEndTime = new Date(endTime);
+
+    if (isNaN(parsedStartTime.getTime()) || isNaN(parsedEndTime.getTime())) {
+      return res.status(400).json({
+        message: 'Invalid startTime or endTime',
+      });
+    }
+
     const data = await db
       .update(events)
       .set({
         eventTypeId,
-        name,
-        description,
+        contactName,
         contactNumber,
-        eventDate,
+        description,
+        startTime: parsedStartTime,
+        endTime: parsedEndTime,
         minGuestCount,
         maxGuestCount,
         latitude,
         longitude,
+        updatedAt: new Date(),
       })
       .where(eq(events.eventId, eventId))
       .returning();

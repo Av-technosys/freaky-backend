@@ -35,4 +35,5 @@ router.post('/notification/read', confirmUserToken, markNotificationAsRead);
 router.get('/personal_details', confirmUserToken, getPersonalInfo);
 router.put('/update_details', confirmUserToken, updateDetails);
 router.post('/testing_notification', Notify);
+
 export default router;

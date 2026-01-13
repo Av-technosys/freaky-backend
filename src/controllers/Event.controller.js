@@ -37,22 +37,26 @@ export const createEvent = async (req, res) => {
       });
     }
 
-    await db.insert(events).values({
-      userId,
-      eventTypeId,
-      contactName,
-      contactNumber,
-      description,
-      startTime: parsedStartTime,
-      endTime: parsedEndTime,
-      minGuestCount,
-      maxGuestCount,
-      latitude,
-      longitude,
-    });
+    const [createdEvent] = await db
+      .insert(events)
+      .values({
+        userId,
+        eventTypeId,
+        contactName,
+        contactNumber,
+        description,
+        startTime: parsedStartTime,
+        endTime: parsedEndTime,
+        minGuestCount,
+        maxGuestCount,
+        latitude,
+        longitude,
+      })
+      .returning();
 
     return res.status(201).json({
       message: 'Event created successfully...',
+      data: createdEvent,
     });
   } catch (error) {
     console.error('Error: ', error);

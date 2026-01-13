@@ -1,7 +1,6 @@
 import { MAIL_FOOTER, MAIL_HEAD } from './mailLayout.js';
 
 export const paymentConfirmation = () => {
-  console.log('payment Confirmation');
   return `
     ${MAIL_HEAD}
 

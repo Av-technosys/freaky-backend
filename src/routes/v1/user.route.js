@@ -18,7 +18,6 @@ import addressRouter from './user.address.route.js';
 import cartRouter from './user.cart.js';
 
 const router = Router();
-console.log('request reviced user');
 router.use('/address', addressRouter);
 router.use('/cart', cartRouter);
 

@@ -11,7 +11,7 @@ import {
 import { createBookingDraft } from '../helpers/createBookingDraft.js';
 import { SOURCE, STATUS } from '../../const/global.js';
 import { products } from '../../db/schema.js';
-import { bookingItem } from '../../db/user.js';
+import { bookingItem, booking } from '../../db/user.js';
 import { db } from '../../db/db.js';
 export const createEvent = async (req, res) => {
   try {
@@ -38,7 +38,7 @@ export const createEvent = async (req, res) => {
       });
     }
 
-    await db
+    const [createdEvent] = await db
       .insert(events)
       .values({
         userId,
@@ -57,6 +57,7 @@ export const createEvent = async (req, res) => {
 
     return res.status(201).json({
       message: 'Event created successfully...',
+      data: createdEvent,
     });
   } catch (error) {
     console.error('Error: ', error);
@@ -207,6 +208,70 @@ export const createEventItem = async (req, res) => {
     console.error('Error:', error);
     return res.status(400).json({
       message: error.message,
+    });
+  }
+};
+
+export const createBooking = async (req, res) => {
+  try {
+    const userId = req.user['custom:user_id'];
+
+    const {
+      eventTypeId,
+      source,
+      contactName,
+      contactNumber,
+      description,
+      startTime,
+      endTime,
+      minGuestCount,
+      maxGuestCount,
+      latitude,
+      longitude,
+    } = req.body;
+
+    if (!eventTypeId || !source) {
+      return res.status(400).json({
+        message: 'eventTypeId and source are required',
+      });
+    }
+
+    const [createdBooking] = await db
+      .insert(booking)
+      .values({
+        userId,
+        eventTypeId,
+        source,
+
+        contactName,
+        contactNumber,
+        description,
+        startTime: startTime ? new Date(startTime) : undefined,
+        endTime: endTime ? new Date(endTime) : undefined,
+        minGuestCount,
+        maxGuestCount,
+
+        latitude,
+        longitude,
+
+        bookingStatus: 'HOLD',
+        paymentStatus: 'PENDING',
+      })
+      .returning({
+        bookingId: booking.bookingId,
+        bookingStatus: booking.bookingStatus,
+        paymentStatus: booking.paymentStatus,
+        createdAt: booking.createdAt,
+      });
+
+    return res.status(201).json({
+      message: 'Booking created successfully',
+      data: createdBooking,
+    });
+  } catch (error) {
+    console.error('Create booking failed', error);
+    return res.status(500).json({
+      message: 'Internal server error',
     });
   }
 };

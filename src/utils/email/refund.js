@@ -1,7 +1,6 @@
 import { MAIL_FOOTER, MAIL_HEAD } from './mailLayout.js';
 
 export const refund = () => {
-  console.log('refund');
   return `
 ${MAIL_HEAD}
 

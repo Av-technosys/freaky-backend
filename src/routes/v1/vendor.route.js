@@ -47,7 +47,7 @@ router.get(
   checkVendor,
   getCompanyProfile
 );
-router.use('/review', vendorReviewRouter);
+router.use('/review', confirmUserToken, vendorReviewRouter);
 router.use('/calendar', vendorcalendarRouter);
 router.get('/detail', checkVendor, getVendorInfo);
 router.get('/vendors', listAllVendors);
@@ -83,7 +83,6 @@ router.get('/ownership_details', confirmUserToken, getVendorOwnershipDetails);
 router.get('/employees', confirmUserToken, getVendorEmployees);
 router.post('/send_mail', async (req, res) => {
   const { name, email, number } = req.body;
-  console.log(name, email, number);
   try {
     // await sendMail({
     //   to: email,
@@ -119,7 +118,6 @@ router.post('/send_mail', async (req, res) => {
       body: secureEvent(name),
     });
 
-    console.log('mail sent');
     return res.status(200).json({ message: 'Mail sent successfully.' });
   } catch (error) {
     console.log(' error: ', error);
@@ -144,3 +142,30 @@ router.get('/notifications', confirmUserToken, getVendorNotifications);
 router.get('/searchitems', confirmUserToken, getAllSearchItems);
 
 export default router;
+
+
+// const vendors = await db.execute(sql`
+//   SELECT 
+//     v.*,
+//     ST_Distance(
+//       v.location,
+//       ST_SetSRID(ST_MakePoint(${userLng}, ${userLat}), 4326)::geography
+//     ) AS distance
+//   FROM "vendor" v
+//   WHERE ST_DWithin(
+//     v.location,
+//     ST_SetSRID(ST_MakePoint(${userLng}, ${userLat}), 4326)::geography,
+//     v.radius_miles * 1609.34
+//   )
+//   ORDER BY distance ASC;
+// `);
+
+
+// await db.execute(sql`
+//   UPDATE "user_address"
+//   SET 
+//     lat = ${lat},
+//     lng = ${lng},
+//     location = ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
+//   WHERE id = ${userId};
+// `);

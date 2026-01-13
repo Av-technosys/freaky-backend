@@ -1,7 +1,6 @@
 import { MAIL_FOOTER, MAIL_HEAD } from './mailLayout.js';
 
 export const bookingConfirmed = () => {
-  console.log('bookingConfirmed');
   return `
 ${MAIL_HEAD}
 

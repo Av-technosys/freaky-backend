@@ -22,7 +22,6 @@ import {
 } from '../../controllers/Event.controller.js';
 
 const router = Router();
-console.log('request reviced user');
 router.use('/address', addressRouter);
 router.use('/cart', cartRouter);
 

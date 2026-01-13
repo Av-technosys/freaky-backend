@@ -1,7 +1,6 @@
 import { MAIL_FOOTER, MAIL_HEAD } from './mailLayout.js';
 
 export const shareFeedback = () => {
-  console.log('shareFeedback');
   return `
 ${MAIL_HEAD}
 

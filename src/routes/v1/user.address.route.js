@@ -10,7 +10,6 @@ import {
 } from '../../controllers/User.controllers.js';
 
 const router = Router();
-console.log('request reviced address');
 router.get('/', confirmUserToken, listAllAddresses);
 router.post('/add', confirmUserToken, addAddress);
 router.put('/edit', confirmUserToken, editAddresses);

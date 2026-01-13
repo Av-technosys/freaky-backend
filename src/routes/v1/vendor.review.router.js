@@ -5,15 +5,17 @@ import { db } from '../../../db/db.js';
 const vendorReviewRouter = Router();
 
 vendorReviewRouter.get('/', async (req, res) => {
-  const { vendor_id, page, page_size, time } = req.query;
+  const { page, page_size, time } = req.query;
+
+  const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
 
   const limit = Number(page_size);
   const offset = (Number(page) - 1) * limit;
 
   const filters = [];
 
-  if (vendor_id) {
-    filters.push(eq(reviews.vendorId, vendor_id));
+  if (vendorId) {
+    filters.push(eq(reviews.vendorId, vendorId));
   }
   const now = Date.now();
 

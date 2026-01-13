@@ -10,7 +10,8 @@ import {
 } from '../../db/schema.js';
 import { createBookingDraft } from '../helpers/createBookingDraft.js';
 import { SOURCE, STATUS } from '../../const/global.js';
-
+import { products } from '../../db/schema.js';
+import { bookingItem } from '../../db/user.js';
 import { db } from '../../db/db.js';
 export const createEvent = async (req, res) => {
   try {
@@ -37,19 +38,22 @@ export const createEvent = async (req, res) => {
       });
     }
 
-    await db.insert(events).values({
-      userId,
-      eventTypeId,
-      contactName,
-      contactNumber,
-      description,
-      startTime: parsedStartTime,
-      endTime: parsedEndTime,
-      minGuestCount,
-      maxGuestCount,
-      latitude,
-      longitude,
-    });
+    await db
+      .insert(events)
+      .values({
+        userId,
+        eventTypeId,
+        contactName,
+        contactNumber,
+        description,
+        startTime: parsedStartTime,
+        endTime: parsedEndTime,
+        minGuestCount,
+        maxGuestCount,
+        latitude,
+        longitude,
+      })
+      .returning();
 
     return res.status(201).json({
       message: 'Event created successfully...',
@@ -207,6 +211,79 @@ export const createEventItem = async (req, res) => {
   }
 };
 
+export const createBookingItem = async (req, res) => {
+  try {
+    const {
+      bookingId,
+      productId,
+      contactName,
+      contactNumber,
+      startTime,
+      endTime,
+      minGuestCount,
+      maxGuestCount,
+      quantity,
+      latitude,
+      longitude,
+    } = req.body;
+
+    if (!productId || !quantity) {
+      return res.status(400).json({
+        message: 'productId and quantity are required',
+      });
+    }
+
+    const [productData] = await db
+      .select({
+        productId: products.productId,
+        name: products.title,
+        image: products.bannerImage,
+        price: products.currentPriceBook,
+      })
+      .from(products)
+      .where(eq(products.productId, productId));
+
+    if (!productData) {
+      return res.status(404).json({
+        message: 'Product not found',
+      });
+    }
+
+    const [createdItem] = await db
+      .insert(bookingItem)
+      .values({
+        bookingId,
+        productId: productData.productId,
+
+        contactName,
+        contactNumber,
+        startTime: startTime ? new Date(startTime) : undefined,
+        endTime: endTime ? new Date(endTime) : undefined,
+        minGuestCount,
+        maxGuestCount,
+
+        productName: productData.name,
+        productImage: productData.image,
+        productPrice: productData.price,
+
+        latitude,
+        longitude,
+
+        quantity,
+      })
+      .returning();
+
+    return res.status(201).json({
+      message: 'Booking item created',
+      data: createdItem,
+    });
+  } catch (error) {
+    console.error('Create booking item failed', error);
+    return res.status(500).json({
+      message: 'Internal server error',
+    });
+  }
+};
 export const deleteEventItem = async (req, res) => {
   try {
     const { itemId } = req.params;

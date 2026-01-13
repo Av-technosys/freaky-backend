@@ -16,6 +16,7 @@ import {
 import { confirmUserToken } from '../../middleware/user.middleware.js';
 import addressRouter from './user.address.route.js';
 import cartRouter from './user.cart.js';
+import { createBookingItem } from '../../controllers/Event.controller.js';
 
 const router = Router();
 console.log('request reviced user');
@@ -36,4 +37,5 @@ router.post('/notification/read', confirmUserToken, markNotificationAsRead);
 router.get('/personal_details', confirmUserToken, getPersonalInfo);
 router.put('/update_details', confirmUserToken, updateDetails);
 router.post('/testing_notification', Notify);
+router.post('/bookingItem', confirmUserToken, createBookingItem);
 export default router;

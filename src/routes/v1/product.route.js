@@ -11,6 +11,7 @@ import {
   fetchProductDetailById,
   fetchProductPrice,
   getAllProductsByCategoryId,
+  getAllFeaturedProducts,
   productByTypeId,
   updateProductById,
 } from '../../controllers/Vendor.controllers.js';
@@ -27,6 +28,7 @@ router.get(
   confirmUserToken,
   getAllProductsByCategoryId
 );
+router.get('/featuredProducts/', confirmUserToken, getAllFeaturedProducts);
 router.put('/update/:productId', confirmUserToken, updateProductById);
 router.post('/create', confirmUserToken, createProduct);
 router.delete('/image/:id', confirmUserToken, deleteProductImage);

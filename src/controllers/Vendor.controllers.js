@@ -21,6 +21,7 @@ import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { bookingDraft } from '../../db/schema.js';
 import { paginate } from '../helpers/paginate.js';
+import { featuredCategory, featuredProdcut } from '../../db/vendor.js';
 
 export const getVendorInfo = async (req, res) => {
   try {
@@ -838,6 +839,85 @@ export const getAllFeaturedCategories = async (req, res) => {
   } catch (error) {
     console.error('Error: ', error);
     return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getAllFeaturedProducts = async (req, res) => {
+  try {
+    const categories = await db.select().from(featuredCategory);
+
+    if (!categories.length) {
+      return res.status(404).json({ message: 'No featured categories found' });
+    }
+
+    const result = await Promise.all(
+      categories.map(async (category) => {
+        const featuredItems = await db
+          .select()
+          .from(featuredProdcut)
+          .where(eq(featuredProdcut.featuredCategoryId, category.id))
+          .orderBy(asc(featuredProdcut.priority));
+
+        if (!featuredItems.length) {
+          return {
+            ...category,
+            products: [],
+          };
+        }
+
+        const products = await Promise.all(
+          featuredItems.map(async (fp) => {
+            if (!fp.productId) return null;
+
+            const product = await db.query.products.findFirst({
+              where: (t, { eq }) => eq(t.productId, fp.productId),
+            });
+
+            if (!product) return null;
+
+            const priceBooks = await db.query.priceBook.findMany({
+              where: (t, { eq, and }) =>
+                and(eq(t.vendorId, product.vendorId), eq(t.isActive, true)),
+            });
+
+            const priceBookIds = priceBooks.map((p) => p.id);
+
+            const prices =
+              priceBookIds.length > 0
+                ? await db.query.priceBookEntry.findMany({
+                    where: (t, { eq, inArray, and }) =>
+                      and(
+                        eq(t.productId, product.productId),
+                        inArray(t.priceBookingId, priceBookIds)
+                      ),
+                  })
+                : [];
+
+            return {
+              ...product,
+              price: prices,
+              priority: fp.priority,
+            };
+          })
+        );
+
+        return {
+          ...category,
+          products: products.filter(Boolean),
+        };
+      })
+    );
+
+    return res.status(200).json({
+      message: 'Featured categories with products fetched successfully',
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: 'Internal server error',
+      error: error.message,
+    });
   }
 };
 

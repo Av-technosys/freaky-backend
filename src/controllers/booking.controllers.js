@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 
 export const createExternalBooking = async (req, res) => {
   try {
+    const vendorId = req.vendor.vendorId;
     const { contactName, contactNumber, services } = req.body;
 
     const [newBooking] = await db
@@ -41,6 +42,7 @@ export const createExternalBooking = async (req, res) => {
           endTime: new Date(service.endTime),
           minGuestCount: service.minPerson,
           maxGuestCount: service.maxPerson,
+          vendorId,
           quantity: 1, // Default quantity as it is required by schema but not provided in input
         };
       });
@@ -194,6 +196,43 @@ export const createBookingItem = async (req, res) => {
     console.error('Create booking item failed', error);
     return res.status(500).json({
       message: 'Internal server error',
+    });
+  }
+};
+
+export const getBooking = async (req, res) => {
+  try {
+    const { text = '', page = 1, page_size = 12 } = req.query;
+
+    const vendorId = req.vendor.vendorId;
+
+    const filters = [eq(booking.vendorId, vendorId)];
+
+    if (text.trim()) {
+      filters.push(ilike(products.title, `%${text}%`));
+    }
+
+    const whereClause = and(...filters);
+
+    // const result = await paginate({
+    //   table: booking,
+    //   select: booking,
+    //   where: whereClause,
+    //   orderBy: booking.createdAt,
+    //   page,
+    //   page_size,
+    // });
+
+    // return res.status(200).json({
+    //   success: true,
+    //   message: 'Products fetched successfully',
+    //   ...result,
+    // });
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };

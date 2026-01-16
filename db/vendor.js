@@ -144,7 +144,9 @@ export const vendorEmployeeRequest = pgTable('vendor_employee_request', {
 
 export const vendorMedia = pgTable('vendor_media', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
-  vendorId: integer('vendor_id').references(() => vendor.vendorId),
+  vendorId: integer('vendor_id').references(() => vendor.vendorId, {
+    onDelete: 'cascade'
+  }),
 
   mediaType: mediaTypeEnum('media_type').notNull(),
   mediaUrl: varchar('media_url', { length: 255 }),
@@ -281,7 +283,9 @@ export const product = pgTable('product', {
 
 export const productReviewSummary = pgTable('product_review_summary', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
-  productId: integer('product_id').references(() => product.productId),
+  productId: integer('product_id').references(() => product.productId, {
+    onDelete: 'cascade',
+  }),
   reviewCount: integer('review_count').default(0),
   rating1: integer('rating1').default(0),
   rating2: integer('rating2').default(0),
@@ -314,16 +318,11 @@ export const featuredProdcut = pgTable('featured_product', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// export const productAvailableArea = pgTable('product_available_area', {
-//   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-//   productId: integer('product_id').references(() => productType.id),
-//   postalCode: varchar('postal_code', { length: 255 }),
-//   createdAt: timestamp('created_at').defaultNow(),
-// });
-
 export const productMedia = pgTable('product_media', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  productId: integer('product_id').references(() => product.productId),
+  productId: integer('product_id').references(() => product.productId, {
+    onDelete: 'cascade',
+  }),
 
   mediaType: mediaTypeEnum('media_type').notNull(),
   mediaUrl: varchar('media_url', { length: 255 }),
@@ -340,18 +339,6 @@ export const productAddon = pgTable('product_addon', {
     () => product.productId
   ),
 });
-
-// export const discountScheduled = pgTable('discount_scheduled', {
-//   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-//   productId: integer('product_id').references(() => productType.id),
-//   name: varchar('name', { length: 255 }),
-//   lowerBound: decimal('lower_bound', { precision: 10, scale: 2 }),
-//   upperBound: decimal('upper_bound', { precision: 10, scale: 2 }),
-//   currency: varchar('currency', { length: 255 }),
-
-//   createdAt: timestamp('created_at').defaultNow(),
-//   updatedAt: timestamp('updated_at').defaultNow(),
-// });
 
 export const contractProductType = pgTable('contract_product_type', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment

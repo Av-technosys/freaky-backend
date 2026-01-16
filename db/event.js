@@ -38,34 +38,6 @@ export const event = pgTable('event', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-// export const eventOrderTransaction = pgTable('event_order_transaction', {
-//   transactionId: integer('transaction_id')
-//     .generatedAlwaysAsIdentity()
-//     .primaryKey(),
-
-//   eventBookingId: integer('order_id').references(() => eventBooking.id),
-//   transactionStatus: varchar('transaction_status', { length: 255 }),
-
-//   paymentStatus: varchar('payment_status', { length: 50 }).notNull(),
-//   paymentMethod: varchar('payment_method', { length: 50 }),
-//   paymentType: varchar('payment_type', { length: 50 }),
-//   paymentMeta: jsonb('payment_meta'),
-
-//   remarks: varchar('remarks', { length: 255 }),
-
-//   referenceNumber: varchar('reference_number', { length: 255 }),
-
-//   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
-//   currency: varchar('currency', { length: 10 }).default('USD').notNull(),
-
-//   transactionTime: timestamp('transaction_time').defaultNow().notNull(),
-
-//   failureReason: varchar('failure_reason', { length: 255 }),
-//   errorCode: varchar('error_code', { length: 100 }),
-
-//   createdAt: timestamp('created_at').defaultNow(),
-// });
-
 export const featuredEvent = pgTable('featured_event', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   name: varchar('name', { length: 255 }),

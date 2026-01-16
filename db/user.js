@@ -59,7 +59,9 @@ export const user = pgTable('user', {
 
 export const userNotification = pgTable('user_notification', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  userId: integer('user_id').references(() => user.userId),
+  userId: integer('user_id').references(() => user.userId, {
+    onDelete: 'cascade',
+  }),
   vendorId: integer('vendor_id').references(() => vendor.vendorId),
   title: varchar('title', { length: 255 }),
   message: varchar('message', { length: 255 }),
@@ -70,7 +72,9 @@ export const userNotification = pgTable('user_notification', {
 
 export const userAddress = pgTable('user_address', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
-  userId: integer('user_id').references(() => user.userId),
+  userId: integer('user_id').references(() => user.userId, {
+    onDelete: 'cascade',
+  }),
   title: varchar('title', { length: 255 }),
   addressLineOne: varchar('address_line_one', { length: 255 }),
   addressLineTwo: varchar('address_line_two', { length: 255 }),
@@ -184,9 +188,7 @@ export const booking = pgTable('booking', {
 export const bookingItem = pgTable('booking_item', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
   bookingId: integer('booking_id').references(() => booking.bookingId),
-  productId: integer('product_id')
-    .references(() => product.productId)
-    .notNull(),
+  productId: integer('product_id').notNull(),
 
   // more specific to CART
   contactName: varchar('contact_name', { length: 255 }),
@@ -202,7 +204,7 @@ export const bookingItem = pgTable('booking_item', {
   // location: varchar('location', { length: 255 }),
   latitude: varchar('latitude', { length: 255 }),
   longitude: varchar('longitude', { length: 255 }),
-
+  vendorId: integer('vendor_id'),
   bookingStatus: bookingStatusEnum('booking_status').default('HOLD'),
   paymentStatus: paymentStatusEnum('payment_status').default('PENDING'),
 
@@ -302,7 +304,9 @@ export const reviewMedia = pgTable('review_media', {
   reviewMediaId: integer('review_media_id')
     .generatedAlwaysAsIdentity()
     .primaryKey(), // auto-increment
-  reviewId: integer('review_id').references(() => review.reviewId),
+  reviewId: integer('review_id').references(() => review.reviewId, {
+    onDelete: 'cascade',
+  }),
   mediaUrl: varchar('media_url', { length: 255 }),
   mediaType: mediaTypeEnum('media_type').notNull(),
   createdAt: timestamp('created_at').defaultNow(),

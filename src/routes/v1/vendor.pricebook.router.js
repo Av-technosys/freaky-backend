@@ -5,6 +5,7 @@ import { db } from '../../../db/db.js';
 import { and, eq } from 'drizzle-orm'; 
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { priceBook, priceBookEntry, products } from '../../../db/schema.js';
+import { getPriceProdcutPriceStandardPricebook, setCurrentPricebook } from '../../helpers/vendor.helper.js';
 const pricebookRouter = Router();
 
 pricebookRouter.get('/', checkVendor, async (req, res) => {
@@ -75,6 +76,71 @@ pricebookRouter.put('/update', checkVendor, async (req, res) => {
   } catch (error) {
     console.error('Error: ', error);
     return res.status(500).send({ message: 'Internal server error' });
+  }
+});
+
+pricebookRouter.post('/create', checkVendor, async (req, res) => {
+  const vendorId = req.vendor.vendorId;
+  try {
+    const { name, description, isActive } = req.body;
+
+    if (!name || !description) {
+      return res.status(400).send({ message: 'Missing name or description' });
+    }
+
+    const [newPriceBook] = await db.insert(priceBook).values({
+      name,
+      description,
+      vendorId,
+    }).returning();
+
+ 
+    if(isActive){
+      await setCurrentPricebook(vendorId, newPriceBook.id);
+    }
+
+    let pricebookEntryData = await getPriceProdcutPriceStandardPricebook(vendorId);
+     pricebookEntryData = pricebookEntryData.map((item) => {
+      return {
+        priceBookingId: newPriceBook.id,
+        productId: item.productId,
+        lowerSlab: item.lowerSlab,
+        upperSlab: item.upperSlab,
+        listPrice: item.listPrice,
+        discountPercentage: item.discountPercentage,
+        salePrice: item.salePrice,
+      };
+    });
+
+ 
+
+    await db.insert(priceBookEntry).values(pricebookEntryData);
+ 
+    return res.send({ msg: 'Pricebook created successfully', data: newPriceBook });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.send({ message: 'Internal server error' });
+  }
+});
+
+pricebookRouter.delete('/:pricebookId', checkVendor, async (req, res) => {
+  const vendorId = req.vendor.vendorId;
+  try {
+    const pricebookId = req.params.pricebookId;
+    // check if itss of the loged in vendor
+    const [deletePricebookData] = await db.select().from(priceBook).where(and(eq(priceBook.vendorId, vendorId), eq(priceBook.id, pricebookId)));
+    if (!deletePricebookData) {
+      return res.status(404).send({ message: 'Pricebook not found' });
+    }
+    if(deletePricebookData.isActive || deletePricebookData.isStandard){
+      return res.status(400).send({ message: 'Pricebook is active or standard' });
+    }
+    await db.delete(priceBookEntry).where(eq(priceBookEntry.priceBookingId, pricebookId));
+    await db.delete(priceBook).where(and(eq(priceBook.vendorId, vendorId), eq(priceBook.id, pricebookId)));
+    return res.send({ msg: 'Pricebook deleted successfully' });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.send({ message: 'Internal server error' });
   }
 });
 

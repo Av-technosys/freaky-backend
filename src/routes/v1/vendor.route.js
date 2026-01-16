@@ -34,9 +34,13 @@ import {
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
-import { getAllProducts } from '../../controllers/product.controller.js';
+import {
+  getAllProductMeta,
+  getAllProducts,
+} from '../../controllers/product.controller.js';
 import vendorReviewRouter from './vendor.review.router.js';
 import vendorcalendarRouter from './vendor.calendar.route.js';
+import vendorpricebookRouter from './vendor.pricebook.router.js';
 import { sendMail } from '../../utils/email/sendMail.js';
 import { secureEvent } from '../../utils/email/secureEvent.js';
 const router = Router();
@@ -49,6 +53,7 @@ router.get(
 );
 router.use('/review', confirmUserToken, vendorReviewRouter);
 router.use('/calendar', vendorcalendarRouter);
+router.use('/pricebook', vendorpricebookRouter);
 router.get('/detail', checkVendor, getVendorInfo);
 router.get('/vendors', listAllVendors);
 router.post('/cerate_vendor', confirmUserToken, createVendor);
@@ -74,6 +79,7 @@ router.get('/pricebooks/:id', confirmUserToken, listAllPriceBooksById);
 router.delete('/pricebook/:priceBookId', confirmUserToken, deletePriceBookById);
 router.put('/pricebook/:priceBookId', confirmUserToken, updatePriceBookById);
 router.get('/products', checkVendor, getAllProducts);
+router.get('/product/meta', checkVendor, getAllProductMeta);
 router.post('/create_document', confirmUserToken, createVendorDocument);
 router.put('/update_document', confirmUserToken, updateVendorDocument);
 router.get('/documents', confirmUserToken, getVendorDocuments);
@@ -143,9 +149,8 @@ router.get('/searchitems', confirmUserToken, getAllSearchItems);
 
 export default router;
 
-
 // const vendors = await db.execute(sql`
-//   SELECT 
+//   SELECT
 //     v.*,
 //     ST_Distance(
 //       v.location,
@@ -160,10 +165,9 @@ export default router;
 //   ORDER BY distance ASC;
 // `);
 
-
 // await db.execute(sql`
 //   UPDATE "user_address"
-//   SET 
+//   SET
 //     lat = ${lat},
 //     lng = ${lng},
 //     location = ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography

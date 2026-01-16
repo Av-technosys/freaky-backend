@@ -89,6 +89,48 @@ export const getAllProducts = async (req, res) => {
   }
 };
 
+export const getAllProductMeta = async (req, res) => {
+  try {
+    const { text = '', page = 1, page_size = 12 } = req.query;
+
+    const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
+
+    const filters = [eq(products.vendorId, vendorId)];
+
+    if (text.trim()) {
+      filters.push(ilike(products.title, `%${text}%`));
+    }
+
+    const whereClause = and(...filters);
+
+    const result = await paginate({
+      table: products,
+      select: {
+        productId: products.productId,
+        title: products.title,
+        bannerImage: products.bannerImage,
+        // bannerImage: products.
+      },
+      where: whereClause,
+      orderBy: products.createdAt,
+      page,
+      page_size,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Products fetched successfully',
+      ...result,
+    });
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 export const getAllProductTypes = async (req, res) => {
   try {
     const data = await db

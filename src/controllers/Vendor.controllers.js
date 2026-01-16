@@ -25,7 +25,7 @@ import { featuredCategory, featuredProdcut } from '../../db/vendor.js';
 
 export const getVendorInfo = async (req, res) => {
   try {
-    const id = req.vendor.vendorId;
+    const id = req.vendor.vendorId || req.body.vendorId;
     const [vendorData] = await db
       .select()
       .from(vendors)

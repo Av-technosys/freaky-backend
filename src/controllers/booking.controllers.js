@@ -1,7 +1,8 @@
 import { booking, bookingItem, products } from '../../db/schema.js';
 import { db } from '../../db/db.js';
-import { inArray } from 'drizzle-orm';
+import { and, inArray } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
+import { paginate } from '../helpers/paginate.js';
 
 export const createExternalBooking = async (req, res) => {
   try {
@@ -206,28 +207,28 @@ export const getBooking = async (req, res) => {
 
     const vendorId = req.vendor.vendorId;
 
-    const filters = [eq(booking.vendorId, vendorId)];
+    const filters = [eq(bookingItem.vendorId, vendorId)];
 
     if (text.trim()) {
-      filters.push(ilike(products.title, `%${text}%`));
+      filters.push(ilike(bookingItem.productName, `%${text}%`));
     }
 
     const whereClause = and(...filters);
 
-    // const result = await paginate({
-    //   table: booking,
-    //   select: booking,
-    //   where: whereClause,
-    //   orderBy: booking.createdAt,
-    //   page,
-    //   page_size,
-    // });
+    const result = await paginate({
+      table: bookingItem,
+      select: bookingItem,
+      where: whereClause,
+      orderBy: bookingItem.createdAt,
+      page,
+      page_size,
+    });
 
-    // return res.status(200).json({
-    //   success: true,
-    //   message: 'Products fetched successfully',
-    //   ...result,
-    // });
+    return res.status(200).json({
+      success: true,
+      message: 'Products fetched successfully',
+      ...result,
+    });
   } catch (error) {
     console.error('Error fetching products:', error);
     return res.status(500).json({

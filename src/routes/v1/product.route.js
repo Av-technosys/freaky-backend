@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
 import {
+  deleteBannerImage,
   deleteProductById,
+  deleteProductImage,
   getAllProductReviews,
   getAllProductTypes,
 } from '../../controllers/product.controller.js';
 import {
   createProduct,
-  deleteProductImage,
   fetchProductDetailById,
   fetchProductPrice,
   getAllProductsByCategoryId,
@@ -32,6 +33,7 @@ router.get('/featuredProducts/', confirmUserToken, getAllFeaturedProducts);
 router.put('/update/:productId', confirmUserToken, updateProductById);
 router.post('/create', confirmUserToken, createProduct);
 router.delete('/image/:id', confirmUserToken, deleteProductImage);
+router.delete('/banner/:productId', confirmUserToken, deleteBannerImage);
 router.delete('/delete/:productId', confirmUserToken, deleteProductById);
 
 export default router;

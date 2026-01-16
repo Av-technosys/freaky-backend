@@ -1,4 +1,4 @@
-import { eq, sql, and, asc, isNull } from 'drizzle-orm';
+import { eq, sql, and, asc, isNull, desc } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
   productMedia,
@@ -93,6 +93,10 @@ export const getAllProductMeta = async (req, res) => {
   try {
     const { text = '', page = 1, page_size = 12 } = req.query;
 
+    const currentPage = Number(page);
+    const limit = Number(page_size);
+    const offset = (currentPage - 1) * limit;
+
     const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
 
     const filters = [eq(products.vendorId, vendorId)];
@@ -103,24 +107,37 @@ export const getAllProductMeta = async (req, res) => {
 
     const whereClause = and(...filters);
 
-    const result = await paginate({
-      table: products,
-      select: {
+    const data = await db
+      .select({
         productId: products.productId,
         title: products.title,
         bannerImage: products.bannerImage,
-        // bannerImage: products.
-      },
-      where: whereClause,
-      orderBy: products.createdAt,
-      page,
-      page_size,
-    });
+        productType: productTypes.name,
+      })
+      .from(products)
+      .leftJoin(productTypes, eq(products.productTypeId, productTypes.id))
+      .where(whereClause)
+      .orderBy(asc(products.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [{ total }] = await db
+      .select({
+        total: sql`count(*)`,
+      })
+      .from(products)
+      .where(whereClause);
 
     return res.status(200).json({
       success: true,
       message: 'Products fetched successfully',
-      ...result,
+      data,
+      pagination: {
+        page: currentPage,
+        page_size: limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -155,6 +172,35 @@ export const getAllProductTypes = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+export const deleteProductImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.delete(productMedia).where(eq(productMedia.id, id));
+    return res.status(200).json({
+      message: 'Image deleted successfully!',
+    });
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteBannerImage = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    await db
+      .update(products)
+      .set({ bannerImage: null })
+      .where(eq(products.productId, productId));
+    return res.status(200).json({
+      message: 'Image deleted successfully!',
+    });
+  } catch (error) {
+    console.error(' Error:', error);
+    return res.status(500).json({ error: error.message });
   }
 };
 

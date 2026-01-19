@@ -1,6 +1,6 @@
 import { booking, bookingItem, products } from '../../db/schema.js';
 import { db } from '../../db/db.js';
-import { and, inArray } from 'drizzle-orm';
+import { and, ilike, inArray } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
 import { paginate } from '../helpers/paginate.js';
 
@@ -217,7 +217,13 @@ export const getBooking = async (req, res) => {
 
     const result = await paginate({
       table: bookingItem,
-      select: bookingItem,
+      select: {
+        id: bookingItem.id,
+        contactName: bookingItem.contactName,
+        productName: bookingItem.productName,
+        productPrice: bookingItem.productPrice,
+        bookingStatus: bookingItem.bookingStatus,
+      },
       where: whereClause,
       orderBy: bookingItem.createdAt,
       page,
@@ -234,6 +240,27 @@ export const getBooking = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+export const getBookingItemDetailsById = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    const bookingItemDetails = await db
+      .select()
+      .from(bookingItem)
+      .where(eq(bookingItem.id, bookingId));
+
+    return res.status(200).json({
+      message: 'Booking item details fetched successfully.',
+      data: bookingItemDetails,
+    });
+  } catch (error) {
+    console.error('Unable to fetch booking item details', error);
+    return res.status(500).json({
+      message: 'Internal server error',
     });
   }
 };

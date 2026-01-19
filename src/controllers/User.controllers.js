@@ -785,10 +785,19 @@ export const markNotificationAsRead = async (req, res) => {
 export const getPersonalInfo = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
-
-    const user = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.userId, userId),
-    });
+    const user = await db
+      .select({
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        number: users.number,
+        profileImage: users.profileImage,
+        streetAddress1: userAddresses.addressLineOne,
+        streetAddress2: userAddresses.addressLineTwo,
+      })
+      .from(users)
+      .leftJoin(userAddresses, eq(userAddresses.userId, users.userId))
+      .where(eq(users.userId, userId));
 
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
@@ -807,18 +816,35 @@ export const getPersonalInfo = async (req, res) => {
 export const updateDetails = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
-    const { firstName, lastName, number, profileImage } = req.body;
+    const {
+      firstName,
+      lastName,
+      number,
+      profileImage,
+      streetAddress1,
+      streetAddress2,
+    } = req.body;
 
     if (userId) {
-      await db
-        .update(users)
-        .set({
-          firstName: firstName,
-          lastName: lastName,
-          number: number,
-          profileImage: profileImage,
-        })
-        .where(eq(users.userId, userId));
+      await db.transaction(async (tx) => {
+        await tx
+          .update(users)
+          .set({
+            firstName: firstName,
+            lastName: lastName,
+            number: number,
+            profileImage: profileImage,
+          })
+          .where(eq(users.userId, userId));
+
+        await tx
+          .update(userAddresses)
+          .set({
+            addressLineOne: streetAddress1,
+            addressLineTwo: streetAddress2,
+          })
+          .where(eq(userAddresses.userId, userId));
+      });
       return res.status(200).json({
         message: 'User details updated successfully.',
       });

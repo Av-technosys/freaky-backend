@@ -1226,19 +1226,6 @@ export const createProduct = async (req, res) => {
   }
 };
 
-export const deleteProductImage = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await db.delete(productMedia).where(eq(productMedia.id, id));
-    return res.status(200).json({
-      message: 'Image deleted successfully!',
-    });
-  } catch (error) {
-    console.error(' Error:', error);
-    return res.status(500).json({ error: error.message });
-  }
-};
-
 export const createVendorDocument = async (req, res) => {
   try {
     const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
@@ -1663,7 +1650,7 @@ export const getAllSearchItems = async (req, res) => {
 
       return res.status(200).json({
         message: 'Search items fetched successfully.',
-        // data: searchItems,
+        data: searchItems,
       });
     } else {
       const parsed = JSON.parse(req.user?.['custom:vendor_ids']);

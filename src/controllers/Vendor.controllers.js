@@ -278,8 +278,14 @@ export const updateAddressDetails = async (req, res) => {
       zipcode,
     } = req.body;
 
-    const parsed = JSON.parse(req.user['custom:vendor_ids']);
-    const vendorId = parsed.vendorId;
+    let vendorId;
+
+    if (req.body.vendorId) {
+      vendorId = req.body.vendorId;
+    } else {
+      const parsed = JSON.parse(req.user['custom:vendor_ids']);
+      vendorId = parsed.vendorId;
+    }
     if (!vendorId) {
       return res.status(504).json({ msg: 'Vendor not found' });
     }
@@ -307,8 +313,14 @@ export const updateAddressDetails = async (req, res) => {
 
 export const updateBankDetails = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user['custom:vendor_ids']);
-    const vendorId = parsed.vendorId;
+    let vendorId;
+
+    if (req.body.vendorId) {
+      vendorId = req.body.vendorId;
+    } else {
+      const parsed = JSON.parse(req.user['custom:vendor_ids']);
+      vendorId = parsed.vendorId;
+    }
 
     if (!vendorId) {
       return res.status(504).json({ msg: 'Vendor not found' });
@@ -339,8 +351,14 @@ export const updateBankDetails = async (req, res) => {
 
 export const updateContactDetails = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user['custom:vendor_ids']);
-    const vendorId = parsed.vendorId;
+    let vendorId;
+
+    if (req.body.vendorId) {
+      vendorId = req.body.vendorId;
+    } else {
+      const parsed = JSON.parse(req.user['custom:vendor_ids']);
+      vendorId = parsed.vendorId;
+    }
     if (!vendorId) {
       return res.status(504).json({ msg: 'Vendor not found' });
     }
@@ -376,8 +394,14 @@ export const updateContactDetails = async (req, res) => {
 
 export const updateCompanyDetails = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user['custom:vendor_ids']);
-    const vendorId = parsed.vendorId;
+    let vendorId;
+
+    if (req.body.vendorId) {
+      vendorId = req.body.vendorId;
+    } else {
+      const parsed = JSON.parse(req.user['custom:vendor_ids']);
+      vendorId = parsed.vendorId;
+    }
     if (!vendorId) {
       return res.status(504).json({ msg: 'Vendor not found' });
     }
@@ -417,9 +441,18 @@ export const updateCompanyDetails = async (req, res) => {
 
 export const updateOwnershipDetails = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user['custom:vendor_ids']);
-    const vendorId = parsed.vendorId;
-    const ownershipDetailsArray = req.body;
+    let vendorId;
+
+    if (req.body.vendorId) {
+      vendorId = req.body.vendorId;
+    } else {
+      const parsed = JSON.parse(req.user['custom:vendor_ids']);
+      vendorId = parsed.vendorId;
+    }
+
+    const { vendorId: _, ...ownersObject } = req.body;
+
+    const ownershipDetailsArray = Object.values(ownersObject);
 
     if (!vendorId) {
       return res.status(504).json({ msg: 'Vendor not found' });
@@ -484,21 +517,25 @@ export const createCompanyDetails = async (req, res) => {
     } = req.body;
 
     const userId = req.user?.['custom:user_id'];
-    await db.insert(vendors).values({
-      einNumber: einNumber,
-      DBAname: DBAname,
-      businessName: businessName,
-      websiteURL: websiteURL,
-      logoUrl: logoUrl,
-      description: description,
-      legalEntityName: legalEntityName,
-      businessType: businessType,
-      incorporationDate: new Date(incorporationDate),
-      createdBy: userId,
-    });
+    const [vendor] = await db
+      .insert(vendors)
+      .values({
+        einNumber: einNumber,
+        DBAname: DBAname,
+        businessName: businessName,
+        websiteURL: websiteURL,
+        logoUrl: logoUrl,
+        description: description,
+        legalEntityName: legalEntityName,
+        businessType: businessType,
+        incorporationDate: new Date(incorporationDate),
+        createdBy: userId,
+      })
+      .returning({ vendorId: vendors.vendorId });
 
     return res.status(200).json({
       message: 'Address Details Created successfully.',
+      vendorId: vendor.vendorId,
     });
   } catch (error) {
     console.log('error', error);

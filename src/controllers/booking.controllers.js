@@ -139,7 +139,6 @@ export const createBooking = async (req, res) => {
 
 export const createBookingItem = async (req, res) => {
   try {
-    const now = new Date();
     const {
       bookingId,
       productId,
@@ -178,22 +177,21 @@ export const createBookingItem = async (req, res) => {
     }
     // check hold
 
-    const draft = await db.query.bookingDraft.findFirst({
-      where: and(
-        eq(bookingDraft.productId, Number(productData.productId)),
-        eq(bookingDraft.status, 'HOLD'),
-        eq(bookingDraft.startTime, startTime),
-        eq(bookingDraft.endTime, endTime),
-        gt(bookingDraft.expiredAt, now)
-      ),
-    });
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
 
-    if (!draft) {
-      return res.status(409).json({
-        success: false,
-        message: 'Booking unavailable for this product',
-      });
-    } else {
+    const [bookingDraftCount, bookingItemCount, productMaximumCount] =
+      await Promise.all([
+        getCountFromBookingDraft(startDate, endDate, productId),
+        getCountFromBookingItem(startDate, endDate, productId),
+        getProductMaximumCount(productId),
+      ]);
+
+    const totalUsedServices = bookingDraftCount + bookingItemCount;
+
+    const availableSlots = productMaximumCount - totalUsedServices;
+
+    if (availableSlots > 0) {
       const [createdItem] = await db
         .insert(bookingItem)
         .values({
@@ -219,8 +217,16 @@ export const createBookingItem = async (req, res) => {
         .returning();
 
       return res.status(201).json({
-        message: 'Booking item created',
+        message:
+          'The service is available and your booking has been created successfully.',
         data: createdItem,
+        availableServices: availableSlots,
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: 'No service is available for this product at this time.',
+        availableServices: 0,
       });
     }
   } catch (error) {

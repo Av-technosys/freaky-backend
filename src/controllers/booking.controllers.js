@@ -49,8 +49,11 @@ export const createExternalBooking = async (req, res) => {
           productId: service.serviceId,
           productName: product ? product.title : null,
           productImage: product ? product.bannerImage : null,
-          startTime: new Date(service.startTime),
-          endTime: new Date(service.endTime),
+          // startTime: new Date(service.startTime),
+          // endTime: new Date(service.endTime),
+          startTime: new Date(service.startTime + 'Z'),
+          endTime: new Date(service.endTime + 'Z'),
+
           minGuestCount: service.minPerson,
           maxGuestCount: service.maxPerson,
           vendorId,

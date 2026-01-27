@@ -794,9 +794,10 @@ export const getPersonalInfo = async (req, res) => {
         profileImage: users.profileImage,
         streetAddress1: userAddresses.addressLineOne,
         streetAddress2: userAddresses.addressLineTwo,
+        currentAddressId: users.currentAddressId,
       })
       .from(users)
-      .leftJoin(userAddresses, eq(userAddresses.userId, users.userId))
+      .leftJoin(userAddresses, eq(userAddresses.id, users.currentAddressId))
       .where(eq(users.userId, userId));
 
     if (!user) {
@@ -823,6 +824,7 @@ export const updateDetails = async (req, res) => {
       profileImage,
       streetAddress1,
       streetAddress2,
+      currentAddressId,
     } = req.body;
 
     if (userId) {
@@ -843,7 +845,7 @@ export const updateDetails = async (req, res) => {
             addressLineOne: streetAddress1,
             addressLineTwo: streetAddress2,
           })
-          .where(eq(userAddresses.userId, userId));
+          .where(eq(userAddresses.id, currentAddressId));
       });
       return res.status(200).json({
         message: 'User details updated successfully.',

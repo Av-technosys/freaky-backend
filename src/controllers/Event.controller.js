@@ -186,7 +186,7 @@ export const listAllServicesByEventTypeId = async (req, res) => {
 
 export const createEventItem = async (req, res) => {
   try {
-    const { eventId, productId } = req.body;
+    const { eventId, productId, startTime, endTime } = req.body;
     const quantity = req.body.quantity || 1;
     // await db
     //   .insert(eventItems)
@@ -197,6 +197,8 @@ export const createEventItem = async (req, res) => {
       sourceId: eventId,
       productId,
       quantity,
+      startTime,
+      endTime,
       status: STATUS.HOLD,
     });
     return res.status(201).json({

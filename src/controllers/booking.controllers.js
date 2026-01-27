@@ -1,8 +1,18 @@
-import { booking, bookingItem, products } from '../../db/schema.js';
+import {
+  booking,
+  bookingDraft,
+  bookingItem,
+  products,
+} from '../../db/schema.js';
 import { db } from '../../db/db.js';
 import { and, ilike, inArray } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
 import { paginate } from '../helpers/paginate.js';
+import {
+  getCountFromBookingDraft,
+  getCountFromBookingItem,
+  getProductMaximumCount,
+} from '../helpers/serviceAvailabilityChecker.js';
 
 export const createExternalBooking = async (req, res) => {
   try {
@@ -39,8 +49,11 @@ export const createExternalBooking = async (req, res) => {
           productId: service.serviceId,
           productName: product ? product.title : null,
           productImage: product ? product.bannerImage : null,
-          startTime: new Date(service.startTime),
-          endTime: new Date(service.endTime),
+          // startTime: new Date(service.startTime),
+          // endTime: new Date(service.endTime),
+          startTime: new Date(service.startTime + 'Z'),
+          endTime: new Date(service.endTime + 'Z'),
+
           minGuestCount: service.minPerson,
           maxGuestCount: service.maxPerson,
           vendorId,
@@ -155,6 +168,7 @@ export const createBookingItem = async (req, res) => {
         name: products.title,
         image: products.bannerImage,
         price: products.currentPriceBook,
+        vendorId: products.vendorId,
       })
       .from(products)
       .where(eq(products.productId, productId));
@@ -164,35 +178,60 @@ export const createBookingItem = async (req, res) => {
         message: 'Product not found',
       });
     }
+    // check hold
 
-    const [createdItem] = await db
-      .insert(bookingItem)
-      .values({
-        bookingId,
-        productId: productData.productId,
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
 
-        contactName,
-        contactNumber,
-        startTime: startTime ? new Date(startTime) : undefined,
-        endTime: endTime ? new Date(endTime) : undefined,
-        minGuestCount,
-        maxGuestCount,
+    const [bookingDraftCount, bookingItemCount, productMaximumCount] =
+      await Promise.all([
+        getCountFromBookingDraft(startDate, endDate, productId),
+        getCountFromBookingItem(startDate, endDate, productId),
+        getProductMaximumCount(productId),
+      ]);
 
-        productName: productData.name,
-        productImage: productData.image,
-        productPrice: productData.price,
+    const totalUsedServices = bookingDraftCount + bookingItemCount;
 
-        latitude,
-        longitude,
+    const availableSlots = productMaximumCount - totalUsedServices;
 
-        quantity,
-      })
-      .returning();
+    if (availableSlots > 0) {
+      const [createdItem] = await db
+        .insert(bookingItem)
+        .values({
+          bookingId,
+          productId: productData.productId,
 
-    return res.status(201).json({
-      message: 'Booking item created',
-      data: createdItem,
-    });
+          contactName,
+          contactNumber,
+          startTime: startTime ? new Date(startTime) : undefined,
+          endTime: endTime ? new Date(endTime) : undefined,
+          minGuestCount,
+          maxGuestCount,
+
+          productName: productData.name,
+          productImage: productData.image,
+          productPrice: productData.price,
+          vendorId: productData.vendorId,
+          latitude,
+          longitude,
+
+          quantity,
+        })
+        .returning();
+
+      return res.status(201).json({
+        message:
+          'The service is available and your booking has been created successfully.',
+        data: createdItem,
+        availableServices: availableSlots,
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: 'No service is available for this product at this time.',
+        availableServices: 0,
+      });
+    }
   } catch (error) {
     console.error('Create booking item failed', error);
     return res.status(500).json({
@@ -264,3 +303,108 @@ export const getBookingItemDetailsById = async (req, res) => {
     });
   }
 };
+
+export const checkServiceAvailability = async (req, res) => {
+  try {
+    const { productId, startTime, endTime } = req.body;
+
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
+
+    const [bookingDraftCount, bookingItemCount, productMaximumCount] =
+      await Promise.all([
+        getCountFromBookingDraft(startDate, endDate, productId),
+        getCountFromBookingItem(startDate, endDate, productId),
+        getProductMaximumCount(productId),
+      ]);
+
+    const totalUsedServices = bookingDraftCount + bookingItemCount;
+
+    const availableSlots = productMaximumCount - totalUsedServices;
+
+    if (bookingDraftCount + bookingItemCount < productMaximumCount) {
+      return res.status(200).json({
+        success: true,
+        message: 'Service is available at that time..',
+        availableServices: availableSlots,
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: 'No service is available at that time..',
+        availableServices: 0,
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching service availability:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// export const createBooking = async () => {
+//   try {
+//     const userId = req.user['custom:user_id'];
+//     const now = new Date();
+//     const { productId } = req.params;
+
+//     const {
+//       eventTypeId,
+//       source,
+//       contactName,
+//       contactNumber,
+//       description,
+//       startTime,
+//       endTime,
+//       minGuestCount,
+//       maxGuestCount,
+//       latitude,
+//       longitude,
+//     } = req.body;
+
+//     const draft = await db.query.bookingDraft.findFirst({
+//       where: and(
+//         eq(bookingDraft.productId, Number(productId)),
+//         eq(bookingDraft.status, 'HOLD'),
+//         gt(bookingDraft.expiredAt, now)
+//       ),
+//     });
+
+//     if (!draft) {
+//       return res.status(409).json({
+//         success: false,
+//         message: 'Booking unavailable for this product',
+//       });
+//     }
+
+//     await db.insert(booking).values({
+//       userId,
+//       eventTypeId,
+//       source,
+//       contactName,
+//       contactNumber,
+//       description,
+//       startTime: startTime ? new Date(startTime) : draft.startTime,
+//       endTime: endTime ? new Date(endTime) : draft.endTime,
+//       minGuestCount,
+//       maxGuestCount,
+//       latitude,
+//       longitude,
+//       bookingStatus: 'CONFIRMED',
+//       paymentStatus: 'PENDING',
+//     });
+
+//     return res.status(201).json({
+//       success: true,
+//       message: 'Booking created successfully',
+//     });
+//   } catch (error) {
+//     console.error('Create booking error:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };

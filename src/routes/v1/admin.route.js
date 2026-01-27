@@ -8,6 +8,7 @@ import {
   deleteReviewById,
   getAllProductTypes,
   getAllUserReviews,
+  listAllRejectedVendors,
   listAllRequestedVendors,
   listAllUsers,
   listAllVendors,
@@ -27,6 +28,7 @@ const router = Router();
 
 router.post('/reset_user_password', adminResetPassword);
 router.get('/requested_vendors', listAllRequestedVendors);
+router.get('/rejected_vendors', listAllRejectedVendors);
 router.get('/vendors', listAllVendors);
 router.get('/vendor_details/:vendorId', vendorDetailsById);
 router.get('/users', listAllUsers);

@@ -9,7 +9,7 @@ import {
   vendors,
 } from '../../db/schema.js';
 import { db } from '../../db/db.js';
-import { asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, sql } from 'drizzle-orm';
 import { paginate } from '../helpers/paginate.js';
 
 export const adminResetPassword = async (req, res) => {
@@ -28,29 +28,17 @@ export const adminResetPassword = async (req, res) => {
 
 export const listAllRequestedVendors = async (req, res) => {
   try {
-    const requestedVendors = await db
-      .select({
-        businessName: vendors.businessName,
-        status: vendors.status,
-        createdAt: vendors.createdAt,
-        vendorId: vendors.vendorId,
-      })
-      .from(vendors)
-      .where(eq(vendors.status, 'pending_admin'));
-    return res.status(200).json({
-      message: 'vendors fetched successfully.',
-      data: requestedVendors,
-    });
-  } catch (error) {
-    console.error('error', error);
-    return res.status(500).json({
-      message: error.message,
-    });
-  }
-};
+    const { text = '' } = req.query;
+    const filters = [];
 
-export const listAllVendors = async (req, res) => {
-  try {
+    filters.push(eq(vendors.status, 'PENDING_ADMIN'));
+
+    if (text && text.trim() !== '') {
+      filters.push(ilike(vendors.businessName, `%${text}%`));
+    }
+
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
     const result = await paginate({
       table: vendors,
       select: {
@@ -59,7 +47,80 @@ export const listAllVendors = async (req, res) => {
         createdAt: vendors.createdAt,
         vendorId: vendors.vendorId,
       },
-      where: '',
+      where: whereClause,
+      orderBy: vendors.createdAt,
+      page: req.query.page,
+      page_size: req.query.page_size,
+    });
+
+    return res.status(200).json({
+      message: 'rejected vendors fetched successfully',
+      ...result,
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const listAllRejectedVendors = async (req, res) => {
+  try {
+    const { text = '' } = req.query;
+    const filters = [];
+
+    filters.push(eq(vendors.status, 'REJECTED'));
+
+    if (text && text.trim() !== '') {
+      filters.push(ilike(vendors.businessName, `%${text}%`));
+    }
+
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
+    const result = await paginate({
+      table: vendors,
+      select: {
+        businessName: vendors.businessName,
+        status: vendors.status,
+        createdAt: vendors.createdAt,
+        vendorId: vendors.vendorId,
+      },
+      where: whereClause,
+      orderBy: vendors.createdAt,
+      page: req.query.page,
+      page_size: req.query.page_size,
+    });
+
+    return res.status(200).json({
+      message: 'rejected vendors fetched successfully',
+      ...result,
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const listAllVendors = async (req, res) => {
+  try {
+    const { text = '' } = req.query;
+    const filters = [];
+
+    filters.push(eq(vendors.status, 'APPROVED'));
+
+    if (text && text.trim() !== '') {
+      filters.push(ilike(vendors.businessName, `%${text}%`));
+    }
+
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+    const result = await paginate({
+      table: vendors,
+      select: {
+        businessName: vendors.businessName,
+        status: vendors.status,
+        createdAt: vendors.createdAt,
+        vendorId: vendors.vendorId,
+      },
+      where: whereClause,
       orderBy: vendors.createdAt,
       page: req.query.page,
       page_size: req.query.page_size,
@@ -77,6 +138,14 @@ export const listAllVendors = async (req, res) => {
 
 export const listAllUsers = async (req, res) => {
   try {
+    const { text = '' } = req.query;
+    const filters = [];
+
+    if (text && text.trim() !== '') {
+      filters.push(ilike(users.firstName, `%${text}%`));
+    }
+
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
     const result = await paginate({
       table: users,
       select: {
@@ -87,7 +156,7 @@ export const listAllUsers = async (req, res) => {
         userId: users.userId,
         isActive: users.isActive,
       },
-      where: '',
+      where: whereClause || '',
       orderBy: users.createdAt,
       page: req.query.page,
       page_size: req.query.page_size,

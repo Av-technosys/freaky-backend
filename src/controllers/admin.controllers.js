@@ -384,12 +384,13 @@ export const deleteReviewById = async (req, res) => {
 
 export const createProductType = async (req, res) => {
   try {
-    const { name, description, mediaURL, altText } = req.body;
+    const { name, description, mediaURL, altText, adminApproval } = req.body;
     await db.insert(productTypes).values({
       name: name,
       description: description,
       mediaURL: mediaURL,
       altText: altText,
+      isNewProductApproval: adminApproval,
     });
 
     return res.status(200).json({
@@ -424,10 +425,15 @@ export const getAllProductTypes = async (req, res) => {
 export const updateProductTypeById = async (req, res) => {
   try {
     const { productTypeId } = req.params;
-    const { name, description, mediaURL } = req.body;
+    const { name, description, mediaURL, adminApproval } = req.body;
     await db
       .update(productTypes)
-      .set({ name: name, description: description, mediaURL: mediaURL })
+      .set({
+        name: name,
+        description: description,
+        mediaURL: mediaURL,
+        isNewProductApproval: adminApproval,
+      })
       .where(eq(productTypes.id, productTypeId))
       .returning();
 

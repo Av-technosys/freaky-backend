@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import {
   // eventItems,
   eventProductType,
@@ -280,6 +280,29 @@ export const getBanner = async (req, res) => {
     });
   } catch (error) {
     console.error('Error', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const createFeaturedBanner = async (req, res) => {
+  try {
+    const { name, mediaURL, altText } = req.body;
+    const result = await db
+      .select({ count: sql`count(*)` })
+      .from(featuredBanners);
+
+    const newPriority = Number(result[0].count) + 1;
+    await db
+      .insert(featuredBanners)
+      .values({ name, mediaURL, altText, priority: newPriority });
+    return res.status(201).json({
+      success: true,
+      message: 'Banner created successfully',
+    });
+  } catch (error) {
     return res.status(500).json({
       success: false,
       message: error.message,

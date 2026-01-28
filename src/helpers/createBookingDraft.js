@@ -46,8 +46,8 @@ export async function createBookingDraft({
       // optional fields
       contactName,
       contactNumber,
-      startTime,
-      endTime,
+      startTime: startTime ? new Date(startTime) : undefined,
+      endTime: endTime ? new Date(endTime) : undefined,
       minGuestCount,
       maxGuestCount,
       latitude,

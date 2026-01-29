@@ -708,8 +708,8 @@ export const deleteReview = async (req, res) => {
     await db.delete(reviewMedia).where(eq(reviewMedia.reviewId, reviewId));
 
     const deleted = await db
-      .delete(review)
-      .where(eq(review.reviewId, reviewId))
+      .delete(reviews)
+      .where(eq(reviews.reviewId, reviewId))
       .returning();
 
     if (deleted.length === 0) {

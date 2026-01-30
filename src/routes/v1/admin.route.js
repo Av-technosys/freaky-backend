@@ -2,18 +2,26 @@ import { Router } from 'express';
 import {
   adminResetPassword,
   createEventType,
+  createFeaturedCategory,
+  createFeaturedProduct,
   createProductType,
   deleteEventTypeById,
+  deleteFeaturedBanner,
+  deleteFeaturedCategory,
   deleteProductTypeById,
   deleteReviewById,
+  getAllFeaturedProducts,
   getAllProductTypes,
   getAllUserReviews,
+  getFeaturedCategory,
   listAllRejectedVendors,
   listAllRequestedVendors,
   listAllUsers,
   listAllVendors,
   updateEventTypeById,
   updateFeaturedBannerPriority,
+  updateFeaturedCategory,
+  updateFeaturedProductPriority,
   updateProductTypeById,
   updateVendorStatus,
   userDetailsById,
@@ -63,5 +71,23 @@ router.delete(
 router.get('/banner', confirmUserToken, getBanner);
 router.post('/banner', confirmUserToken, createFeaturedBanner);
 router.put('/banner/:bannerId', confirmUserToken, updateFeaturedBannerPriority);
+router.delete('/banner/:bannerId', confirmUserToken, deleteFeaturedBanner);
+
+router.get('/category', confirmUserToken, getFeaturedCategory);
+router.post('/category', confirmUserToken, createFeaturedCategory);
+router.put('/category/:categoryId', confirmUserToken, updateFeaturedCategory);
+router.delete(
+  '/category/:categoryId',
+  confirmUserToken,
+  deleteFeaturedCategory
+);
+
+router.get('/featured_products', confirmUserToken, getAllFeaturedProducts);
+router.put(
+  '/featured_product/:productId',
+  confirmUserToken,
+  updateFeaturedProductPriority
+);
+router.post('/featured_product', confirmUserToken, createFeaturedProduct);
 
 export default router;

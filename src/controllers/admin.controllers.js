@@ -5,6 +5,7 @@ import {
   featuredBanners,
   featuredCategorys,
   featuredProdcuts,
+  pricingSettings,
   products,
   productTypes,
   reviews,
@@ -704,6 +705,87 @@ export const createFeaturedProduct = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Featured product created successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const getAllPricingSettings = async (req, res) => {
+  try {
+    const pricingData = await db
+      .select({
+        id: pricingSettings.id,
+        name: pricingSettings.name,
+        description: pricingSettings.description,
+        feePercentage: pricingSettings.feePercentage,
+        createdAt: pricingSettings.createdAt,
+      })
+      .from(pricingSettings)
+      .orderBy(asc(pricingSettings.createdAt));
+    return res.status(200).json({
+      success: true,
+      message: 'Pricing settings fetched successfully',
+      data: pricingData,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const createPricingSetting = async (req, res) => {
+  try {
+    const { name, description, feePercentage } = req.body;
+    await db
+      .insert(pricingSettings)
+      .values({ name, description, feePercentage });
+    return res.status(201).json({
+      success: true,
+      message: 'Pricing Setting created successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const updatePricingSetting = async (req, res) => {
+  try {
+    const { pricingSettingId } = req.params;
+    const { name, description, feePercentage } = req.body;
+    await db
+      .update(pricingSettings)
+      .set({ name, description, feePercentage })
+      .where(eq(pricingSettings.id, pricingSettingId));
+    return res.status(200).json({
+      success: true,
+      message: 'Pricing Setting updated successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const deletePricingSetting = async (req, res) => {
+  try {
+    const { pricingSettingId } = req.params;
+    await db
+      .delete(pricingSettings)
+      .where(eq(pricingSettings.id, pricingSettingId));
+    return res.status(200).json({
+      success: true,
+      message: 'Pricing Setting deleted successfully',
     });
   } catch (error) {
     return res.status(500).json({

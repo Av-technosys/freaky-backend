@@ -3,13 +3,16 @@ import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
 import {
   eventType,
   featuredBanners,
+  featuredCategorys,
+  featuredProdcuts,
+  products,
   productTypes,
   reviews,
   users,
   vendors,
 } from '../../db/schema.js';
 import { db } from '../../db/db.js';
-import { and, asc, desc, eq, ilike, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, ilike, sql } from 'drizzle-orm';
 import { paginate } from '../helpers/paginate.js';
 
 export const adminResetPassword = async (req, res) => {
@@ -488,6 +491,223 @@ export const updateFeaturedBannerPriority = async (req, res) => {
   } catch (error) {
     console.error('error', error);
     return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const deleteFeaturedBanner = async (req, res) => {
+  try {
+    const bannerId = Number(req.params.bannerId);
+    const { priority } = req.body;
+    await db.transaction(async (tx) => {
+      const deletedPriority = priority;
+      await tx.delete(featuredBanners).where(eq(featuredBanners.id, bannerId));
+      await tx
+        .update(featuredBanners)
+        .set({
+          priority: sql`${featuredBanners.priority} - 1`,
+        })
+        .where(gt(featuredBanners.priority, deletedPriority));
+    });
+
+    return res.status(200).json({
+      message: 'Banner deleted successfully.',
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const getFeaturedCategory = async (req, res) => {
+  const response = await db
+    .select()
+    .from(featuredCategorys)
+    .orderBy(asc(featuredCategorys.createdAt));
+  try {
+    return res.status(200).json({
+      success: true,
+      message: 'All Featured Category fetched successfully',
+      data: response,
+    });
+  } catch (error) {
+    console.error('Error', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const createFeaturedCategory = async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    await db.insert(featuredCategorys).values({ name, description });
+    return res.status(201).json({
+      success: true,
+      message: 'Featured Category created successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const updateFeaturedCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { name, description } = req.body;
+    await db
+      .update(featuredCategorys)
+      .set({ name, description })
+      .where(eq(featuredCategorys.id, categoryId));
+    return res.status(200).json({
+      success: true,
+      message: 'Featured Category updated successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const deleteFeaturedCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    await db
+      .delete(featuredCategorys)
+      .where(eq(featuredCategorys.id, categoryId));
+    return res.status(200).json({
+      success: true,
+      message: 'Featured Category deleted successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const getAllFeaturedProducts = async (req, res) => {
+  try {
+    const featuredProducts = await db
+      .select({
+        id: featuredProdcuts.id,
+        priority: featuredProdcuts.priority,
+        productName: products.title,
+        productImage: products.bannerImage,
+        categoryName: featuredCategorys.name,
+        categoryId: featuredCategorys.id,
+      })
+      .from(featuredProdcuts)
+      .leftJoin(products, eq(products.productId, featuredProdcuts.productId))
+      .leftJoin(
+        featuredCategorys,
+        eq(featuredCategorys.id, featuredProdcuts.featuredCategoryId)
+      )
+      .orderBy(asc(featuredProdcuts.priority));
+
+    const groupedData = [];
+
+    featuredProducts.forEach((item) => {
+      const categoryName = item.categoryName || 'Uncategorized';
+
+      let category = groupedData.find((c) => c.title === categoryName);
+      if (!category) {
+        category = {
+          title: categoryName,
+          categoryId: item.categoryId,
+          products: [],
+          count: 0,
+        };
+        groupedData.push(category);
+      }
+
+      category.products.push({
+        id: item.id,
+        name: item.productName,
+        priority: item.priority,
+        image: item.productImage,
+      });
+      category.count = category.products.length;
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Featured products fetched successfully',
+      data: groupedData,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const updateFeaturedProductPriority = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { currentProductPriority, nextProductPriority, categoryId } =
+      req.body;
+
+    await db.execute(sql`
+  UPDATE ${featuredProdcuts}
+  SET priority = CASE
+    WHEN ${featuredProdcuts.id} = ${Number(productId)}
+      THEN ${Number(nextProductPriority)}
+    WHEN ${featuredProdcuts.priority} = ${Number(nextProductPriority)}
+     AND ${featuredProdcuts.featuredCategoryId} = ${Number(categoryId)}
+      THEN ${Number(currentProductPriority)}
+    ELSE ${featuredProdcuts.priority}
+  END
+  WHERE (
+      ${featuredProdcuts.id} = ${Number(productId)}
+      OR ${featuredProdcuts.priority} = ${Number(nextProductPriority)}
+    )
+    AND ${featuredProdcuts.featuredCategoryId} = ${Number(categoryId)};
+`);
+
+    return res.status(200).json({
+      message: 'Featured product updated successfully.',
+    });
+  } catch (error) {
+    console.error('error', error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const createFeaturedProduct = async (req, res) => {
+  try {
+    const { serviceId, categoryId } = req.body;
+    const result = await db
+      .select({ count: sql`count(*)` })
+      .from(featuredProdcuts)
+      .where(eq(featuredProdcuts.featuredCategoryId, categoryId));
+
+    const newPriority = Number(result[0].count) + 1;
+    await db.insert(featuredProdcuts).values({
+      productId: serviceId,
+      featuredCategoryId: categoryId,
+      priority: newPriority,
+    });
+    return res.status(201).json({
+      success: true,
+      message: 'Featured product created successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
       message: error.message,
     });
   }

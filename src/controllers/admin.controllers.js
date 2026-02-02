@@ -714,6 +714,39 @@ export const createFeaturedProduct = async (req, res) => {
   }
 };
 
+export const deleteFeaturedProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { priority, categoryId } = req.body;
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(featuredProdcuts)
+        .where(eq(featuredProdcuts.id, productId));
+      await tx
+        .update(featuredProdcuts)
+        .set({
+          priority: sql`${featuredProdcuts.priority} - 1`,
+        })
+        .where(
+          and(
+            gt(featuredProdcuts.priority, priority),
+            eq(featuredProdcuts.featuredCategoryId, categoryId)
+          )
+        );
+    });
+    return res.status(200).json({
+      success: true,
+      message: 'Featured product deleted successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 export const getAllPricingSettings = async (req, res) => {
   try {
     const pricingData = await db

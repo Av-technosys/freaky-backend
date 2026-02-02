@@ -9,6 +9,7 @@ import {
   deleteEventTypeById,
   deleteFeaturedBanner,
   deleteFeaturedCategory,
+  deleteFeaturedProduct,
   deletePricingSetting,
   deleteProductTypeById,
   deleteReviewById,
@@ -93,6 +94,11 @@ router.put(
   updateFeaturedProductPriority
 );
 router.post('/featured_product', confirmUserToken, createFeaturedProduct);
+router.delete(
+  '/featured_product/:productId',
+  confirmUserToken,
+  deleteFeaturedProduct
+);
 
 router.get('/pricing_setting', confirmUserToken, getAllPricingSettings);
 router.post('/pricing_setting', confirmUserToken, createPricingSetting);

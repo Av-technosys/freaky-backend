@@ -4,13 +4,17 @@ import {
   createEventType,
   createFeaturedCategory,
   createFeaturedProduct,
+  createPricingSetting,
   createProductType,
   deleteEventTypeById,
   deleteFeaturedBanner,
   deleteFeaturedCategory,
+  deleteFeaturedProduct,
+  deletePricingSetting,
   deleteProductTypeById,
   deleteReviewById,
   getAllFeaturedProducts,
+  getAllPricingSettings,
   getAllProductTypes,
   getAllUserReviews,
   getFeaturedCategory,
@@ -22,6 +26,7 @@ import {
   updateFeaturedBannerPriority,
   updateFeaturedCategory,
   updateFeaturedProductPriority,
+  updatePricingSetting,
   updateProductTypeById,
   updateVendorStatus,
   userDetailsById,
@@ -89,5 +94,23 @@ router.put(
   updateFeaturedProductPriority
 );
 router.post('/featured_product', confirmUserToken, createFeaturedProduct);
+router.delete(
+  '/featured_product/:productId',
+  confirmUserToken,
+  deleteFeaturedProduct
+);
+
+router.get('/pricing_setting', confirmUserToken, getAllPricingSettings);
+router.post('/pricing_setting', confirmUserToken, createPricingSetting);
+router.put(
+  '/pricing_setting/:pricingSettingId',
+  confirmUserToken,
+  updatePricingSetting
+);
+router.delete(
+  '/pricing_setting/:pricingSettingId',
+  confirmUserToken,
+  deletePricingSetting
+);
 
 export default router;

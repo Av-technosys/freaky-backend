@@ -31,6 +31,7 @@ import {
   createCompanyDetails,
   getVendorNotifications,
   getAllSearchItems,
+  deleteCompanyLogo,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -68,6 +69,7 @@ router.put('/bank_details', confirmUserToken, updateBankDetails);
 router.put('/contact_details', confirmUserToken, updateContactDetails);
 router.put('/company_details', confirmUserToken, updateCompanyDetails);
 router.put('/ownership_details', confirmUserToken, updateOwnershipDetails);
+router.delete('/company_logo/:vendorId', confirmUserToken, deleteCompanyLogo);
 
 router.post('/company_details', confirmUserToken, createCompanyDetails);
 // router.get("/create_vendor_emp_request", createVendorEmpRequest);

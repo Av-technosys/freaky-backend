@@ -368,6 +368,7 @@ export const updateContactDetails = async (req, res) => {
       primaryPhoneNumber,
       instagramURL,
       youtubeURL,
+      linkedinURL,
       facebookURL,
     } = req.body;
 
@@ -379,6 +380,7 @@ export const updateContactDetails = async (req, res) => {
         primaryPhoneNumber: primaryPhoneNumber,
         instagramURL: instagramURL,
         youtubeURL: youtubeURL,
+        linkedinURL: linkedinURL,
         facebookURL: facebookURL,
       })
       .where(eq(vendors.vendorId, vendorId));
@@ -435,6 +437,22 @@ export const updateCompanyDetails = async (req, res) => {
     });
   } catch (error) {
     console.log('error', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteCompanyLogo = async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    await db
+      .update(vendors)
+      .set({ logoUrl: null })
+      .where(eq(vendors.vendorId, vendorId));
+    return res.status(200).json({
+      message: 'Image deleted successfully!',
+    });
+  } catch (error) {
+    console.error(' Error:', error);
     return res.status(500).json({ error: error.message });
   }
 };

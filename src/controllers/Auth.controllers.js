@@ -158,8 +158,9 @@ export const confirmForgotPassword = async (req, res) => {
 
     return res.status(200).json({ message: 'Password reset successful.' });
   } catch (err) {
-    console.error('ConfirmForgotPassword error:', err);
-    return res.status(500).json({ message: err.message });
+    return res.status(400).json({
+      message: err.message || 'Invalid OTP',
+    });
   }
 };
 

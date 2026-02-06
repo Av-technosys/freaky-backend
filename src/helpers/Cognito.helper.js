@@ -86,7 +86,7 @@ export function cognitoConfirmForgotPassword({ username, code, newPassword }) {
     Username: username,
     ConfirmationCode: code,
     Password: newPassword,
-    SecretHash: secretHash(email),
+    SecretHash: secretHash(username),
   };
 
   const command = new ConfirmForgotPasswordCommand(params);

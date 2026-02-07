@@ -4,6 +4,7 @@ import {
   confirmForgotPassword,
   forgotPassword,
   refreshToken,
+  resendOTP,
   signin,
   signup,
 } from '../../controllers/Auth.controllers.js';
@@ -19,6 +20,7 @@ router.post('/confirm', confirmController);
 router.post('/signin', signin);
 router.post('/forgot-password', forgotPassword);
 router.post('/confirm_forgot_password', confirmForgotPassword);
+router.post('/resend_otp', resendOTP);
 
 router.post('/refresh_token', refreshToken);
 

@@ -1,6 +1,7 @@
 import {
   AdminGetUserCommand,
   AdminUpdateUserAttributesCommand,
+  AdminUserGlobalSignOutCommand,
   ConfirmForgotPasswordCommand,
   ConfirmSignUpCommand,
   ForgotPasswordCommand,
@@ -40,6 +41,16 @@ export function cognitoAdminGetUser({ email }) {
     Username: email,
   };
   const commandLogin = new AdminGetUserCommand(params);
+  return cognito.send(commandLogin);
+}
+
+export function cognitoAdminUserGlobalSignOut({ email }) {
+  console.log("email", email);
+  const params = {
+    UserPoolId: USER_POOL_ID,
+    Username: email,
+  };
+  const commandLogin = new AdminUserGlobalSignOutCommand(params);
   return cognito.send(commandLogin);
 }
 

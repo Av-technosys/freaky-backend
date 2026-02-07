@@ -32,6 +32,7 @@ import {
   getVendorNotifications,
   getAllSearchItems,
   deleteCompanyLogo,
+  acceptVendorInvite,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -44,6 +45,7 @@ import vendorcalendarRouter from './vendor.calendar.route.js';
 import vendorpricebookRouter from './vendor.pricebook.router.js';
 import { sendMail } from '../../utils/email/sendMail.js';
 import { secureEvent } from '../../utils/email/secureEvent.js';
+import vendorEmployeeRouter from './vendor.employee.router.js';
 const router = Router();
 
 router.get(
@@ -55,6 +57,8 @@ router.get(
 router.use('/review', confirmUserToken, vendorReviewRouter);
 router.use('/calendar', vendorcalendarRouter);
 router.use('/pricebook', vendorpricebookRouter);
+router.use('/employees/',checkVendor ,vendorEmployeeRouter) 
+
 router.get('/detail', checkVendor, getVendorInfo);
 router.get('/vendors', listAllVendors);
 router.post('/cerate_vendor', confirmUserToken, createVendor);
@@ -88,7 +92,6 @@ router.get('/documents', confirmUserToken, getVendorDocuments);
 router.delete('/document/:id', confirmUserToken, deleteVendorDocument);
 router.get('/vendor_details', confirmUserToken, getVendorCompanyInfo);
 router.get('/ownership_details', confirmUserToken, getVendorOwnershipDetails);
-router.get('/employees', confirmUserToken, getVendorEmployees);
 router.post('/send_mail', async (req, res) => {
   const { name, email, number } = req.body;
   try {
@@ -132,18 +135,8 @@ router.post('/send_mail', async (req, res) => {
     return res.status(500).json({ message: 'Error sending mail.' });
   }
 });
-router.post(
-  '/invite_employees',
-  confirmUserToken,
-  createVendorEmployeeInvitation
-);
-router.put(
-  '/update_employee_permissions/:employeeId',
-  confirmUserToken,
-  updateEmployeePermissions
-);
-router.delete('/employee/:id', confirmUserToken, deleteVendorEmployee);
 router.get('/invites', confirmUserToken, getVendorInvites);
+router.put("/accept_invite", confirmUserToken, acceptVendorInvite);
 router.get('/request_vendors', requestedVendors);
 router.post('/employee_request', confirmUserToken, createVendorEmployeeRequest);
 router.get('/notifications', confirmUserToken, getVendorNotifications);

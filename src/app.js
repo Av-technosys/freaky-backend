@@ -12,6 +12,7 @@ const corsOptions = {
     'http://localhost:5173',
     'https://dev.vendor.freakychimp.com/',
     'https://dev.admin.freakychimp.com/',
+    'https://staging.vendor.freakychimp.com/'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,

@@ -18,11 +18,18 @@ import {
 } from '../../db/schema.js';
 import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
 import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
-import { AdminUpdateUserAttributesCommand, AdminUserGlobalSignOutCommand } from '@aws-sdk/client-cognito-identity-provider';
+import {
+  AdminUpdateUserAttributesCommand,
+  AdminUserGlobalSignOutCommand,
+} from '@aws-sdk/client-cognito-identity-provider';
 import { bookingDraft } from '../../db/schema.js';
 import { paginate } from '../helpers/paginate.js';
 import { featuredCategory, featuredProdcut } from '../../db/vendor.js';
-import { cognitoAdminGetUser, cognitoAdminUserGlobalSignOut, cognitoUpdateUserAttribute } from '../helpers/Cognito.helper.js';
+import {
+  cognitoAdminGetUser,
+  cognitoAdminUserGlobalSignOut,
+  cognitoUpdateUserAttribute,
+} from '../helpers/Cognito.helper.js';
 import { user } from '../../db/user.js';
 
 export const getVendorInfo = async (req, res) => {
@@ -527,7 +534,6 @@ export const createCompanyDetails = async (req, res) => {
     const {
       businessName,
       websiteURL,
-      logoUrl,
       description,
       legalEntityName,
       businessType,
@@ -544,7 +550,6 @@ export const createCompanyDetails = async (req, res) => {
         DBAname: DBAname,
         businessName: businessName,
         websiteURL: websiteURL,
-        logoUrl: logoUrl,
         description: description,
         legalEntityName: legalEntityName,
         businessType: businessType,
@@ -560,6 +565,23 @@ export const createCompanyDetails = async (req, res) => {
   } catch (error) {
     console.log('error', error);
     return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+export const updateCompanyLogo = async (req, res) => {
+  try {
+    const parsed = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorId = parsed.vendorId;
+    const { companyLogo } = req.body;
+    await db
+      .update(vendors)
+      .set({ logoUrl: companyLogo })
+      .where(eq(vendors.vendorId, vendorId));
+    return res
+      .status(200)
+      .json({ message: 'company logo uploaded successfully!' });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -1514,23 +1536,31 @@ export const updateEmployeePermissions = async (req, res) => {
     const [updateEmployeeRes] = await db
       .update(vendorEmployees)
       .set({ permissions: permissions })
-      .where(and(eq(vendorEmployees.vendorEmployeeId, employeeId), eq(vendorEmployees.vendorId, vendorId))).returning();
+      .where(
+        and(
+          eq(vendorEmployees.vendorEmployeeId, employeeId),
+          eq(vendorEmployees.vendorId, vendorId)
+        )
+      )
+      .returning();
 
-       const userAttribute = [
-        {
-          Name: 'custom:permissions',
-          Value: JSON.stringify(permissions),
-        },
-      ];
-      const [user] = await db.select({email : users.email, userId : users.userId}).from(users).where(eq(users.userId, updateEmployeeRes.userId));
- 
-      // add userid to cognito attribute
+    const userAttribute = [
+      {
+        Name: 'custom:permissions',
+        Value: JSON.stringify(permissions),
+      },
+    ];
+    const [user] = await db
+      .select({ email: users.email, userId: users.userId })
+      .from(users)
+      .where(eq(users.userId, updateEmployeeRes.userId));
 
-      await Promise.all([
-        cognitoUpdateUserAttribute({ email: user.email, userAttribute }),
-        cognitoAdminUserGlobalSignOut({ email: user.email }),
-      ]);
+    // add userid to cognito attribute
 
+    await Promise.all([
+      cognitoUpdateUserAttribute({ email: user.email, userAttribute }),
+      cognitoAdminUserGlobalSignOut({ email: user.email }),
+    ]);
 
     return res.status(200).json({
       message: 'Permissions updated  successfully.',
@@ -1553,19 +1583,31 @@ export const getEmployeePermissions = async (req, res) => {
       });
     }
 
-    const [user] = await db.select({email : users.email, userId : users.userId}).from(vendorEmployees).innerJoin(users, eq(vendorEmployees.userId, users.userId)).where(and(eq(vendorEmployees.vendorEmployeeId, employeeId), eq(vendorEmployees.vendorId, vendorId)));
+    const [user] = await db
+      .select({ email: users.email, userId: users.userId })
+      .from(vendorEmployees)
+      .innerJoin(users, eq(vendorEmployees.userId, users.userId))
+      .where(
+        and(
+          eq(vendorEmployees.vendorEmployeeId, employeeId),
+          eq(vendorEmployees.vendorId, vendorId)
+        )
+      );
 
- 
     if (!user) {
       return res.status(404).json({
         message: 'No user found.',
       });
     }
- 
-      // add userid to cognito attribute
-      const data = await cognitoAdminGetUser({ email: user.email });
-      const userPermissionArray = JSON.parse(JSON.stringify(data?.UserAttributes?.find((attr) => attr.Name === 'custom:permissions')?.Value || []));
 
+    // add userid to cognito attribute
+    const data = await cognitoAdminGetUser({ email: user.email });
+    const userPermissionArray = JSON.parse(
+      JSON.stringify(
+        data?.UserAttributes?.find((attr) => attr.Name === 'custom:permissions')
+          ?.Value || []
+      )
+    );
 
     return res.status(200).json({
       message: 'Permissions fetched successfully.',
@@ -1617,7 +1659,15 @@ export const getVendorInvites = async (req, res) => {
       const vendorInfo = (
         await Promise.all(
           userInviteFound.map((user) =>
-            db.select({vendorId: vendors.vendorId, businessName: vendors.businessName, logoUrl: vendors.logoUrl, websiteURL: vendors.websiteURL}).from(vendors).where(eq(vendors.vendorId, user.vendorId))
+            db
+              .select({
+                vendorId: vendors.vendorId,
+                businessName: vendors.businessName,
+                logoUrl: vendors.logoUrl,
+                websiteURL: vendors.websiteURL,
+              })
+              .from(vendors)
+              .where(eq(vendors.vendorId, user.vendorId))
           )
         )
       ).flat();
@@ -1641,34 +1691,54 @@ export const getVendorInvites = async (req, res) => {
 export const acceptVendorInvite = async (req, res) => {
   try {
     const userEmail = req.user.email;
-    const userID= req.user['custom:user_id'];
-    console.log("userID", userID)
-    const {vendorId} = req.body;
+    const userID = req.user['custom:user_id'];
+    console.log('userID', userID);
+    const { vendorId } = req.body;
 
-    const [userInvite] = await db.select().from(vendorInvites).where(and(eq(vendorInvites.email, userEmail), eq(vendorInvites.vendorId, vendorId)));
+    const [userInvite] = await db
+      .select()
+      .from(vendorInvites)
+      .where(
+        and(
+          eq(vendorInvites.email, userEmail),
+          eq(vendorInvites.vendorId, vendorId)
+        )
+      );
 
-      // add cognito vendorIds and primissions.      
+    // add cognito vendorIds and primissions.
 
     if (userInvite) {
+      const [vendorEmployeesRes] = await db
+        .insert(vendorEmployees)
+        .values({
+          vendorId: vendorId,
+          userId: userID,
+          permissions: userInvite.permissions,
+          employeeCode: userInvite.employeeCode,
+        })
+        .returning();
 
-     const [vendorEmployeesRes] = await db.insert(vendorEmployees).values({vendorId: vendorId, userId: userID, permissions: userInvite.permissions, employeeCode: userInvite.employeeCode}).returning();
-
-       const userAttribute = [
+      const userAttribute = [
         {
           Name: 'custom:vendor_ids',
-          Value: JSON.stringify({"vendorId":vendorId,"vendorEmployeesId":vendorEmployeesRes.vendorEmployeeId}),
+          Value: JSON.stringify({
+            vendorId: vendorId,
+            vendorEmployeesId: vendorEmployeesRes.vendorEmployeeId,
+          }),
         },
         {
           Name: 'custom:permissions',
           Value: JSON.stringify(userInvite.permissions),
         },
       ];
- 
+
       // add userid to cognito attribute
-       await Promise.all([
+      await Promise.all([
         cognitoUpdateUserAttribute({ email: userEmail, userAttribute }),
-        db.delete(vendorInvites).where(eq(vendorInvites.vendorInviteId, userInvite.vendorInviteId))
-      ]); 
+        db
+          .delete(vendorInvites)
+          .where(eq(vendorInvites.vendorInviteId, userInvite.vendorInviteId)),
+      ]);
       return res.status(201).json({
         message: 'Vendor accepted successfully.',
       });

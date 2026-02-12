@@ -12,6 +12,7 @@ import {
   getPersonalInfo,
   updateDetails,
   Notify,
+  updateProfilePicture,
 } from '../../controllers/User.controllers.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
 import addressRouter from './user.address.route.js';
@@ -27,7 +28,8 @@ router.get('/get_all_reviews', confirmUserToken, getAllReviews);
 router.post('/update_personal_info', confirmUserToken, updateUserInfo);
 
 router.post('/profile_picture', confirmUserToken, profilePictureHandler);
-router.delete('/profile_picture', confirmUserToken, profilePictureHandler);
+router.put('/profile_picture', confirmUserToken, updateProfilePicture);
+router.delete('/profile_picture/:id', confirmUserToken, profilePictureHandler);
 router.post('/add_review', confirmUserToken, addReview);
 router.delete('/review', confirmUserToken, deleteReview);
 router.get('/notification', confirmUserToken, getUserNotification);

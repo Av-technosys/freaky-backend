@@ -613,6 +613,38 @@ export const profilePictureHandler = async (req, res) => {
   }
 };
 
+export const updateProfilePicture = async (req, res) => {
+  try {
+    const userId = req.user['custom:user_id'];
+    const { profileImage } = req.body;
+    console.log('profileImage', profileImage);
+    await db
+      .update(users)
+      .set({ profileImage: profileImage })
+      .where(eq(users.userId, userId));
+    return res
+      .status(200)
+      .json({ message: 'Profile image updated successfully.' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteProfilePicture = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db
+      .update(users)
+      .set({ profileImage: null })
+      .where(eq(users.userId, id));
+    return res
+      .status(200)
+      .json({ message: 'Profile image updated successfully.' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const addReview = async (req, res) => {
   try {
     const { eventId, eventRating, description, products } = req.body;
@@ -787,6 +819,7 @@ export const getPersonalInfo = async (req, res) => {
     const userId = req.user['custom:user_id'];
     const user = await db
       .select({
+        id: users.userId,
         firstName: users.firstName,
         lastName: users.lastName,
         email: users.email,
@@ -794,6 +827,10 @@ export const getPersonalInfo = async (req, res) => {
         profileImage: users.profileImage,
         streetAddress1: userAddresses.addressLineOne,
         streetAddress2: userAddresses.addressLineTwo,
+        city: userAddresses.city,
+        state: userAddresses.state,
+        country: userAddresses.country,
+        postalCode: userAddresses.postalCode,
         currentAddressId: users.currentAddressId,
       })
       .from(users)
@@ -822,8 +859,12 @@ export const updateDetails = async (req, res) => {
       lastName,
       number,
       profileImage,
-      streetAddress1,
-      streetAddress2,
+      addressLine1,
+      addressLine2,
+      city,
+      countery,
+      state,
+      zipcode,
       currentAddressId,
     } = req.body;
 
@@ -842,8 +883,12 @@ export const updateDetails = async (req, res) => {
         await tx
           .update(userAddresses)
           .set({
-            addressLineOne: streetAddress1,
-            addressLineTwo: streetAddress2,
+            addressLineOne: addressLine1,
+            addressLineTwo: addressLine2,
+            city: city,
+            state: state,
+            postalCode: zipcode,
+            country: countery,
           })
           .where(eq(userAddresses.id, currentAddressId));
       });

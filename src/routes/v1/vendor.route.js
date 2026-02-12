@@ -29,6 +29,7 @@ import {
   getAllSearchItems,
   deleteCompanyLogo,
   acceptVendorInvite,
+  updateCompanyLogo,
 } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
@@ -42,7 +43,7 @@ import vendorpricebookRouter from './vendor.pricebook.router.js';
 import { sendMail } from '../../utils/email/sendMail.js';
 import { secureEvent } from '../../utils/email/secureEvent.js';
 import vendorEmployeeRouter from './vendor.employee.router.js';
- import vendorNotificationRouter from './vendor.notifications.router.js';
+import vendorNotificationRouter from './vendor.notifications.router.js';
 const router = Router();
 
 router.get(
@@ -54,8 +55,8 @@ router.get(
 router.use('/review', confirmUserToken, vendorReviewRouter);
 router.use('/calendar', vendorcalendarRouter);
 router.use('/pricebook', vendorpricebookRouter);
-router.use('/employees/',checkVendor ,vendorEmployeeRouter)
-router.use('/notifications',checkVendor ,vendorNotificationRouter)
+router.use('/employees/', checkVendor, vendorEmployeeRouter);
+router.use('/notifications', checkVendor, vendorNotificationRouter);
 
 router.get('/detail', checkVendor, getVendorInfo);
 router.get('/vendors', listAllVendors);
@@ -75,6 +76,8 @@ router.delete('/company_logo/:vendorId', confirmUserToken, deleteCompanyLogo);
 
 router.post('/company_details', confirmUserToken, createCompanyDetails);
 // router.get("/create_vendor_emp_request", createVendorEmpRequest);
+
+router.put('/company_logo', confirmUserToken, updateCompanyLogo);
 
 router.get('/vendor_products/:vendorId', confirmUserToken, fetchVendorProducts);
 
@@ -134,7 +137,7 @@ router.post('/send_mail', async (req, res) => {
   }
 });
 router.get('/invites', confirmUserToken, getVendorInvites);
-router.put("/accept_invite", confirmUserToken, acceptVendorInvite);
+router.put('/accept_invite', confirmUserToken, acceptVendorInvite);
 router.get('/request_vendors', requestedVendors);
 router.post('/employee_request', confirmUserToken, createVendorEmployeeRequest);
 router.get('/searchitems', confirmUserToken, getAllSearchItems);

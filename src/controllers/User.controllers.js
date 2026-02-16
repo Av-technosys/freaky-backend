@@ -862,10 +862,12 @@ export const updateDetails = async (req, res) => {
       addressLine1,
       addressLine2,
       city,
-      countery,
+      country,
       state,
-      zipcode,
+      zipCode,
       currentAddressId,
+      latitude,
+      longitude,
     } = req.body;
 
     if (userId) {
@@ -880,17 +882,60 @@ export const updateDetails = async (req, res) => {
           })
           .where(eq(users.userId, userId));
 
-        await tx
-          .update(userAddresses)
-          .set({
-            addressLineOne: addressLine1,
-            addressLineTwo: addressLine2,
-            city: city,
-            state: state,
-            postalCode: zipcode,
-            country: countery,
-          })
-          .where(eq(userAddresses.id, currentAddressId));
+        // currentAddressId update address  if exist or create if not
+
+        if(currentAddressId){
+  await tx.execute(sql`
+  UPDATE user_address
+  SET
+    address_line_one = ${addressLine1},
+    address_line_two = ${addressLine2},
+    city = ${city},
+    state = ${state},
+    postal_code = ${zipCode},
+    country = ${country},
+    latitude = ${latitude},
+    longitude = ${longitude},
+    location = ST_SetSRID(ST_MakePoint(${longitude}::float, ${latitude}::float), 4326)::geography
+  WHERE id = ${currentAddressId}
+`);
+        }else{
+          const [address] = await tx.execute(sql`
+  WITH inserted AS (
+    INSERT INTO user_address (
+      user_id,
+      address_line_one,
+      address_line_two,
+      city,
+      state,
+      postal_code,
+      country,
+      latitude,
+      longitude,
+      location
+    )
+    VALUES (
+      ${userId},
+      ${addressLine1},
+      ${addressLine2},
+      ${city},
+      ${state},
+      ${zipCode},
+      ${country},
+      ${latitude},
+      ${longitude},
+      ST_SetSRID(ST_MakePoint(${longitude}::float, ${latitude}::float), 4326)::geography
+    )
+    RETURNING id
+  )
+  UPDATE users
+  SET current_address_id = inserted.id
+  FROM inserted
+  WHERE users.user_id = ${userId}
+`);
+
+        }
+        
       });
       return res.status(200).json({
         message: 'User details updated successfully.',
@@ -900,7 +945,7 @@ export const updateDetails = async (req, res) => {
       message: 'user not found.',
     });
   } catch (error) {
-    console.error('Error fetching user info:', err);
+    console.error('Error fetching user info:', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 };

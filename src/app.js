@@ -12,13 +12,16 @@ const corsOptions = {
     'http://localhost:5173',
     'https://dev.vendor.freakychimp.com/',
     'https://dev.admin.freakychimp.com/',
-    'https://staging.vendor.freakychimp.com/'
+    'https://staging.vendor.freakychimp.com/',
+    'https://staging.vendor.freakychimp.com'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 
 app.use('/', (req, res, next) => {

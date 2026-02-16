@@ -285,6 +285,8 @@ export const updateAddressDetails = async (req, res) => {
       state,
       country,
       zipcode,
+      latitude,
+      longitude,
     } = req.body;
 
     let vendorId;
@@ -303,6 +305,8 @@ export const updateAddressDetails = async (req, res) => {
       .set({
         streetAddressLine1: streetAddressLine1,
         streetAddressLine2: streetAddressLine2,
+        latitude: latitude,
+        longitude: longitude,
         city: city,
         state: state,
         zipcode: zipcode,

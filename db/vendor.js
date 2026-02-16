@@ -258,6 +258,13 @@ export const product = pgTable('product', {
   title: varchar('title', { length: 255 }),
   description: text('description', ),
 
+  // streetAddressLine1: varchar('street_address_line_1', { length: 255 }),
+  // streetAddressLine2: varchar('street_address_line_2', { length: 255 }),
+  // city: varchar('city', { length: 255 }),
+  // state: varchar('state', { length: 255 }),
+  // country: varchar('country', { length: 255 }),
+  // postalCode: varchar('postal_code', { length: 255 }),
+
   latitude: varchar('latitude', { length: 255 }),
   longitude: varchar('longitude', { length: 255 }),
   // location: varchar('location', { length: 255 }),

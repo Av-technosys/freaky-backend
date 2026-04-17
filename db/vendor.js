@@ -256,14 +256,14 @@ export const product = pgTable('product', {
   productTypeId: integer('product_type_id').references(() => productType.id),
 
   title: varchar('title', { length: 255 }),
-  description: text('description', ),
+  description: text('description'),
 
-  // streetAddressLine1: varchar('street_address_line_1', { length: 255 }),
-  // streetAddressLine2: varchar('street_address_line_2', { length: 255 }),
-  // city: varchar('city', { length: 255 }),
-  // state: varchar('state', { length: 255 }),
-  // country: varchar('country', { length: 255 }),
-  // postalCode: varchar('postal_code', { length: 255 }),
+  streetAddressLine1: varchar('street_address_line_1', { length: 255 }),
+  streetAddressLine2: varchar('street_address_line_2', { length: 255 }),
+  city: varchar('city', { length: 255 }),
+  state: varchar('state', { length: 255 }),
+  country: varchar('country', { length: 255 }),
+  postalCode: varchar('postal_code', { length: 255 }),
 
   latitude: varchar('latitude', { length: 255 }),
   longitude: varchar('longitude', { length: 255 }),
@@ -271,18 +271,20 @@ export const product = pgTable('product', {
   deliveryRadius: integer('delivery_radius').default(10),
 
   isAvailable: boolean('is_available').default(true),
-  currentPriceBook: integer('current_price_book').references(
-    () => priceBook.id
-  ),
+  // currentPriceBook: integer('current_price_book').references(
+  //   () => priceBook.id
+  // ),
 
   pricingType: productPricingTypeEnum('pricing_type').notNull(),
 
   minQuantity: integer('min_quantity').default(1).notNull(),
   maxQuantity: integer('max_quantity'),
+  maxBookingAtTime: integer('max_booking_at_time').default(10).notNull(),
 
   status: boolean('status').default(true).notNull(),
   rating: integer('rating').default(4).notNull(),
   bannerImage: varchar('banner_image', { length: 255 }),
+  returnPolicyURL: varchar('return_policy_url', { length: 255 }),
 
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

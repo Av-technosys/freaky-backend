@@ -1022,24 +1022,24 @@ export const fetchProductDetailById = async (req, res) => {
 
     const vendorId = product.vendorId;
 
-    const priceBooks = await db.query.priceBook.findMany({
-      where: (t, { eq, and }) =>
-        and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
-    });
+    // const priceBooks = await db.query.priceBook.findMany({
+    //   where: (t, { eq, and }) =>
+    //     and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+    // });
 
     let productPrices = [];
 
-    if (priceBooks.length > 0) {
-      const priceBookIds = priceBooks.map((pb) => pb.id);
+    // if (priceBooks.length > 0) {
+    //   const priceBookIds = priceBooks.map((pb) => pb.id);
 
-      productPrices = await db.query.priceBookEntry.findMany({
-        where: (t, { eq, inArray, and }) =>
-          and(
-            eq(t.productId, Number(productId)),
-            inArray(t.priceBookingId, priceBookIds)
-          ),
-      });
-    }
+    //   productPrices = await db.query.priceBookEntry.findMany({
+    //     where: (t, { eq, inArray, and }) =>
+    //       and(
+    //         eq(t.productId, Number(productId)),
+    //         inArray(t.priceBookingId, priceBookIds)
+    //       ),
+    //   });
+    // }
 
     const productMediaList = await db.query.productMedia.findMany({
       where: (t, { eq }) => eq(t.productId, Number(productId)),
@@ -1198,7 +1198,29 @@ export const updateProductById = async (req, res) => {
         description: data.description,
         type: data.type?.toUpperCase(),
         maxQuantity: data.maxBooking,
-        deliveryRadius: data.deleveryRadius,
+        deliveryRadius: data.deliveryRadius,
+
+        // deleveryRadius: formData.deliveryRadius,
+        // type: formData.type,
+        // bannerImage: mediaBanner,
+        // additionalImages: additionalImagesUrl,
+        // videoUrl: videoUrl,
+        // pricingType: formData.pricingType,
+        // streetAddressLine1: formData.streetAddressLine1,
+        // streetAddressLine2: formData.streetAddressLine2,
+        // city: formData.city,
+        // state: formData.state,
+        // postalCode: formData.postalCode,
+        // country: formData.country,
+        // latitude: formData.latitude,
+        // longitude: formData.longitude,
+        // productTypeId: formData.productTypeId,
+        // price: formData.price,
+        // maxBookingAtTime: formData.maxBookingAtTime,
+        // maxQuantity: formData.maxQuantity,
+        // minQuantity: formData.minQuantity,
+        // isAvailable: formData.isAvailable,
+        // returnPolicyURL: formData.returnPolicyURL,
       })
       .where(eq(products.productId, productId))
       .returning();

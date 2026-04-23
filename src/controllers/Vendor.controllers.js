@@ -1012,55 +1012,48 @@ export const fetchProductDetailById = async (req, res) => {
       return res.status(400).json({ error: 'Product ID is required.' });
     }
 
+    const id = Number(productId);
+
     const product = await db.query.products.findFirst({
-      where: (t, { eq }) => eq(t.productId, Number(productId)),
+      where: (t, { eq }) => eq(t.productId, id),
     });
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found.' });
     }
 
-    const vendorId = product.vendorId;
-
-    // const priceBooks = await db.query.priceBook.findMany({
-    //   where: (t, { eq, and }) =>
-    //     and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
-    // });
-
-    let productPrices = [];
-
-    // if (priceBooks.length > 0) {
-    //   const priceBookIds = priceBooks.map((pb) => pb.id);
-
-    //   productPrices = await db.query.priceBookEntry.findMany({
-    //     where: (t, { eq, inArray, and }) =>
-    //       and(
-    //         eq(t.productId, Number(productId)),
-    //         inArray(t.priceBookingId, priceBookIds)
-    //       ),
-    //   });
-    // }
-
-    const productMediaList = await db.query.productMedia.findMany({
-      where: (t, { eq }) => eq(t.productId, Number(productId)),
+    const productPrices = await db.query.priceBookEntry.findMany({
+      where: (t, { eq }) => eq(t.productId, id),
+      orderBy: (t, { asc }) => asc(t.lowerSlab),
     });
 
+    const productMediaList = await db.query.productMedia.findMany({
+      where: (t, { eq }) => eq(t.productId, id),
+    });
+
+    const primaryPrice = productPrices?.[0];
+
     return res.json({
-      message: 'Product details & price fetched successfully',
+      message: 'Product details fetched successfully',
       product: {
         ...product,
-        prices: productPrices,
+
+        price: primaryPrice
+          ? Number(primaryPrice.salePrice || primaryPrice.listPrice)
+          : null,
+
+        priceSlabs: productPrices,
+
         media: productMediaList,
       },
     });
   } catch (err) {
-    console.error('Price Fetch Error:', err);
-    return res
-      .status(500)
-      .json({ error: 'Server error fetching product price.' });
+    console.error('Fetch Error:', err);
+    return res.status(500).json({
+      error: 'Server error fetching product.',
+    });
   }
 };
-
 export const listAllPriceBooksById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1177,14 +1170,14 @@ export const updatePriceBookById = async (req, res) => {
 export const updateProductById = async (req, res) => {
   try {
     const data = req.body;
-
     const { productId } = req.params;
-    const product = await db
+
+    const existing = await db
       .select()
       .from(products)
       .where(eq(products.productId, productId));
 
-    if (!product.length) {
+    if (!existing.length) {
       return res.status(404).json({
         message: 'No service found.',
       });
@@ -1196,34 +1189,35 @@ export const updateProductById = async (req, res) => {
         bannerImage: data.bannerImage,
         title: data.title,
         description: data.description,
-        type: data.type?.toUpperCase(),
-        maxQuantity: data.maxBooking,
-        deliveryRadius: data.deliveryRadius,
 
-        // deleveryRadius: formData.deliveryRadius,
-        // type: formData.type,
-        // bannerImage: mediaBanner,
-        // additionalImages: additionalImagesUrl,
-        // videoUrl: videoUrl,
-        // pricingType: formData.pricingType,
-        // streetAddressLine1: formData.streetAddressLine1,
-        // streetAddressLine2: formData.streetAddressLine2,
-        // city: formData.city,
-        // state: formData.state,
-        // postalCode: formData.postalCode,
-        // country: formData.country,
-        // latitude: formData.latitude,
-        // longitude: formData.longitude,
-        // productTypeId: formData.productTypeId,
-        // price: formData.price,
-        // maxBookingAtTime: formData.maxBookingAtTime,
-        // maxQuantity: formData.maxQuantity,
-        // minQuantity: formData.minQuantity,
-        // isAvailable: formData.isAvailable,
-        // returnPolicyURL: formData.returnPolicyURL,
+        streetAddressLine1: data.streetAddressLine1,
+        streetAddressLine2: data.streetAddressLine2,
+        city: data.city,
+        state: data.state,
+        country: data.country,
+        postalCode: data.postalCode,
+
+        latitude: data.latitude,
+        longitude: data.longitude,
+
+        productTypeId: data.productTypeId,
+        type: data.type?.toUpperCase(),
+        pricingType: data.pricingType,
+
+        minQuantity: Number(data.minQuantity),
+        maxQuantity: Number(data.maxQuantity),
+        maxBookingAtTime: Number(data.maxBookingAtTime),
+
+        deliveryRadius: Number(data.deliveryRadius),
+
+        isAvailable: data.isAvailable,
+
+        returnPolicyURL: data.returnPolicyURL,
+
+        updatedAt: new Date(),
       })
-      .where(eq(products.productId, productId))
-      .returning();
+      .where(eq(products.productId, productId));
+
     if (data.videoUrl) {
       const existingVideo = await db
         .select()
@@ -1236,42 +1230,49 @@ export const updateProductById = async (req, res) => {
         )
         .limit(1);
 
-      if (existingVideo.length > 0) {
+      if (existingVideo.length) {
         await db
           .update(productMedia)
           .set({ mediaUrl: data.videoUrl })
           .where(eq(productMedia.id, existingVideo[0].id));
       } else {
         await db.insert(productMedia).values({
-          productId: productId,
+          productId,
           mediaType: 'video',
           mediaUrl: data.videoUrl,
-          sortOrder: 3,
+          sortOrder: 0,
         });
       }
     }
 
-    if (data.additionalImages.length > 0) {
-      const additionalImages = data?.additionalImages?.map(
-        (mediaUrl, index) => {
-          return {
-            productId: productId,
-            mediaType: 'image',
-            mediaUrl: mediaUrl,
-            sortOrder: index,
-          };
-        }
-      );
+    if (Array.isArray(data.additionalImages)) {
+      await db
+        .delete(productMedia)
+        .where(
+          and(
+            eq(productMedia.productId, productId),
+            eq(productMedia.mediaType, 'image')
+          )
+        );
 
-      await db.insert(productMedia).values(additionalImages);
+      const images = data.additionalImages.map((url, index) => ({
+        productId,
+        mediaType: 'image',
+        mediaUrl: url,
+        sortOrder: index,
+      }));
+
+      if (images.length) {
+        await db.insert(productMedia).values(images);
+      }
     }
 
     return res.status(200).json({
       message: 'Service updated successfully!',
     });
   } catch (error) {
-    console.error(' Error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Update Error:', error);
+    return res.status(500).json({});
   }
 };
 
@@ -1286,10 +1287,23 @@ export const createProduct = async (req, res) => {
         bannerImage: data.bannerImage,
         title: data.title,
         description: data.description,
-        maxQuantity: data.maxBooking,
-        deliveryRadius: data.deleveryRadius,
+        streetAddressLine1: data.streetAddressLine1,
+        streetAddressLine2: data.streetAddressLine2,
+        city: data.city,
+        state: data.state,
+        country: data.country,
+        postalCode: data.postalCode,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        productTypeId: data.productTypeId,
         type: data.type?.toUpperCase(),
         pricingType: data.pricingType,
+        minQuantity: Number(data.minQuantity),
+        maxQuantity: Number(data.maxQuantity),
+        maxBookingAtTime: Number(data.maxBookingAtTime),
+        deliveryRadius: Number(data.deleveryRadius),
+        isAvailable: data.isAvailable,
+        returnPolicyURL: data.returnPolicyURL,
         vendorId: vendorId,
       })
       .returning({ productId: products.productId });
@@ -1318,7 +1332,44 @@ export const createProduct = async (req, res) => {
 
       await db.insert(productMedia).values(additionalImages);
     }
+    const defaultPB = await db.query.priceBook.findFirst({
+      where: (t, { eq }) => eq(t.isStandard, true),
+    });
 
+    if (!defaultPB) {
+      throw new Error('Default priceBook not found');
+    }
+
+    const defaultEntries = await db.query.priceBookEntry.findMany({
+      where: (t, { eq }) => eq(t.priceBookingId, defaultPB.id),
+    });
+
+    const newPB = await db
+      .insert(priceBook)
+      .values({
+        vendorId,
+        isStandard: false,
+        isActive: true,
+        name: data.title + ' Product Price',
+      })
+      .returning({ id: priceBook.id });
+
+    const newPBId = newPB[0].id;
+
+    const newEntries = defaultEntries.map((entry) => ({
+      productId,
+      priceBookingId: newPBId,
+      currency: entry.currency,
+      lowerSlab: entry.lowerSlab,
+      upperSlab: entry.upperSlab,
+      listPrice: entry.listPrice,
+      salePrice: entry.salePrice,
+      discountPercentage: entry.discountPercentage,
+    }));
+
+    if (newEntries.length > 0) {
+      await db.insert(priceBookEntry).values(newEntries);
+    }
     return res.status(201).json({
       message: 'Service created successfully!',
       productId,

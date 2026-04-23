@@ -14,7 +14,7 @@ import { sendNotificationToUser } from '../helpers/SendNotification.js';
 import { bookingDraft } from '../../db/schema.js';
 import { createBookingDraft } from '../helpers/createBookingDraft.js';
 import { SOURCE, STATUS } from '../../const/global.js';
-
+import { products, productReviewSummary } from '../../db/schema.js';
 export const getUserInfo = async (req, res) => {
   try {
     const email = req.user?.email || req.body.email;
@@ -118,6 +118,7 @@ export const addAddress = async (req, res) => {
 
     for (const [key, value] of Object.entries(requiredFields)) {
       if (!value) return res.status(400).json({ error: `${key} is required.` });
+      console.log(`${key}: ${value}`);
     }
 
     // Fetch User
@@ -155,7 +156,6 @@ export const addAddress = async (req, res) => {
       ${sql`ST_SetSRID(ST_MakePoint(${latitude}, ${longitude}), 4326)::geography`}
     );
   `);
-
     return res.status(201).json({
       message: 'Address added successfully.',
     });
@@ -884,8 +884,8 @@ export const updateDetails = async (req, res) => {
 
         // currentAddressId update address  if exist or create if not
 
-        if(currentAddressId){
-  await tx.execute(sql`
+        if (currentAddressId) {
+          await tx.execute(sql`
   UPDATE user_address
   SET
     address_line_one = ${addressLine1},
@@ -899,7 +899,7 @@ export const updateDetails = async (req, res) => {
     location = ST_SetSRID(ST_MakePoint(${longitude}::float, ${latitude}::float), 4326)::geography
   WHERE id = ${currentAddressId}
 `);
-        }else{
+        } else {
           const [address] = await tx.execute(sql`
   WITH inserted AS (
     INSERT INTO user_address (
@@ -933,9 +933,7 @@ export const updateDetails = async (req, res) => {
   FROM inserted
   WHERE users.user_id = ${userId}
 `);
-
         }
-        
       });
       return res.status(200).json({
         message: 'User details updated successfully.',
@@ -999,5 +997,110 @@ export const Notify = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+export const getBookingById = async (req, res) => {
+  try {
+    const { bookingDraftId } = req.params;
+
+    if (!bookingDraftId) {
+      return res.status(400).json({ error: 'bookingDraftId required' });
+    }
+
+    // ✅ JOIN bookingDraft + product + review
+    const result = await db
+      .select({
+        // booking
+        bookingDraftId: bookingDraft.bookingDraftId,
+        contactName: bookingDraft.contactName,
+        contactNumber: bookingDraft.contactNumber,
+        startTime: bookingDraft.startTime,
+        endTime: bookingDraft.endTime,
+        minGuestCount: bookingDraft.minGuestCount,
+        maxGuestCount: bookingDraft.maxGuestCount,
+        status: bookingDraft.status,
+        createdAt: bookingDraft.createdAt,
+
+        // product
+        productId: products.productId,
+        title: products.title,
+        description: products.description,
+        bannerImage: products.bannerImage,
+        city: products.city,
+        state: products.state,
+        country: products.country,
+        street1: products.streetAddressLine1,
+        street2: products.streetAddressLine2,
+        pricingType: products.pricingType,
+        rating: products.rating,
+        isAvailable: products.isAvailable,
+
+        // review summary
+        reviewCount: productReviewSummary.reviewCount,
+        avgRating: productReviewSummary.averageRating,
+      })
+      .from(bookingDraft)
+      .leftJoin(products, eq(bookingDraft.productId, products.productId))
+      .leftJoin(
+        productReviewSummary,
+        eq(products.productId, productReviewSummary.productId)
+      )
+      .where(eq(bookingDraft.bookingDraftId, Number(bookingDraftId)))
+      .limit(1);
+
+    if (!result.length) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const item = result[0];
+
+    // ✅ FULL structured response (UI READY)
+    const response = {
+      booking: {
+        id: item.bookingDraftId,
+        title: `${item.contactName || 'Event'}`,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        guestRange: `${item.minGuestCount} - ${item.maxGuestCount}`,
+        status: item.status,
+      },
+
+      product: {
+        id: item.productId,
+        title: item.title,
+        description: item.description,
+        image: item.bannerImage,
+
+        location: {
+          city: item.city,
+          state: item.state,
+          country: item.country,
+          address: `${item.street1 || ''} ${item.street2 || ''}`,
+        },
+
+        rating: {
+          average: item.avgRating || item.rating,
+          count: item.reviewCount || 0,
+        },
+
+        pricingType: item.pricingType,
+        isAvailable: item.isAvailable,
+      },
+
+      // ⚠️ temporary pricing (replace later)
+      pricing: {
+        basePrice: 150,
+        subtotal: 150,
+        serviceFee: 12,
+        tax: 15,
+        total: 177,
+      },
+    };
+
+    return res.json(response);
+  } catch (err) {
+    console.error('Booking detail error:', err);
+    return res.status(500).json({ error: 'Server error' });
   }
 };

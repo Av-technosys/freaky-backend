@@ -201,7 +201,7 @@ export const priceBook = pgTable('price_book', {
   vendorId: integer('vendor_id').references(() => vendor.vendorId),
 
   isStandard: boolean('is_standard').default(false).notNull(),
-  isActive: boolean('is_active').default(false).notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
 
   name: varchar('name', { length: 255 }),
   description: varchar(),

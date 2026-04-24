@@ -202,6 +202,14 @@ export const createVendor = async (req, res) => {
       })
       .returning();
 
+    await db.insert(priceBook).values({
+      vendorId: newVendor.vendorId,
+      isStandard: true,
+      isDefault: true,
+      name: 'Default Pricebook',
+      description: 'Base pricing for all services',
+    });
+
     const vendorContactPermission = ['admin'];
 
     const [vnedorContractData] = await db
@@ -1054,6 +1062,7 @@ export const fetchProductDetailById = async (req, res) => {
     });
   }
 };
+
 export const listAllPriceBooksById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1172,107 +1181,173 @@ export const updateProductById = async (req, res) => {
     const data = req.body;
     const { productId } = req.params;
 
-    const existing = await db
-      .select()
-      .from(products)
-      .where(eq(products.productId, productId));
-
-    if (!existing.length) {
-      return res.status(404).json({
-        message: 'No service found.',
-      });
-    }
-
-    await db
-      .update(products)
-      .set({
-        bannerImage: data.bannerImage,
-        title: data.title,
-        description: data.description,
-
-        streetAddressLine1: data.streetAddressLine1,
-        streetAddressLine2: data.streetAddressLine2,
-        city: data.city,
-        state: data.state,
-        country: data.country,
-        postalCode: data.postalCode,
-
-        latitude: data.latitude,
-        longitude: data.longitude,
-
-        productTypeId: data.productTypeId,
-        type: data.type?.toUpperCase(),
-        pricingType: data.pricingType,
-
-        minQuantity: Number(data.minQuantity),
-        maxQuantity: Number(data.maxQuantity),
-        maxBookingAtTime: Number(data.maxBookingAtTime),
-
-        deliveryRadius: Number(data.deliveryRadius),
-
-        isAvailable: data.isAvailable,
-
-        returnPolicyURL: data.returnPolicyURL,
-
-        updatedAt: new Date(),
-      })
-      .where(eq(products.productId, productId));
-
-    if (data.videoUrl) {
-      const existingVideo = await db
+    const result = await db.transaction(async (tx) => {
+      const existing = await tx
         .select()
-        .from(productMedia)
-        .where(
-          and(
-            eq(productMedia.productId, productId),
-            eq(productMedia.mediaType, 'video')
-          )
-        )
-        .limit(1);
+        .from(products)
+        .where(eq(products.productId, productId));
 
-      if (existingVideo.length) {
-        await db
-          .update(productMedia)
-          .set({ mediaUrl: data.videoUrl })
-          .where(eq(productMedia.id, existingVideo[0].id));
-      } else {
-        await db.insert(productMedia).values({
+      if (!existing.length) {
+        throw new Error('No service found');
+      }
+
+      const existingProduct = existing[0];
+
+      if (existingProduct.pricingType !== data.pricingType) {
+        throw new Error('Pricing type cannot be changed');
+      }
+
+      await tx
+        .update(products)
+        .set({
+          bannerImage: data.bannerImage,
+          title: data.title,
+          description: data.description,
+          streetAddressLine1: data.streetAddressLine1,
+          streetAddressLine2: data.streetAddressLine2,
+          city: data.city,
+          state: data.state,
+          country: data.country,
+          postalCode: data.postalCode,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          productTypeId: data.productTypeId,
+          type: data.type?.toUpperCase(),
+          minQuantity: Number(data.minQuantity),
+          maxQuantity: Number(data.maxQuantity),
+          maxBookingAtTime: Number(data.maxBookingAtTime),
+          deliveryRadius: Number(data.deliveryRadius),
+          isAvailable: data.isAvailable,
+          returnPolicyURL: data.returnPolicyURL,
+          updatedAt: new Date(),
+        })
+        .where(eq(products.productId, productId));
+
+      if (data.videoUrl) {
+        const existingVideo = await tx
+          .select()
+          .from(productMedia)
+          .where(
+            and(
+              eq(productMedia.productId, productId),
+              eq(productMedia.mediaType, 'video')
+            )
+          )
+          .limit(1);
+
+        if (existingVideo.length) {
+          await tx
+            .update(productMedia)
+            .set({ mediaUrl: data.videoUrl })
+            .where(eq(productMedia.id, existingVideo[0].id));
+        } else {
+          await tx.insert(productMedia).values({
+            productId,
+            mediaType: 'video',
+            mediaUrl: data.videoUrl,
+            sortOrder: 0,
+          });
+        }
+      }
+
+      if (Array.isArray(data.additionalImages)) {
+        await tx
+          .delete(productMedia)
+          .where(
+            and(
+              eq(productMedia.productId, productId),
+              eq(productMedia.mediaType, 'image')
+            )
+          );
+
+        if (data.additionalImages.length) {
+          const images = data.additionalImages.map((url, index) => ({
+            productId,
+            mediaType: 'image',
+            mediaUrl: url,
+            sortOrder: index,
+          }));
+
+          await tx.insert(productMedia).values(images);
+        }
+      }
+
+      const defaultPB = await tx.query.priceBook.findFirst({
+       where: (t, { eq, and }) =>
+  and(eq(t.vendorId, existingProduct.vendorId), eq(t.isDefault, true)),
+      });
+
+      if (!defaultPB) {
+        throw new Error('Standard pricebook not found');
+      }
+
+      if (existingProduct.pricingType === 'FLAT') {
+        await tx
+          .update(priceBookEntry)
+          .set({
+            listPrice: Number(data.price),
+            salePrice: Number(data.price),
+          })
+          .where(
+            and(
+              eq(priceBookEntry.productId, productId),
+              eq(priceBookEntry.priceBookingId, defaultPB.id)
+            )
+          );
+      }
+
+      if (existingProduct.pricingType === 'TIER') {
+        if (
+          !Array.isArray(data.productPricing) ||
+          !data.productPricing.length
+        ) {
+          throw new Error('Tier pricing data missing');
+        }
+
+        await tx
+          .delete(priceBookEntry)
+          .where(
+            and(
+              eq(priceBookEntry.productId, productId),
+              eq(priceBookEntry.priceBookingId, defaultPB.id)
+            )
+          );
+
+        const entries = data.productPricing.map((item) => ({
           productId,
-          mediaType: 'video',
-          mediaUrl: data.videoUrl,
-          sortOrder: 0,
-        });
+          priceBookingId: defaultPB.id,
+          currency: 'INR',
+          lowerSlab: Number(item.lowerBound),
+          upperSlab: Number(item.upperBound),
+          listPrice: Number(item.price),
+          salePrice: Number(item.price),
+          discountPercentage: 0,
+        }));
+
+        await tx.insert(priceBookEntry).values(entries);
       }
-    }
 
-    if (Array.isArray(data.additionalImages)) {
-      await db
-        .delete(productMedia)
-        .where(
-          and(
-            eq(productMedia.productId, productId),
-            eq(productMedia.mediaType, 'image')
-          )
-        );
-
-      const images = data.additionalImages.map((url, index) => ({
-        productId,
-        mediaType: 'image',
-        mediaUrl: url,
-        sortOrder: index,
-      }));
-
-      if (images.length) {
-        await db.insert(productMedia).values(images);
-      }
-    }
+      return { productId };
+    });
 
     return res.status(200).json({
-      message: 'Service updated successfully!',
+      message: 'Service updated successfully',
+      productId: result.productId,
     });
   } catch (error) {
     console.error('Update Error:', error);
-    return res.status(500).json({});
+
+    if (error.message === 'No service found') {
+      return res.status(404).json({ message: error.message });
+    }
+
+    if (error.message === 'Pricing type cannot be changed') {
+      return res.status(400).json({ message: error.message });
+    }
+
+    return res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
@@ -1281,98 +1356,119 @@ export const createProduct = async (req, res) => {
     const data = req.body;
     const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
 
-    const insertedProduct = await db
-      .insert(products)
-      .values({
-        bannerImage: data.bannerImage,
-        title: data.title,
-        description: data.description,
-        streetAddressLine1: data.streetAddressLine1,
-        streetAddressLine2: data.streetAddressLine2,
-        city: data.city,
-        state: data.state,
-        country: data.country,
-        postalCode: data.postalCode,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        productTypeId: data.productTypeId,
-        type: data.type?.toUpperCase(),
-        pricingType: data.pricingType,
-        minQuantity: Number(data.minQuantity),
-        maxQuantity: Number(data.maxQuantity),
-        maxBookingAtTime: Number(data.maxBookingAtTime),
-        deliveryRadius: Number(data.deleveryRadius),
-        isAvailable: data.isAvailable,
-        returnPolicyURL: data.returnPolicyURL,
-        vendorId: vendorId,
-      })
-      .returning({ productId: products.productId });
+    const safeNumber = (val, fallback = null) =>
+      val !== undefined && val !== null && val !== '' ? Number(val) : fallback;
 
-    const productId = insertedProduct[0].productId;
-
-    if (data.videoUrl) {
-      await db.insert(productMedia).values({
-        productId: productId,
-        mediaType: 'video',
-        mediaUrl: data.videoUrl,
-        sortOrder: 3,
-      });
+    if (!['FLAT', 'TIER'].includes(data.pricingType)) {
+      throw new Error('Invalid pricingType');
     }
+    const result = await db.transaction(async (tx) => {
+      const insertedProduct = await tx
+        .insert(products)
+        .values({
+          bannerImage: data.bannerImage,
+          title: data.title,
+          description: data.description,
+          streetAddressLine1: data.streetAddressLine1,
+          streetAddressLine2: data.streetAddressLine2,
+          city: data.city,
+          state: data.state,
+          country: data.country,
+          postalCode: data.postalCode,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          productTypeId: data.productTypeId,
+          type: data.type?.toUpperCase(),
+          pricingType: data.pricingType,
+          deliveryRadius: safeNumber(data.deliveryRadius, 10),
+          minQuantity: safeNumber(data.minQuantity, 1),
+          maxQuantity: safeNumber(data.maxQuantity),
+          maxBookingAtTime: safeNumber(data.maxBookingAtTime, 10),
+          isAvailable: data.isAvailable,
+          returnPolicyURL: data.returnPolicyURL,
+          vendorId,
+        })
+        .returning({ productId: products.productId });
 
-    if (
-      Array.isArray(data.additionalImages) &&
-      data.additionalImages.length > 0
-    ) {
-      const additionalImages = data.additionalImages.map((mediaUrl, index) => ({
-        productId: productId,
-        mediaType: 'image',
-        mediaUrl: mediaUrl,
-        sortOrder: index,
-      }));
+      const productId = insertedProduct[0].productId;
 
-      await db.insert(productMedia).values(additionalImages);
-    }
-    const defaultPB = await db.query.priceBook.findFirst({
-      where: (t, { eq }) => eq(t.isStandard, true),
+      if (data.videoUrl) {
+        await tx.insert(productMedia).values({
+          productId,
+          mediaType: 'video',
+          mediaUrl: data.videoUrl,
+          sortOrder: 3,
+        });
+      }
+
+      if (
+        Array.isArray(data.additionalImages) &&
+        data.additionalImages.length
+      ) {
+        const images = data.additionalImages.map((url, index) => ({
+          productId,
+          mediaType: 'image',
+          mediaUrl: url,
+          sortOrder: index,
+        }));
+
+        await tx.insert(productMedia).values(images);
+      }
+
+      const allPBs = await tx
+        .select()
+        .from(priceBook)
+        .where(eq(priceBook.vendorId, vendorId));
+
+      if (!allPBs.length) {
+        throw new Error('No pricebooks found');
+      }
+
+      if (data.pricingType === 'FLAT') {
+        const entries = allPBs.map((pb) => ({
+          productId,
+          priceBookingId: pb.id,
+          currency: 'INR',
+          lowerSlab: 1,
+          upperSlab: null,
+          listPrice: safeNumber(data.price, 0),
+          salePrice: safeNumber(data.price, 0),
+          discountPercentage: 0,
+        }));
+
+        await tx.insert(priceBookEntry).values(entries);
+      }
+
+      if (data.pricingType === 'TIER') {
+        if (
+          !Array.isArray(data.productPricing) ||
+          !data.productPricing.length
+        ) {
+          throw new Error('Tier pricing data missing');
+        }
+
+        const entries = allPBs.flatMap((pb) =>
+          data.productPricing.map((item) => ({
+            productId,
+            priceBookingId: pb.id,
+            currency: 'INR',
+            lowerSlab: Number(item.lowerBound),
+            upperSlab: Number(item.upperBound),
+            listPrice: Number(item.price),
+            salePrice: Number(item.price),
+            discountPercentage: 0,
+          }))
+        );
+
+        await tx.insert(priceBookEntry).values(entries);
+      }
+
+      return { productId };
     });
 
-    if (!defaultPB) {
-      throw new Error('Default priceBook not found');
-    }
-
-    const defaultEntries = await db.query.priceBookEntry.findMany({
-      where: (t, { eq }) => eq(t.priceBookingId, defaultPB.id),
-    });
-
-    const newPB = await db
-      .insert(priceBook)
-      .values({
-        vendorId,
-        isStandard: false,
-        isActive: true,
-        name: data.title + ' Product Price',
-      })
-      .returning({ id: priceBook.id });
-
-    const newPBId = newPB[0].id;
-
-    const newEntries = defaultEntries.map((entry) => ({
-      productId,
-      priceBookingId: newPBId,
-      currency: entry.currency,
-      lowerSlab: entry.lowerSlab,
-      upperSlab: entry.upperSlab,
-      listPrice: entry.listPrice,
-      salePrice: entry.salePrice,
-      discountPercentage: entry.discountPercentage,
-    }));
-
-    if (newEntries.length > 0) {
-      await db.insert(priceBookEntry).values(newEntries);
-    }
     return res.status(201).json({
-      message: 'Service created successfully!',
-      productId,
+      message: 'Service created successfully',
+      productId: result.productId,
     });
   } catch (error) {
     console.error('Create Product Error:', error);

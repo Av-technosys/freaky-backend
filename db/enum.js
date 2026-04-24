@@ -11,6 +11,7 @@ export const productPricingTypeEnum = pgEnum('pricing_type_enum', [
   'FLAT',
   'PERCENTAGE',
   'TIRE',
+  'TIER',
   'MODULAR',
 ]);
 

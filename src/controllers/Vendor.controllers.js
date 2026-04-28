@@ -1674,8 +1674,16 @@ export const deleteVendorDocument = async (req, res) => {
 
 export const getVendorDocuments = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = req.user?.['custom:vendor_ids'];
+    }
+
+    vendorId = Number(vendorId);
     if (!vendorId) {
       return res.status(404).json({
         message: 'Vendor not found.',
@@ -1698,9 +1706,18 @@ export const getVendorDocuments = async (req, res) => {
 };
 
 export const getVendorCompanyInfo = async (req, res) => {
+  console.log('Fetching vendor company info...');
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = req.user?.['custom:vendor_ids'];
+    }
+
+    vendorId = Number(vendorId);
     if (!vendorId) {
       return res.status(404).json({
         message: 'No vendor found.',
@@ -1710,7 +1727,7 @@ export const getVendorCompanyInfo = async (req, res) => {
       .select()
       .from(vendors)
       .where(eq(vendors.vendorId, vendorId));
-
+    console.log('Vendor data retrieved: ', vendorData);
     return res.status(200).json({
       message: 'Vendor info fetched successfully.',
       data: vendorData,
@@ -1723,8 +1740,16 @@ export const getVendorCompanyInfo = async (req, res) => {
 
 export const getVendorOwnershipDetails = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = req.user?.['custom:vendor_ids'];
+    }
+
+    vendorId = Number(vendorId);
     if (!vendorId) {
       return res.status(404).json({
         message: 'No vendor found.',

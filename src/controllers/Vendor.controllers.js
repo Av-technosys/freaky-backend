@@ -1727,7 +1727,6 @@ export const getVendorCompanyInfo = async (req, res) => {
       .select()
       .from(vendors)
       .where(eq(vendors.vendorId, vendorId));
-    console.log('Vendor data retrieved: ', vendorData);
     return res.status(200).json({
       message: 'Vendor info fetched successfully.',
       data: vendorData,

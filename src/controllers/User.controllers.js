@@ -870,6 +870,16 @@ export const updateDetails = async (req, res) => {
       longitude,
     } = req.body;
 
+    const lat =
+      latitude !== undefined && latitude !== null && latitude !== ''
+        ? Number(latitude)
+        : null;
+
+    const lng =
+      longitude !== undefined && longitude !== null && longitude !== ''
+        ? Number(longitude)
+        : null;
+
     if (userId) {
       await db.transaction(async (tx) => {
         await tx
@@ -884,8 +894,8 @@ export const updateDetails = async (req, res) => {
 
         // currentAddressId update address  if exist or create if not
 
-        if(currentAddressId){
-  await tx.execute(sql`
+        if (currentAddressId) {
+          await tx.execute(sql`
   UPDATE user_address
   SET
     address_line_one = ${addressLine1},
@@ -894,12 +904,16 @@ export const updateDetails = async (req, res) => {
     state = ${state},
     postal_code = ${zipCode},
     country = ${country},
-    latitude = ${latitude},
-    longitude = ${longitude},
-    location = ST_SetSRID(ST_MakePoint(${longitude}::float, ${latitude}::float), 4326)::geography
+    latitude = ${lat},
+    longitude = ${lng},
+    location = ${
+      lat !== null && lng !== null
+        ? sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`
+        : null
+    }
   WHERE id = ${currentAddressId}
 `);
-        }else{
+        } else {
           const [address] = await tx.execute(sql`
   WITH inserted AS (
     INSERT INTO user_address (
@@ -922,20 +936,22 @@ export const updateDetails = async (req, res) => {
       ${state},
       ${zipCode},
       ${country},
-      ${latitude},
-      ${longitude},
-      ST_SetSRID(ST_MakePoint(${longitude}::float, ${latitude}::float), 4326)::geography
+      ${lat},
+      ${lng},
+      ${
+        lat !== null && lng !== null
+          ? sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`
+          : null
+      }
     )
     RETURNING id
   )
-  UPDATE users
+  UPDATE "user"
   SET current_address_id = inserted.id
   FROM inserted
-  WHERE users.user_id = ${userId}
+  WHERE "user".user_id = ${userId}
 `);
-
         }
-        
       });
       return res.status(200).json({
         message: 'User details updated successfully.',

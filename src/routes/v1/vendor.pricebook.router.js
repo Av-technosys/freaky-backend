@@ -6,18 +6,27 @@ import { and, eq } from 'drizzle-orm';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { priceBook, priceBookEntry, products } from '../../../db/schema.js';
 import {
-  getPriceProdcutPriceStandardPricebook,
+  getPriceProdcutPriceDefaultPricebook,
   setCurrentPricebook,
 } from '../../helpers/vendor.helper.js';
 const pricebookRouter = Router();
 
 pricebookRouter.get('/', checkVendor, async (req, res) => {
   try {
-    const vendorId = req.vendor.vendorId;
+    const vendorIds = req.user['custom:vendor_ids'];
+
+    if (!vendorIds || vendorIds.length === 0) {
+      return res.status(400).json({
+        message: 'User is not associated with any vendor',
+      });
+    }
+
+    const vendorId = Array.isArray(vendorIds) ? vendorIds[0] : vendorIds;
+
     const vendorAllPriceBooks = await db
       .select()
       .from(priceBook)
-      .where(eq(priceBook.vendorId, vendorId));
+      .where(eq(priceBook.vendorId, Number(vendorId)));
 
     return res.send({
       msg: 'Pricebooks fetched successfully',
@@ -31,7 +40,24 @@ pricebookRouter.get('/', checkVendor, async (req, res) => {
 
 pricebookRouter.get('/products/:priceBookId', checkVendor, async (req, res) => {
   try {
-    const vendorId = req.vendor.vendorId;
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
+    if (!vendorId) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
     const priceBookId = req.params.priceBookId;
     const vendorAllPriceBooks = await db
       .select({
@@ -103,8 +129,24 @@ pricebookRouter.put('/update', checkVendor, async (req, res) => {
 });
 
 pricebookRouter.post('/create', checkVendor, async (req, res) => {
-  const vendorId = req.vendor.vendorId;
+  const raw = req.user['custom:vendor_ids'];
 
+  let vendorId;
+
+  try {
+    const parsed = JSON.parse(raw);
+    vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+  } catch {
+    vendorId = raw;
+  }
+
+  vendorId = Number(vendorId);
+
+  if (!vendorId) {
+    return res.status(400).json({
+      message: 'vendorId missing',
+    });
+  }
   try {
     const { name, description, isActive } = req.body;
 
@@ -122,7 +164,7 @@ pricebookRouter.post('/create', checkVendor, async (req, res) => {
       .returning();
 
     let pricebookEntryData =
-      await getPriceProdcutPriceStandardPricebook(vendorId);
+      await getPriceProdcutPriceDefaultPricebook(vendorId);
 
     pricebookEntryData = pricebookEntryData.map((item) => ({
       priceBookingId: newPriceBook.id,
@@ -160,7 +202,24 @@ pricebookRouter.post('/create', checkVendor, async (req, res) => {
   }
 });
 pricebookRouter.delete('/:pricebookId', checkVendor, async (req, res) => {
-  const vendorId = req.vendor.vendorId;
+  const raw = req.user['custom:vendor_ids'];
+
+  let vendorId;
+
+  try {
+    const parsed = JSON.parse(raw);
+    vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+  } catch {
+    vendorId = raw;
+  }
+
+  vendorId = Number(vendorId);
+
+  if (!vendorId) {
+    return res.status(400).json({
+      message: 'vendorId missing',
+    });
+  }
   try {
     const pricebookId = req.params.pricebookId;
     // check if itss of the loged in vendor

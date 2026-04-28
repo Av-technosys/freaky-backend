@@ -56,7 +56,18 @@ export const getAllProducts = async (req, res) => {
   try {
     const { text = '', page = 1, page_size = 12 } = req.query;
 
-    const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
 
     const filters = [eq(products.vendorId, vendorId)];
 
@@ -97,8 +108,25 @@ export const getAllProductMeta = async (req, res) => {
     const limit = Number(page_size);
     const offset = (currentPage - 1) * limit;
 
-    const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
+    const raw = req.user['custom:vendor_ids'];
 
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
+    if (!vendorId) {
+      return res.status(400).json({
+        success: false,
+        message: 'vendorId missing',
+      });
+    }
     const filters = [eq(products.vendorId, vendorId)];
 
     if (text.trim()) {

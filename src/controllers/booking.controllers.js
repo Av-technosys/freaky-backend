@@ -16,7 +16,24 @@ import {
 
 export const createExternalBooking = async (req, res) => {
   try {
-    const vendorId = req.vendor.vendorId;
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
+    if (!vendorId) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
     const { contactName, contactNumber, services } = req.body;
 
     const [newBooking] = await db
@@ -244,8 +261,24 @@ export const getBooking = async (req, res) => {
   try {
     const { text = '', page = 1, page_size = 12 } = req.query;
 
-    const vendorId = req.vendor.vendorId;
+    const raw = req.user['custom:vendor_ids'];
 
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
+    if (!vendorId) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
     const filters = [eq(bookingItem.vendorId, vendorId)];
 
     if (text.trim()) {

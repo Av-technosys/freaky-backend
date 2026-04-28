@@ -7,6 +7,7 @@ import {
   fetchVendorProducts,
   getAllFeaturedCategories,
   getVendorInfo,
+  getVendorInfoForProduct,
   listAllPriceBooksById,
   deletePriceBookById,
   updatePriceBookById,
@@ -58,6 +59,7 @@ router.use('/pricebook', vendorpricebookRouter);
 router.use('/employees/', checkVendor, vendorEmployeeRouter);
 router.use('/notifications', checkVendor, vendorNotificationRouter);
 
+router.get('/detail/:productId', getVendorInfoForProduct);
 router.get('/detail', checkVendor, getVendorInfo);
 router.get('/vendors', listAllVendors);
 router.post('/cerate_vendor', confirmUserToken, createVendor);

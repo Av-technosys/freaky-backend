@@ -17,7 +17,8 @@ import {
   vendorNotifications,
 } from '../../db/schema.js';
 import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
-import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
+import { cognito } from '../../lib/cognitoClient.js';
+import { USER_POOL_ID } from '../../const/env.js';
 import {
   AdminUpdateUserAttributesCommand,
   AdminUserGlobalSignOutCommand,
@@ -34,7 +35,24 @@ import { user } from '../../db/user.js';
 
 export const getVendorInfo = async (req, res) => {
   try {
-    const id = req.vendor.vendorId || req.body.vendorId;
+    const raw = req.user['custom:vendor_ids'];
+
+    let id;
+
+    try {
+      const parsed = JSON.parse(raw);
+      id = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      id = raw;
+    }
+
+    id = Number(id);
+
+    if (!id) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
     const [vendorData] = await db
       .select()
       .from(vendors)
@@ -49,6 +67,46 @@ export const getVendorInfo = async (req, res) => {
   }
 };
 
+export const getVendorInfoForProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    if (!productId) {
+      return res.status(400).json({
+        message: 'productId is required',
+      });
+    }
+
+    const product = await db.query.products.findFirst({
+      where: (t, { eq }) => eq(t.productId, Number(productId)),
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        message: 'Product not found',
+      });
+    }
+
+    const [vendorData] = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.vendorId, product.vendorId));
+
+    if (!vendorData) {
+      return res.status(404).json({
+        message: 'Vendor not found',
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Vendor info fetched successfully.',
+      data: vendorData,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
 export const getCompanyProfile = async (req, res) => {
   // try {
   //   const email = req.user?.email || req.body.email;
@@ -241,9 +299,11 @@ export const createVendor = async (req, res) => {
     const customParamsCommand = new AdminUpdateUserAttributesCommand(
       customParams
     );
-
-    await cognito.send(customParamsCommand);
-
+    try {
+      const result = await cognito.send(customParamsCommand);
+    } catch (err) {
+      console.error('Cognito update failed:', err);
+    }
     return res.status(200).json({
       success: true,
       message: 'Vendor created successfully.',
@@ -344,7 +404,7 @@ export const updateBankDetails = async (req, res) => {
     }
 
     if (!vendorId) {
-      return res.status(504).json({ msg: 'Vendor not found' });
+      return res.status(404).json({ msg: 'Vendor not found' });
     }
     const { bankAccountNumber, bankName, payeeName, routingNumber, bankType } =
       req.body;
@@ -360,6 +420,23 @@ export const updateBankDetails = async (req, res) => {
       })
       .where(eq(vendors.vendorId, vendorId))
       .returning();
+
+    try {
+      const result = await cognito.send(
+        new AdminUpdateUserAttributesCommand({
+          UserPoolId: USER_POOL_ID,
+          Username: req.user.sub,
+          UserAttributes: [
+            {
+              Name: 'custom:vendor_ids',
+              Value: JSON.stringify(vendorId),
+            },
+          ],
+        })
+      );
+    } catch (err) {
+      console.error('Cognito update failed:', err);
+    }
 
     return res.status(200).json({
       message: 'Bank Details Updated successfully.',
@@ -480,25 +557,24 @@ export const deleteCompanyLogo = async (req, res) => {
 
 export const updateOwnershipDetails = async (req, res) => {
   try {
-    let vendorId;
+    const userId = Number(req.user['custom:user_id']);
 
-    if (req.body.vendorId) {
-      vendorId = req.body.vendorId;
-    } else {
-      const parsed = JSON.parse(req.user['custom:vendor_ids']);
-      vendorId = parsed.vendorId;
-    }
+    const vendor = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.createdBy, userId))
+      .limit(1);
 
-    const { vendorId: _, ...ownersObject } = req.body;
-
-    const ownershipDetailsArray = Object.values(ownersObject);
+    const vendorId = vendor?.[0]?.vendorId;
 
     if (!vendorId) {
-      return res.status(504).json({ msg: 'Vendor not found' });
+      return res.status(404).json({ msg: 'Vendor not found' });
     }
 
+    const owners = req.body.owners || [];
+
     await Promise.all(
-      ownershipDetailsArray.map(async (ownership) => {
+      owners.map(async (ownership) => {
         const ownerId = ownership.id;
 
         const ownerDetailSave = {
@@ -520,23 +596,19 @@ export const updateOwnershipDetails = async (req, res) => {
             .update(vendorOwnerships)
             .set(ownerDetailSave)
             .where(eq(vendorOwnerships.id, ownerId));
-
-          return res.status(200).json({
-            message: 'Ownership Details Updated successfully.',
-          });
         } else {
           await db
             .insert(vendorOwnerships)
-            .values({ ...ownerDetailSave, vendorId: vendorId });
-
-          return res.status(200).json({
-            message: 'Ownership Details Created successfully.',
-          });
+            .values({ ...ownerDetailSave, vendorId });
         }
       })
     );
+
+    return res.status(200).json({
+      message: 'Ownership details saved successfully',
+    });
   } catch (error) {
-    console.log('error', error);
+    console.error('error', error);
     return res.status(500).json({ error: error.message });
   }
 };
@@ -570,6 +642,17 @@ export const createCompanyDetails = async (req, res) => {
       })
       .returning({ vendorId: vendors.vendorId });
 
+    db.insert(priceBook)
+      .values({
+        vendorId: vendor.vendorId,
+        isStandard: false,
+        isDefault: true,
+        name: 'Default Pricebook',
+        description: 'Base pricing for all services',
+      })
+      .catch((err) => {
+        console.error('Pricebook creation failed:', err);
+      });
     return res.status(200).json({
       message: 'Address Details Created successfully.',
       vendorId: vendor.vendorId,
@@ -734,7 +817,7 @@ export const productByTypeId = async (req, res) => {
 
     const priceBooks = await db.query.priceBook.findMany({
       where: (t, { eq, inArray, and }) =>
-        and(inArray(t.vendorId, vendorIds), eq(t.isActive, true)),
+        and(inArray(t.vendorId, vendorIds), eq(t.isDefault, true)),
     });
 
     const priceBookIds = priceBooks.map((book) => book.id);
@@ -968,7 +1051,7 @@ export const getAllFeaturedProducts = async (req, res) => {
 
             const priceBooks = await db.query.priceBook.findMany({
               where: (t, { eq, and }) =>
-                and(eq(t.vendorId, product.vendorId), eq(t.isActive, true)),
+                and(eq(t.vendorId, product.vendorId), eq(t.isDefault, true)),
             });
 
             const priceBookIds = priceBooks.map((p) => p.id);
@@ -1030,8 +1113,20 @@ export const fetchProductDetailById = async (req, res) => {
       return res.status(404).json({ error: 'Product not found.' });
     }
 
+    const defaultPB = await db.query.priceBook.findFirst({
+      where: (t, { eq, and }) =>
+        and(eq(t.vendorId, product.vendorId), eq(t.isDefault, true)),
+    });
+
+    if (!defaultPB) {
+      return res.status(404).json({
+        error: 'Default pricebook not found for vendor',
+      });
+    }
+
     const productPrices = await db.query.priceBookEntry.findMany({
-      where: (t, { eq }) => eq(t.productId, id),
+      where: (t, { eq, and }) =>
+        and(eq(t.productId, id), eq(t.priceBookingId, defaultPB.id)),
       orderBy: (t, { asc }) => asc(t.lowerSlab),
     });
 
@@ -1049,7 +1144,6 @@ export const fetchProductDetailById = async (req, res) => {
         price: primaryPrice
           ? Number(primaryPrice.salePrice || primaryPrice.listPrice)
           : null,
-
         priceSlabs: productPrices,
 
         media: productMediaList,
@@ -1062,7 +1156,6 @@ export const fetchProductDetailById = async (req, res) => {
     });
   }
 };
-
 export const listAllPriceBooksById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1181,6 +1274,10 @@ export const updateProductById = async (req, res) => {
     const data = req.body;
     const { productId } = req.params;
 
+    const safeNumber = (val, fallback = null) =>
+      val !== undefined && val !== null && val !== '' && !isNaN(Number(val))
+        ? Number(val)
+        : fallback;
     const result = await db.transaction(async (tx) => {
       const existing = await tx
         .select()
@@ -1213,10 +1310,10 @@ export const updateProductById = async (req, res) => {
           longitude: data.longitude,
           productTypeId: data.productTypeId,
           type: data.type?.toUpperCase(),
-          minQuantity: Number(data.minQuantity),
-          maxQuantity: Number(data.maxQuantity),
-          maxBookingAtTime: Number(data.maxBookingAtTime),
-          deliveryRadius: Number(data.deliveryRadius),
+          deliveryRadius: safeNumber(data.deliveryRadius, 10),
+          minQuantity: safeNumber(data.minQuantity, 1),
+          maxQuantity: safeNumber(data.maxQuantity),
+          maxBookingAtTime: safeNumber(data.maxBookingAtTime, 10),
           isAvailable: data.isAvailable,
           returnPolicyURL: data.returnPolicyURL,
           updatedAt: new Date(),
@@ -1273,8 +1370,8 @@ export const updateProductById = async (req, res) => {
       }
 
       const defaultPB = await tx.query.priceBook.findFirst({
-       where: (t, { eq, and }) =>
-  and(eq(t.vendorId, existingProduct.vendorId), eq(t.isDefault, true)),
+        where: (t, { eq, and }) =>
+          and(eq(t.vendorId, existingProduct.vendorId), eq(t.isDefault, true)),
       });
 
       if (!defaultPB) {
@@ -1354,7 +1451,18 @@ export const updateProductById = async (req, res) => {
 export const createProduct = async (req, res) => {
   try {
     const data = req.body;
-    const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorIdsRaw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(vendorIdsRaw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = vendorIdsRaw;
+    }
+
+    vendorId = Number(vendorId);
 
     const safeNumber = (val, fallback = null) =>
       val !== undefined && val !== null && val !== '' ? Number(val) : fallback;

@@ -19,6 +19,7 @@ import {
   cognitoSignUp,
   cognitoUpdateUserAttribute,
 } from '../helpers/Cognito.helper.js';
+
 import { authSingIn } from '../helpers/Auth.helper.js';
 
 export const signup = async (req, res) => {

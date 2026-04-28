@@ -7,7 +7,18 @@ const vendorReviewRouter = Router();
 vendorReviewRouter.get('/', async (req, res) => {
   const { page, page_size, time } = req.query;
 
-  const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
+  const raw = req.user['custom:vendor_ids'];
+
+  let vendorId;
+
+  try {
+    const parsed = JSON.parse(raw);
+    vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+  } catch {
+    vendorId = raw;
+  }
+
+  vendorId = Number(vendorId);
 
   const limit = Number(page_size);
   const offset = (Number(page) - 1) * limit;

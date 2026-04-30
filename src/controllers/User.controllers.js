@@ -442,6 +442,113 @@ export const cartHandler = async (req, res) => {
       where: (t, { eq }) => eq(t.userId, userId),
     });
 
+    if (req.method === 'GET' && req.params.bookingDraftId) {
+      try {
+        const { bookingDraftId } = req.params;
+
+        if (!bookingDraftId) {
+          return res.status(400).json({ error: 'bookingDraftId required' });
+        }
+
+        // 1️⃣ Fetch bookingDraft
+        const booking = await db.query.bookingDraft.findFirst({
+          where: (t, { eq }) => eq(t.bookingDraftId, Number(bookingDraftId)),
+        });
+
+        if (!booking) {
+          return res.status(404).json({ error: 'Item not found' });
+        }
+
+        // 2️⃣ Fetch product
+        const product = await db.query.products.findFirst({
+          where: (t, { eq }) => eq(t.productId, booking.productId),
+        });
+
+        if (!product) {
+          return res.status(404).json({ error: 'Product not found' });
+        }
+
+        // 3️⃣ Fetch default pricebook
+        const defaultPB = await db.query.priceBook.findFirst({
+          where: (t, { eq, and }) =>
+            and(eq(t.vendorId, product.vendorId), eq(t.isDefault, true)),
+        });
+
+        if (!defaultPB) {
+          return res.status(404).json({
+            error: 'Default pricebook not found',
+          });
+        }
+
+        // 4️⃣ Fetch price slabs
+        const priceSlabs = await db.query.priceBookEntry.findMany({
+          where: (t, { eq, and }) =>
+            and(
+              eq(t.productId, product.productId),
+              eq(t.priceBookingId, defaultPB.id)
+            ),
+          orderBy: (t, { asc }) => asc(t.lowerSlab),
+        });
+
+        // 5️⃣ Pick correct slab based on guest count
+        const guestCount = booking.maxGuestCount || booking.minGuestCount || 1;
+
+        let selectedPrice = priceSlabs.find(
+          (slab) =>
+            guestCount >= slab.lowerSlab &&
+            (!slab.upperSlab || guestCount <= slab.upperSlab)
+        );
+
+        if (!selectedPrice) {
+          selectedPrice = priceSlabs[0];
+        }
+
+        const unitPrice = Number(
+          selectedPrice?.salePrice || selectedPrice?.listPrice || 0
+        );
+
+        // 6️⃣ Calculate pricing
+        const quantity = booking.quantity || 1;
+
+        const subtotal = unitPrice * quantity;
+        const serviceFee = subtotal * 0.08;
+        const tax = subtotal * 0.1;
+        const total = subtotal + serviceFee + tax;
+
+        // 7️⃣ Response (matches your frontend)
+        return res.json({
+          cartId: userCart.cartId,
+          booking: {
+            title: product.title,
+            city: product.city,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            guestRange: `${booking.minGuestCount} - ${booking.maxGuestCount}`,
+          },
+
+          items: [
+            {
+              id: product.productId,
+              title: product.title,
+              city: product.city,
+              quantity,
+              price: unitPrice,
+              image: product.bannerImage,
+            },
+          ],
+
+          pricing: {
+            subtotal,
+            serviceFee,
+            tax,
+            total,
+          },
+        });
+      } catch (err) {
+        console.error('Cart Detail Error:', err);
+        return res.status(500).json({ error: 'Server error' });
+      }
+    }
     if (req.method === 'GET') {
       if (!userCart) {
         return res.json({
@@ -464,8 +571,19 @@ export const cartHandler = async (req, res) => {
 
     if (req.method === 'POST') {
       if (!userCart) {
-        const newCart = await db.insert(cart).values({ userId }).returning();
-        userCart = newCart[0];
+        const newCart = await db
+          .insert(cart)
+          .values({ userId })
+          .onConflictDoNothing()
+          .returning();
+
+        if (newCart.length) {
+          userCart = newCart[0];
+        } else {
+          userCart = await db.query.cart.findFirst({
+            where: (t, { eq }) => eq(t.userId, userId),
+          });
+        }
       }
 
       const cartId = userCart.cartId;

@@ -6,7 +6,7 @@ import {
 } from '../../db/schema.js';
 import { db } from '../../db/db.js';
 import { and, ilike, inArray } from 'drizzle-orm';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { paginate } from '../helpers/paginate.js';
 import {
   getCountFromBookingDraft,
@@ -117,69 +117,106 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const [createdBooking] = await db
-      .insert(booking)
-      .values({
-        userId,
-        eventTypeId,
-        source,
+    const result = await db.transaction(async (tx) => {
+      const [createdBooking] = await tx
+        .insert(booking)
+        .values({
+          userId,
+          eventTypeId,
+          source,
 
-        contactName,
-        contactNumber,
-        description,
-        startTime: startTime ? new Date(startTime) : undefined,
-        endTime: endTime ? new Date(endTime) : undefined,
-        minGuestCount,
-        maxGuestCount,
+          contactName,
+          contactNumber,
+          description,
+          startTime: startTime ? new Date(startTime) : undefined,
+          endTime: endTime ? new Date(endTime) : undefined,
 
-        latitude,
-        longitude,
+          minGuestCount,
+          maxGuestCount,
+          latitude,
+          longitude,
 
-        bookingStatus: 'HOLD',
-        paymentStatus: 'PENDING',
-      })
-      .returning({
-        bookingId: booking.bookingId,
-        bookingStatus: booking.bookingStatus,
-        paymentStatus: booking.paymentStatus,
-        createdAt: booking.createdAt,
-      });
+          bookingStatus: 'HOLD',
+          paymentStatus: 'PENDING',
+        })
+        .returning({
+          bookingId: booking.bookingId,
+        });
+
+      const bookingId = createdBooking.bookingId;
+
+      // 🔥 CONDITION BASED ON SOURCE
+      const draftFilter =
+        source === 'CART'
+          ? and(
+              eq(bookingDraft.source, 'CART'),
+              eq(bookingDraft.sourceId, req.body.sourceId)
+            )
+          : eq(bookingDraft.userId, userId);
+
+      // 2️⃣ Move only relevant drafts
+      await tx.insert(bookingItem).select(
+        tx
+          .select({
+            bookingId: sql`${bookingId}`,
+            productId: bookingDraft.productId,
+
+            contactName: bookingDraft.contactName,
+            contactNumber: bookingDraft.contactNumber,
+
+            startTime: bookingDraft.startTime,
+            endTime: bookingDraft.endTime,
+
+            minGuestCount: bookingDraft.minGuestCount,
+            maxGuestCount: bookingDraft.maxGuestCount,
+
+            productName: sql`''`, // optional fill later
+            productImage: sql`''`,
+            productPrice: sql`0`,
+
+            vendorId: sql`0`,
+
+            latitude: bookingDraft.latitude,
+            longitude: bookingDraft.longitude,
+
+            quantity: bookingDraft.quantity,
+          })
+          .from(bookingDraft)
+          .where(draftFilter)
+      );
+
+      // 3️⃣ Delete only those drafts
+      await tx.delete(bookingDraft).where(draftFilter);
+
+      return createdBooking;
+    });
 
     return res.status(201).json({
-      message: 'Booking created successfully',
-      data: createdBooking,
+      message: 'Booking created with items successfully',
+      data: result,
     });
   } catch (error) {
     console.error('Create booking failed', error);
+
     return res.status(500).json({
-      message: 'Internal server error',
+      message: error.message || 'Internal server error',
     });
   }
 };
 
 export const createBookingItem = async (req, res) => {
   try {
-    const {
-      bookingId,
-      productId,
-      contactName,
-      contactNumber,
-      startTime,
-      endTime,
-      minGuestCount,
-      maxGuestCount,
-      quantity,
-      latitude,
-      longitude,
-    } = req.body;
+    const { bookingId, items } = req.body;
 
-    if (!productId || !quantity) {
+    if (!bookingId || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
-        message: 'productId and quantity are required',
+        message: 'bookingId and items[] are required',
       });
     }
 
-    const [productData] = await db
+    const productIds = items.map((i) => i.productId);
+
+    const productsData = await db
       .select({
         productId: products.productId,
         name: products.title,
@@ -188,67 +225,44 @@ export const createBookingItem = async (req, res) => {
         vendorId: products.vendorId,
       })
       .from(products)
-      .where(eq(products.productId, productId));
+      .where(inArray(products.productId, productIds));
 
-    if (!productData) {
-      return res.status(404).json({
-        message: 'Product not found',
-      });
-    }
-    // check hold
+    const productMap = new Map(productsData.map((p) => [p.productId, p]));
 
-    const startDate = new Date(startTime);
-    const endDate = new Date(endTime);
+    const bookingItems = items.map((item) => {
+      const product = productMap.get(item.productId);
 
-    const [bookingDraftCount, bookingItemCount, productMaximumCount] =
-      await Promise.all([
-        getCountFromBookingDraft(startDate, endDate, productId),
-        getCountFromBookingItem(startDate, endDate, productId),
-        getProductMaximumCount(productId),
-      ]);
+      return {
+        bookingId,
+        productId: item.productId,
 
-    const totalUsedServices = bookingDraftCount + bookingItemCount;
+        contactName: item.contactName,
+        contactNumber: item.contactNumber,
 
-    const availableSlots = productMaximumCount - totalUsedServices;
+        startTime: new Date(item.startTime),
+        endTime: new Date(item.endTime),
 
-    if (availableSlots > 0) {
-      const [createdItem] = await db
-        .insert(bookingItem)
-        .values({
-          bookingId,
-          productId: productData.productId,
+        minGuestCount: item.minGuestCount,
+        maxGuestCount: item.maxGuestCount,
 
-          contactName,
-          contactNumber,
-          startTime: startTime ? new Date(startTime) : undefined,
-          endTime: endTime ? new Date(endTime) : undefined,
-          minGuestCount,
-          maxGuestCount,
+        productName: product?.name,
+        productImage: product?.image,
+        productPrice: product?.price,
+        vendorId: product?.vendorId,
 
-          productName: productData.name,
-          productImage: productData.image,
-          productPrice: productData.price,
-          vendorId: productData.vendorId,
-          latitude,
-          longitude,
+        latitude: item.latitude,
+        longitude: item.longitude,
 
-          quantity,
-        })
-        .returning();
+        quantity: item.quantity ?? 1,
+      };
+    });
 
-      return res.status(201).json({
-        message:
-          'The service is available and your booking has been created successfully.',
-        data: createdItem,
-        availableServices: availableSlots,
-      });
-    } else {
-      return res.status(200).json({
-        success: true,
-        message: 'No service is available for this product at this time.',
-        availableServices: 0,
-      });
-    }
+    await db.insert(bookingItem).values(bookingItems);
+
+    return res.status(201).json({
+      message: 'Booking items created successfully',
+      count: bookingItems.length,
+    });
   } catch (error) {
     console.error('Create booking item failed', error);
     return res.status(500).json({
@@ -256,7 +270,6 @@ export const createBookingItem = async (req, res) => {
     });
   }
 };
-
 export const getBooking = async (req, res) => {
   try {
     const { text = '', page = 1, page_size = 12 } = req.query;
@@ -320,20 +333,22 @@ export const getBookingItemDetailsById = async (req, res) => {
   try {
     const { bookingId } = req.params;
 
-    const bookingItemDetails = await db
+    const bookingData = await db.query.booking.findFirst({
+      where: (t, { eq }) => eq(t.bookingId, Number(bookingId)),
+    });
+
+    const items = await db
       .select()
       .from(bookingItem)
-      .where(eq(bookingItem.id, bookingId));
+      .where(eq(bookingItem.bookingId, Number(bookingId)));
 
-    return res.status(200).json({
-      message: 'Booking item details fetched successfully.',
-      data: bookingItemDetails,
+    return res.json({
+      message: 'Booking fetched',
+      booking: bookingData,
+      items,
     });
-  } catch (error) {
-    console.error('Unable to fetch booking item details', error);
-    return res.status(500).json({
-      message: 'Internal server error',
-    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Error fetching booking' });
   }
 };
 
@@ -377,67 +392,21 @@ export const checkServiceAvailability = async (req, res) => {
   }
 };
 
-// export const createBooking = async () => {
-//   try {
-//     const userId = req.user['custom:user_id'];
-//     const now = new Date();
-//     const { productId } = req.params;
+export const getMyBookings = async (req, res) => {
+  try {
+    const userId = req.user['custom:user_id'];
 
-//     const {
-//       eventTypeId,
-//       source,
-//       contactName,
-//       contactNumber,
-//       description,
-//       startTime,
-//       endTime,
-//       minGuestCount,
-//       maxGuestCount,
-//       latitude,
-//       longitude,
-//     } = req.body;
+    const bookings = await db.query.booking.findMany({
+      where: (t, { eq }) => eq(t.userId, userId),
+      orderBy: (t, { desc }) => desc(t.createdAt),
+    });
 
-//     const draft = await db.query.bookingDraft.findFirst({
-//       where: and(
-//         eq(bookingDraft.productId, Number(productId)),
-//         eq(bookingDraft.status, 'HOLD'),
-//         gt(bookingDraft.expiredAt, now)
-//       ),
-//     });
-
-//     if (!draft) {
-//       return res.status(409).json({
-//         success: false,
-//         message: 'Booking unavailable for this product',
-//       });
-//     }
-
-//     await db.insert(booking).values({
-//       userId,
-//       eventTypeId,
-//       source,
-//       contactName,
-//       contactNumber,
-//       description,
-//       startTime: startTime ? new Date(startTime) : draft.startTime,
-//       endTime: endTime ? new Date(endTime) : draft.endTime,
-//       minGuestCount,
-//       maxGuestCount,
-//       latitude,
-//       longitude,
-//       bookingStatus: 'CONFIRMED',
-//       paymentStatus: 'PENDING',
-//     });
-
-//     return res.status(201).json({
-//       success: true,
-//       message: 'Booking created successfully',
-//     });
-//   } catch (error) {
-//     console.error('Create booking error:', error);
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-//   }
-// };
+    return res.json({
+      success: true,
+      data: bookings,
+    });
+  } catch (err) {
+    console.log('fetch booking error', err);
+    return res.status(500).json({ success: false });
+  }
+};

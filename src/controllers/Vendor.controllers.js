@@ -830,10 +830,22 @@ export const productByTypeId = async (req, res) => {
         ),
     });
 
-    const data = productsList.map((product) => ({
-      ...product,
-      prices: priceEntries.filter((p) => p.productId === product.productId),
-    }));
+    const data = productsList.map((product) => {
+      const slabs = priceEntries
+        .filter((p) => p.productId === product.productId)
+        .sort((a, b) => a.lowerSlab - b.lowerSlab);
+
+      const firstSlab = slabs[0];
+
+      return {
+        ...product,
+        priceSlabs: slabs,
+        price:
+          product.pricingType === 'FLAT'
+            ? Number(firstSlab?.salePrice || firstSlab?.listPrice || 0)
+            : Number(firstSlab?.salePrice || 0),
+      };
+    });
     return res.status(200).json({
       success: true,
       message: 'Products fetched successfully',

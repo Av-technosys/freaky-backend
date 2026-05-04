@@ -11,9 +11,10 @@ import {
 } from '../../db/schema.js';
 import { desc, and, eq, inArray } from 'drizzle-orm';
 import { createVendorNotification } from '../helpers/vendor.helper.js';
-import { sendMail } from '../utils/email/sendMail.js';
+import { sendEmail } from '../helpers/emailService.js';
 import { bookingConfirmed } from '../utils/email/bookingConfirmation.js';
 import { paymentConfirmation } from '../utils/email/paymentConfirmation.js';
+import { paymentReceived } from '../utils/email/paymentReceived.js';
 
 export const createOrder = async (req, res) => {
   try {
@@ -53,11 +54,6 @@ export const verifyAndSavePayment = async (req, res) => {
     });
     const userId = req.user['custom:user_id'];
 
-    const isValid = true;
-
-    if (!isValid) {
-      return res.status(400).json({ success: false });
-    }
 
     const result = await db.transaction(async (tx) => {
       const bookingRes = await createBookingFromDraft({
@@ -129,10 +125,10 @@ export const verifyAndSavePayment = async (req, res) => {
     const location = `${bookingData.latitude || ''}, ${bookingData.longitude || ''}`;
 
     try {
-      await sendMail({
+      await sendEmail({
         to: userEmail,
         subject: 'Booking Confirmed 🎉',
-        body: bookingConfirmed({
+        html: bookingConfirmed({
           bookingId,
           name,
           services,
@@ -142,10 +138,10 @@ export const verifyAndSavePayment = async (req, res) => {
         }),
       });
 
-      await sendMail({
+      await sendEmail({
         to: userEmail,
         subject: 'Payment Successful 💰',
-        body: paymentConfirmation({
+        html: paymentConfirmation({
           bookingId,
           name,
           services,
@@ -157,10 +153,10 @@ export const verifyAndSavePayment = async (req, res) => {
       });
 
       if (vendorEmail) {
-        await sendMail({
+        await sendEmail({
           to: vendorEmail,
           subject: 'New Payment Received',
-          body: paymentReceived({
+          html: paymentReceived({
             bookingId,
             name,
             services,
@@ -206,12 +202,7 @@ export const createBookingFromDraft = async ({
   amount,
   bookingDetails,
 }) => {
-  console.log(
-    'Creating booking from draft with source',
-    source,
-    'and sourceId',
-    sourceId
-  );
+
   const drafts = await tx.query.bookingDraft.findMany({
     where: (t, { eq, and }) =>
       and(eq(t.source, source), eq(t.sourceId, sourceId)),

@@ -9,6 +9,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { user } from './user.js';
 import {
+  applicationContractReferenceEnum,
   mediaTypeEnum,
   productPricingTypeEnum,
   productTypeEnum,
@@ -145,7 +146,7 @@ export const vendorEmployeeRequest = pgTable('vendor_employee_request', {
 export const vendorMedia = pgTable('vendor_media', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
   vendorId: integer('vendor_id').references(() => vendor.vendorId, {
-    onDelete: 'cascade'
+    onDelete: 'cascade',
   }),
 
   mediaType: mediaTypeEnum('media_type').notNull(),
@@ -349,8 +350,10 @@ export const productAddon = pgTable('product_addon', {
   ),
 });
 
-export const contractProductType = pgTable('contract_product_type', {
+export const applicationContract = pgTable('application_contract', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
+  reference: applicationContractReferenceEnum('reference').notNull(),
+
   productTypeId: integer('product_type_id').references(() => productType.id),
   vendorId: integer('vendor_id').references(() => vendor.vendorId),
 

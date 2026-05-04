@@ -317,6 +317,8 @@ export const getBooking = async (req, res) => {
       filters.push(ilike(bookingItem.productName, `%${text}%`));
     }
 
+    console.log(vendorId);
+
     const whereClause = and(...filters);
 
     const result = await paginate({
@@ -327,6 +329,69 @@ export const getBooking = async (req, res) => {
         productName: bookingItem.productName,
         productPrice: bookingItem.productPrice,
         bookingStatus: bookingItem.bookingStatus,
+        createdAt: bookingItem.createdAt,
+      },
+      where: whereClause,
+      orderBy: bookingItem.createdAt,
+      page,
+      page_size,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Products fetched successfully',
+      ...result,
+    });
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const getVendorMonthlyBooking = async (req, res) => {
+  try {
+    const { text = '', page = 1, page_size = 12 } = req.query;
+
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
+    if (!vendorId) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
+    const filters = [eq(bookingItem.vendorId, vendorId)];
+
+    if (text.trim()) {
+      filters.push(ilike(bookingItem.productName, `%${text}%`));
+    }
+
+    console.log(vendorId);
+
+    const whereClause = and(...filters);
+
+    const result = await paginate({
+      table: bookingItem,
+      select: {
+        id: bookingItem.id,
+        contactName: bookingItem.contactName,
+        productName: bookingItem.productName,
+        productPrice: bookingItem.productPrice,
+        bookingStatus: bookingItem.bookingStatus,
+        createdAt: bookingItem.createdAt,
       },
       where: whereClause,
       orderBy: bookingItem.createdAt,

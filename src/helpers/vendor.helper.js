@@ -1,6 +1,10 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../db/db.js';
-import { priceBook, priceBookEntry } from '../../db/schema.js';
+import {
+  priceBook,
+  priceBookEntry,
+  vendorNotifications,
+} from '../../db/schema.js';
 
 export const setCurrentPricebook = async (vendorId, pricebookId) => {
   try {
@@ -43,5 +47,24 @@ export const getPriceProdcutPriceDefaultPricebook = async (vendorId) => {
   } catch (error) {
     console.error('Error fetching default pricebook:', error);
     throw error;
+  }
+};
+
+export const createVendorNotification = async ({
+  vendorId,
+  title,
+  message,
+}) => {
+  try {
+    if (!vendorId) return;
+
+    await db.insert(vendorNotifications).values({
+      vendorId,
+      title,
+      message,
+      status: false,
+    });
+  } catch (error) {
+    console.error('Notification error:', error);
   }
 };

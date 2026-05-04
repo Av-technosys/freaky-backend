@@ -13,6 +13,7 @@ import {
   getCountFromBookingItem,
   getProductMaximumCount,
 } from '../helpers/serviceAvailabilityChecker.js';
+import { createVendorNotification } from '../helpers/vendor.helper.js';
 
 export const createExternalBooking = async (req, res) => {
   try {
@@ -56,27 +57,32 @@ export const createExternalBooking = async (req, res) => {
 
       const productMap = new Map(productsData.map((p) => [p.productId, p]));
 
-      const bookingItems = services.map((service) => {
-        const product = productMap.get(Number(service.serviceId));
+      const bookingItems = await Promise.all(
+        services.map(async (service) => {
+          const product = productMap.get(Number(service.serviceId));
 
-        return {
-          bookingId,
-          contactName,
-          contactNumber,
-          productId: service.serviceId,
-          productName: product ? product.title : null,
-          productImage: product ? product.bannerImage : null,
-          // startTime: new Date(service.startTime),
-          // endTime: new Date(service.endTime),
-          startTime: new Date(service.startTime + 'Z'),
-          endTime: new Date(service.endTime + 'Z'),
+          await createVendorNotification({
+            vendorId,
+            title: 'New External Booking',
+            message: `New booking from ${contactName}`,
+          });
 
-          minGuestCount: service.minPerson,
-          maxGuestCount: service.maxPerson,
-          vendorId,
-          quantity: 1, // Default quantity as it is required by schema but not provided in input
-        };
-      });
+          return {
+            bookingId,
+            contactName,
+            contactNumber,
+            productId: service.serviceId,
+            productName: product ? product.title : null,
+            productImage: product ? product.bannerImage : null,
+            startTime: new Date(service.startTime + 'Z'),
+            endTime: new Date(service.endTime + 'Z'),
+            minGuestCount: service.minPerson,
+            maxGuestCount: service.maxPerson,
+            vendorId,
+            quantity: 1,
+          };
+        })
+      );
 
       await db.insert(bookingItem).values(bookingItems);
     }
@@ -185,6 +191,19 @@ export const createBooking = async (req, res) => {
           .where(draftFilter)
       );
 
+      //       const userEmail = req.user.email;
+
+      // await createVendorNotification({
+      //   vendorId: null,
+      //   title: 'New Booking',
+      //   message: `Booking created by ${contactName}`,
+      // });
+
+      // await sendMail({
+      //   to: userEmail,
+      //   subject: 'Booking Created',
+      //   body: bookingConfirmation({ name: contactName }),
+      // });
       // 3️⃣ Delete only those drafts
       await tx.delete(bookingDraft).where(draftFilter);
 

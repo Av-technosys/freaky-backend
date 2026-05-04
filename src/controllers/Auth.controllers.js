@@ -19,7 +19,8 @@ import {
   cognitoSignUp,
   cognitoUpdateUserAttribute,
 } from '../helpers/Cognito.helper.js';
-
+import { sendMail } from '../utils/email/sendMail.js';
+import { welcome } from '../utils/email/welcome.js';
 import { authSingIn } from '../helpers/Auth.helper.js';
 
 export const signup = async (req, res) => {
@@ -108,6 +109,13 @@ export const confirmController = async (req, res) => {
       return res.status(404).json({ message: 'User not found.', result });
     }
     const data = await authSingIn({ email, password: user.password });
+
+    await sendMail({
+      to: email,
+      subject: 'Welcome to Freaky Chimp 🎉',
+      body: welcome({ name: user.name || 'User' }),
+    });
+
     return res.status(200).json({ message: 'Login successful.', data });
   } catch (err) {
     console.error(err);

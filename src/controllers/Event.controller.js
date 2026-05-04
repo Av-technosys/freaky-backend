@@ -10,6 +10,8 @@ import {
 } from '../../db/schema.js';
 import { createBookingDraft } from '../helpers/createBookingDraft.js';
 import { SOURCE, STATUS } from '../../const/global.js';
+import { eventComing } from '../utils/email/eventComing.js';
+import { sendMail } from '../utils/email/sendMail.js';
 
 import { db } from '../../db/db.js';
 export const createEvent = async (req, res) => {
@@ -37,6 +39,17 @@ export const createEvent = async (req, res) => {
       });
     }
 
+    const formattedDate = new Date(startTime).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const formattedTime = new Date(startTime).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
     const [createdEvent] = await db
       .insert(events)
       .values({
@@ -54,6 +67,25 @@ export const createEvent = async (req, res) => {
       })
       .returning();
 
+    const productData = await db.query.products.findFirst({
+      where: (t, { eq }) => eq(t.productId, productId),
+    });
+
+    const vendorName = productData?.vendorName || 'Vendor';
+    const serviceName = productData?.title || 'Service';
+    const location = `${latitude || ''}, ${longitude || ''}`;
+    await sendMail({
+      to: userEmail,
+      subject: 'Your Event is Coming 🎉',
+      body: eventComing({
+        name: contactName,
+        eventDate: formattedDate,
+        eventTime: formattedTime,
+        vendorName,
+        serviceName,
+        location,
+      }),
+    });
     return res.status(201).json({
       message: 'Event created successfully...',
       data: createdEvent,
@@ -88,6 +120,16 @@ export const editEvent = async (req, res) => {
         message: 'Invalid startTime or endTime',
       });
     }
+    const formattedDate = new Date(startTime).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const formattedTime = new Date(startTime).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
     const data = await db
       .update(events)
@@ -107,6 +149,27 @@ export const editEvent = async (req, res) => {
       .where(eq(events.eventId, eventId))
       .returning();
 
+    const items = await db
+      .select()
+      .from(bookingDraft)
+      .where(eq(bookingDraft.sourceId, eventId));
+
+    const serviceNames = items.map((i) => i.productName).join(', ');
+
+    const location = `${latitude || ''}, ${longitude || ''}`;
+
+    await sendMail({
+      to: req.user.email,
+      subject: 'Event Updated',
+      body: eventComing({
+        name: contactName,
+        eventDate: formattedDate,
+        eventTime: formattedTime,
+        vendorName: 'Freaky Chimp',
+        serviceName: serviceNames || 'Service',
+        location,
+      }),
+    });
     return res.status(201).json({
       message: 'Event updated successfully...',
       data: data,

@@ -1,106 +1,3 @@
-// // this is for creating order where we will fetch price from backend only
-
-// // export const createOrder = async (req, res) => {
-// //   try {
-// //     const { source, sourceId } = req.body;
-
-// //     if (!source || !sourceId) {
-// //       return res.status(400).json({ error: 'Missing source or sourceId' });
-// //     }
-
-// //     // 1️⃣ Fetch booking drafts
-// //     const drafts = await db.query.bookingDraft.findMany({
-// //       where: (t, { eq, and }) =>
-// //         and(eq(t.source, source), eq(t.sourceId, sourceId)),
-// //     });
-
-// //     if (!drafts.length) {
-// //       return res.status(400).json({ error: 'No draft items found' });
-// //     }
-
-// //     let totalAmount = 0;
-
-// //     // 2️⃣ Process each draft
-// //     for (const draft of drafts) {
-// //       const product = await db.query.products.findFirst({
-// //         where: (t, { eq }) => eq(t.productId, draft.productId),
-// //       });
-
-// //       if (!product) continue;
-
-// //       // 3️⃣ Get default pricebook for vendor
-// //       const defaultPB = await db.query.priceBook.findFirst({
-// //         where: (t, { eq, and }) =>
-// //           and(eq(t.vendorId, product.vendorId), eq(t.isDefault, true)),
-// //       });
-
-// //       if (!defaultPB) continue;
-
-// //       // 4️⃣ Get price entries
-// //       const priceEntries = await db.query.priceBookEntry.findMany({
-// //         where: (t, { eq, and }) =>
-// //           and(
-// //             eq(t.productId, product.productId),
-// //             eq(t.priceBookingId, defaultPB.id)
-// //           ),
-// //         orderBy: (t, { asc }) => asc(t.lowerSlab),
-// //       });
-
-// //       if (!priceEntries.length) continue;
-
-// //       let finalPrice = 0;
-
-// //       // 5️⃣ Pricing logic
-// //       if (product.pricingType === 'FLAT') {
-// //         const entry = priceEntries[0];
-// //         finalPrice = Number(entry.salePrice || entry.listPrice);
-// //       }
-
-// //       if (product.pricingType === 'TIER') {
-// //         const qty = draft.quantity;
-
-// //         const matched = priceEntries.find(
-// //           (p) =>
-// //             qty >= p.lowerSlab &&
-// //             qty <= (p.upperSlab ?? Infinity)
-// //         );
-
-// //         if (!matched) {
-// //           throw new Error(
-// //             `No pricing slab found for product ${product.productId}`
-// //           );
-// //         }
-
-// //         finalPrice = Number(matched.salePrice || matched.listPrice);
-// //       }
-
-// //       totalAmount += finalPrice * draft.quantity;
-// //     }
-
-// //     if (totalAmount <= 0) {
-// //       return res.status(400).json({ error: 'Invalid total amount' });
-// //     }
-
-// //     // 6️⃣ Create Razorpay order
-// //     const order = await razorpayInstance.orders.create({
-// //       amount: Math.round(totalAmount * 100),
-// //       currency: 'INR',
-// //       receipt: `rcpt_${Date.now()}`,
-// //     });
-
-// //     return res.json({
-// //       success: true,
-// //       order,
-// //       totalAmount,
-// //     });
-// //   } catch (err) {
-// //     console.error('Create order error:', err);
-// //     return res.status(500).json({
-// //       error: 'Order creation failed',
-// //     });
-// //   }
-// // };
-
 import { razorpayInstance } from '../../lib/razorpay.js';
 import crypto from 'crypto';
 import { db } from '../../db/db.js';
@@ -110,12 +7,14 @@ import {
   bookingItem,
   bookingDraft,
   products,
+  vendors,
 } from '../../db/schema.js';
-import { and, eq, inArray } from 'drizzle-orm';
+import { desc, and, eq, inArray } from 'drizzle-orm';
+import { createVendorNotification } from '../helpers/vendor.helper.js';
+import { sendMail } from '../utils/email/sendMail.js';
+import { bookingConfirmed } from '../utils/email/bookingConfirmation.js';
+import { paymentConfirmation } from '../utils/email/paymentConfirmation.js';
 
-// =========================
-// CREATE ORDER
-// =========================
 export const createOrder = async (req, res) => {
   try {
     const { amount } = req.body;
@@ -132,9 +31,6 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// =========================
-// VERIFY + SAVE PAYMENT
-// =========================
 export const verifyAndSavePayment = async (req, res) => {
   try {
     const {
@@ -146,10 +42,17 @@ export const verifyAndSavePayment = async (req, res) => {
       sourceId,
       bookingDetails,
     } = req.body;
-
+    console.log('Verifying payment with details', {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      amount,
+      source,
+      sourceId,
+      bookingDetails,
+    });
     const userId = req.user['custom:user_id'];
 
-    // 🔐 (skip signature for now)
     const isValid = true;
 
     if (!isValid) {
@@ -188,6 +91,103 @@ export const verifyAndSavePayment = async (req, res) => {
       };
     });
 
+    const bookingId = result.booking.bookingId;
+
+    const bookingData = await db.query.booking.findFirst({
+      where: (t, { eq }) => eq(t.bookingId, bookingId),
+    });
+    const vendorId = bookingData?.vendorId;
+    let vendorEmail = null;
+
+    if (vendorId) {
+      const [vendorData] = await db
+        .select()
+        .from(vendors)
+        .where(eq(vendors.vendorId, vendorId));
+
+      vendorEmail = vendorData?.email || null;
+    }
+    const totalAmount = bookingData?.totalAmount || 0;
+
+    const items = await db
+      .select()
+      .from(bookingItem)
+      .where(eq(bookingItem.bookingId, bookingId));
+
+    const name = bookingData.contactName;
+    const userEmail = req.user.email;
+
+    const formattedDate = new Date(bookingData.startTime).toLocaleDateString(
+      'en-IN'
+    );
+    const formattedTime = new Date(bookingData.startTime).toLocaleTimeString(
+      'en-IN'
+    );
+
+    const services = items.map((i) => i.productName).join(', ');
+
+    const location = `${bookingData.latitude || ''}, ${bookingData.longitude || ''}`;
+
+    try {
+      await sendMail({
+        to: userEmail,
+        subject: 'Booking Confirmed 🎉',
+        body: bookingConfirmed({
+          bookingId,
+          name,
+          services,
+          date: formattedDate,
+          time: formattedTime,
+          location,
+        }),
+      });
+
+      await sendMail({
+        to: userEmail,
+        subject: 'Payment Successful 💰',
+        body: paymentConfirmation({
+          bookingId,
+          name,
+          services,
+          date: formattedDate,
+          time: formattedTime,
+          location,
+          paymentMethod: 'Razorpay',
+        }),
+      });
+
+      if (vendorEmail) {
+        await sendMail({
+          to: vendorEmail,
+          subject: 'New Payment Received',
+          body: paymentReceived({
+            bookingId,
+            name,
+            services,
+            date: formattedDate,
+            time: formattedTime,
+            location,
+            paymentMethod: 'Razorpay',
+          }),
+        });
+      }
+    } catch (e) {
+      console.log('Mail error', e);
+    }
+
+    try {
+      if (vendorId) {
+        console.log('Creating vendor notification for vendor', vendorId);
+        await createVendorNotification({
+          vendorId,
+          title: 'Payment Received 💰',
+          message: `₹${totalAmount} received for booking #FC-${bookingId}`,
+        });
+        console.log('Vendor notification created');
+      }
+    } catch (e) {
+      console.log('Notification error', e);
+    }
     return res.json({
       success: true,
       bookingId: result.booking.bookingId,
@@ -206,6 +206,12 @@ export const createBookingFromDraft = async ({
   amount,
   bookingDetails,
 }) => {
+  console.log(
+    'Creating booking from draft with source',
+    source,
+    'and sourceId',
+    sourceId
+  );
   const drafts = await tx.query.bookingDraft.findMany({
     where: (t, { eq, and }) =>
       and(eq(t.source, source), eq(t.sourceId, sourceId)),
@@ -231,9 +237,18 @@ export const createBookingFromDraft = async ({
 
   const productMap = new Map(productsData.map((p) => [p.productId, p]));
 
-  const totalAmount = amount / 100;
-
+  const totalAmount = drafts.reduce((sum, d) => {
+    return sum + Number(d.price || 0) * (d.quantity || 1);
+  }, 0);
   const firstProduct = productMap.get(baseData.productId);
+
+  const vendorIds = new Set(productsData.map((p) => p.vendorId));
+
+  if (vendorIds.size > 1) {
+    throw new Error('Multiple vendors not supported in one booking');
+  }
+
+  const vendorId = [...vendorIds][0];
 
   const [createdBooking] = await tx
     .insert(booking)
@@ -253,7 +268,7 @@ export const createBookingFromDraft = async ({
       latitude: baseData.latitude,
       longitude: baseData.longitude,
 
-      vendorId: firstProduct?.vendorId || null,
+      vendorId: vendorId || null,
 
       totalAmount,
     })
@@ -267,6 +282,7 @@ export const createBookingFromDraft = async ({
 
   const bookingItems = drafts.map((draft) => {
     const product = productMap.get(draft.productId);
+    const ProductPrice = Number(draft.price ?? 0);
 
     return {
       bookingId,
@@ -285,7 +301,7 @@ export const createBookingFromDraft = async ({
       minGuestCount: baseData.minGuestCount,
       maxGuestCount: baseData.maxGuestCount,
 
-      productPrice: Number(draft.price || 0),
+      productPrice: ProductPrice,
 
       quantity: draft.quantity || 1,
 
@@ -303,4 +319,46 @@ export const createBookingFromDraft = async ({
     );
 
   return { bookingId };
+};
+
+export const fetchVendorPayments = async (req, res) => {
+  try {
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
+    if (!vendorId) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
+
+    const payments = await db
+      .select()
+      .from(payment)
+      .innerJoin(booking, eq(payment.bookingId, booking.bookingId))
+      .where(eq(booking.vendorId, vendorId))
+      .orderBy(desc(payment.createdAt));
+
+    console.log('payments', payments);
+    res.json({
+      success: true,
+      message: 'Payments fetched successfully',
+      payments,
+    });
+  } catch (err) {
+    console.log('fetch payments error', err);
+    res
+      .status(500)
+      .json({ success: false, message: 'Failed to fetch payments' });
+  }
 };

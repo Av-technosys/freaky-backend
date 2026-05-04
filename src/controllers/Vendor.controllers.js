@@ -2136,12 +2136,26 @@ export const createVendorEmployeeRequest = async (req, res) => {
 
 export const getVendorNotifications = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
 
     if (!vendorId) {
-      return res.status(404).json({ message: 'No vendor found.' });
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
     }
+
+    console.log('Fetching notifications for vendorId:', vendorId);
 
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;

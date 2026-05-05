@@ -8,6 +8,8 @@ import {
   bookingDraft,
   products,
   vendors,
+  priceBook,
+  priceBookEntry,
 } from '../../db/schema.js';
 import { desc, and, eq, inArray } from 'drizzle-orm';
 import { createVendorNotification } from '../helpers/vendor.helper.js';
@@ -17,47 +19,197 @@ import { paymentConfirmation } from '../utils/email/paymentConfirmation.js';
 
 export const createOrder = async (req, res) => {
   try {
-    const { amount } = req.body;
+    const userId = req.user['custom:user_id'];
+
+    const { source, sourceId } = req.body;
+
+    // Source CART || EVENT
+    // BOOKING_DRAFT -> PRODCUT_ID
+    // PRODUCT_ID --> VENDOR_ID
+    // VENDORID --> VENDOR_ACTIVE_PRICEBOOK
+    // VENDOR_ACTIVE_PRICEBOOK --> SERVICE_PRICING
+
+    const condition =
+      source === 'CART'
+        ? and(
+            eq(bookingDraft.sourceId, sourceId),
+            eq(bookingDraft.source, source)
+          )
+        : and(
+            eq(bookingDraft.sourceId, sourceId),
+            eq(bookingDraft.source, source)
+          );
+
+    const bookingResult = await db
+      .select({
+        bookingDraftId: bookingDraft.bookingDraftId,
+        bookingMinGuest: bookingDraft.minGuestCount,
+        bookingMaxGuest: bookingDraft.maxGuestCount,
+        productId: bookingDraft.productId,
+        contactName: bookingDraft.contactName,
+        contactNumber: bookingDraft.contactNumber,
+        startTime: bookingDraft.startTime,
+        endTime: bookingDraft.endTime,
+        vendorId: products.vendorId,
+        productName: products.title,
+        productImage: products.bannerImage,
+        pricebookId: priceBook.id,
+        lowerSlab: priceBookEntry.lowerSlab,
+        upperSlab: priceBookEntry.upperSlab,
+        price: priceBookEntry.salePrice,
+      })
+      .from(bookingDraft)
+      .where(condition)
+      .leftJoin(products, eq(products.productId, bookingDraft.productId))
+      .leftJoin(
+        priceBook,
+        and(
+          eq(priceBook.vendorId, products.vendorId),
+          eq(priceBook.isDefault, true)
+        )
+      )
+      .leftJoin(
+        priceBookEntry,
+        and(
+          eq(priceBookEntry.priceBookingId, priceBook.id),
+          eq(priceBookEntry.productId, products.productId)
+        )
+      );
+
+    function getSelectedPricing(data) {
+      const grouped = data.reduce((acc, item) => {
+        if (!acc[item.bookingDraftId]) {
+          acc[item.bookingDraftId] = [];
+        }
+        acc[item.bookingDraftId].push(item);
+        return acc;
+      }, {});
+
+      const result = [];
+
+      for (const bookingId in grouped) {
+        const items = grouped[bookingId];
+        const { bookingMinGuest, bookingMaxGuest } = items[0];
+
+        // 1️⃣ exact match
+        let matched = items.filter(
+          (i) =>
+            bookingMinGuest >= i.lowerSlab && bookingMaxGuest <= i.upperSlab
+        );
+
+        let selected;
+
+        if (matched.length > 0) {
+          matched.sort((a, b) => a.upperSlab - b.upperSlab);
+          selected = matched[0];
+        } else {
+          // 2️⃣ closest fallback
+          selected = items
+            .map((i) => {
+              let distance = 0;
+
+              if (bookingMaxGuest < i.lowerSlab) {
+                distance = i.lowerSlab - bookingMaxGuest;
+              } else if (bookingMinGuest > i.upperSlab) {
+                distance = bookingMinGuest - i.upperSlab;
+              }
+
+              return { ...i, distance };
+            })
+            .sort((a, b) => a.distance - b.distance)[0];
+        }
+
+        if (selected) {
+          result.push(selected);
+        } else {
+          console.warn(`No slab found for booking ${bookingId}`);
+        }
+      }
+
+      return result;
+    }
+
+    const selectedQuery = getSelectedPricing(bookingResult);
+    const total = selectedQuery.reduce((acc, item) => {
+      return Number(acc) + Number(item.price);
+    }, 0);
+
+    const [newBooking] = await db
+      .insert(booking)
+      .values({
+        contactName: selectedQuery[0].contactName,
+        contactNumber: selectedQuery[0].contactNumber,
+        startTime: selectedQuery[0].startTime,
+        endTime: selectedQuery[0].endTime,
+        minGuestCount: selectedQuery[0].bookingMinGuest,
+        maxGuestCount: selectedQuery[0].bookingMaxGuest,
+        userId: req.user['custom:user_id'],
+        source,
+        totalAmount: total,
+      })
+      .returning({
+        id: booking.bookingId,
+      });
+
+    const newBookingItems = selectedQuery.map((item) => {
+      return {
+        bookingId: newBooking.id,
+        productId: item.productId,
+        price: item.price,
+        contactName: item.contactName,
+        contactNumber: item.contactNumber,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        minGuestCount: item.bookingMinGuest,
+        maxGuestCount: item.bookingMaxGuest,
+        productName: item.productName,
+        productImage: item.productImage,
+        productPrice: item.price,
+        vendorId: item.vendorId,
+        quantity: 1,
+      };
+    });
+
+    await db.insert(bookingItem).values(newBookingItems);
 
     const order = await razorpayInstance.orders.create({
-      amount: amount * 100,
+      amount: total * 100,
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
     });
 
-    res.json(order);
+    const orderId = order.id;
+
+    await db.insert(payment).values({
+      userId: userId,
+      bookingId: newBooking.id,
+      amount: total,
+      paymentType: 'FULL',
+      source: 'web',
+      sourceId: 'test',
+      provider: 'razorpay',
+      providerPaymentId: null,
+      providerOrderId: orderId,
+      paymentStatus: 'PENDING',
+      paymentType: 'FULL',
+    });
+
+    return res.json(order);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Order creation failed' });
   }
 };
 
 export const verifyAndSavePayment = async (req, res) => {
   try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      amount,
-      source,
-      sourceId,
-      bookingDetails,
-    } = req.body;
-    console.log('Verifying payment with details', {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      amount,
-      source,
-      sourceId,
-      bookingDetails,
-    });
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+      req.body;
     const userId = req.user['custom:user_id'];
 
-    const isValid = true;
-
-    if (!isValid) {
-      return res.status(400).json({ success: false });
-    }
+    // verify payment -> change payment status
+    // create vendor payment
+    // send email to both user and vendor.
 
     const result = await db.transaction(async (tx) => {
       const bookingRes = await createBookingFromDraft({
@@ -172,28 +324,28 @@ export const verifyAndSavePayment = async (req, res) => {
         });
       }
     } catch (e) {
-      console.log('Mail error', e);
+      console.error('Mail error', e);
     }
 
     try {
       if (vendorId) {
-        console.log('Creating vendor notification for vendor', vendorId);
+        // console.error('Creating vendor notification for vendor', vendorId);
         await createVendorNotification({
           vendorId,
           title: 'Payment Received 💰',
           message: `₹${totalAmount} received for booking #FC-${bookingId}`,
         });
-        console.log('Vendor notification created');
+        // console.log('Vendor notification created');
       }
     } catch (e) {
-      console.log('Notification error', e);
+      console.error('Notification error', e);
     }
     return res.json({
       success: true,
       bookingId: result.booking.bookingId,
     });
   } catch (err) {
-    console.log('verify error', err);
+    console.error('verify error', err);
     return res.status(500).json({ success: false });
   }
 };
@@ -206,12 +358,12 @@ export const createBookingFromDraft = async ({
   amount,
   bookingDetails,
 }) => {
-  console.log(
-    'Creating booking from draft with source',
-    source,
-    'and sourceId',
-    sourceId
-  );
+  // console.log(
+  //   'Creating booking from draft with source',
+  //   source,
+  //   'and sourceId',
+  //   sourceId
+  // );
   const drafts = await tx.query.bookingDraft.findMany({
     where: (t, { eq, and }) =>
       and(eq(t.source, source), eq(t.sourceId, sourceId)),
@@ -349,14 +501,14 @@ export const fetchVendorPayments = async (req, res) => {
       .where(eq(booking.vendorId, vendorId))
       .orderBy(desc(payment.createdAt));
 
-    console.log('payments', payments);
+    // console.log('payments', payments);
     res.json({
       success: true,
       message: 'Payments fetched successfully',
       payments,
     });
   } catch (err) {
-    console.log('fetch payments error', err);
+    console.error('fetch payments error', err);
     res
       .status(500)
       .json({ success: false, message: 'Failed to fetch payments' });

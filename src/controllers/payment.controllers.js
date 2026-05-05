@@ -194,7 +194,7 @@ export const verifyPayment = async (req, res) => {
           bookingItemId: item.id,
           vendorId: item.vendorId,
           amount: item.productPrice,
-          paymentStatus: razorpayPayment.status.toUpperCase(),
+          paymentStatus: 'PENDING', // for vendor the payment is not initiated by admin
           currency: razorpayPayment.currency,
         };
       });

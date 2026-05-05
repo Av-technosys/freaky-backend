@@ -43,6 +43,13 @@
       "when": 1777029715492,
       "tag": "0005_brief_valkyrie",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777887872757,
+      "tag": "0006_freezing_blue_blade",
+      "breakpoints": true
     }
   ]
 }

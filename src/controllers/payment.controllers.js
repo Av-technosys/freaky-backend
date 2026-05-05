@@ -1,16 +1,7 @@
 import { razorpayInstance } from '../../lib/razorpay.js';
 import crypto from 'crypto';
 import { db } from '../../db/db.js';
-import {
-  payment,
-  booking,
-  bookingItem,
-  bookingDraft,
-  products,
-  vendors,
-  priceBook,
-  priceBookEntry,
-} from '../../db/schema.js';
+import { payment, booking, bookingItem, bookingDraft, products, vendors, priceBook, priceBookEntry, paymentVendor, users } from '../../db/schema.js';
 import { desc, and, eq, inArray } from 'drizzle-orm';
 import { createVendorNotification } from '../helpers/vendor.helper.js';
 import { sendEmail } from '../helpers/emailService.js';
@@ -30,16 +21,7 @@ export const createOrder = async (req, res) => {
     // VENDORID --> VENDOR_ACTIVE_PRICEBOOK
     // VENDOR_ACTIVE_PRICEBOOK --> SERVICE_PRICING
 
-    const condition =
-      source === 'CART'
-        ? and(
-          eq(bookingDraft.sourceId, sourceId),
-          eq(bookingDraft.source, source)
-        )
-        : and(
-          eq(bookingDraft.sourceId, sourceId),
-          eq(bookingDraft.source, source)
-        );
+    const condition = source === 'CART' ? and(eq(bookingDraft.sourceId, sourceId), eq(bookingDraft.source, source)) : and(eq(bookingDraft.sourceId, sourceId), eq(bookingDraft.source, source));
 
     const bookingResult = await db
       .select({
@@ -62,20 +44,8 @@ export const createOrder = async (req, res) => {
       .from(bookingDraft)
       .where(condition)
       .leftJoin(products, eq(products.productId, bookingDraft.productId))
-      .leftJoin(
-        priceBook,
-        and(
-          eq(priceBook.vendorId, products.vendorId),
-          eq(priceBook.isDefault, true)
-        )
-      )
-      .leftJoin(
-        priceBookEntry,
-        and(
-          eq(priceBookEntry.priceBookingId, priceBook.id),
-          eq(priceBookEntry.productId, products.productId)
-        )
-      );
+      .leftJoin(priceBook, and(eq(priceBook.vendorId, products.vendorId), eq(priceBook.isDefault, true)))
+      .leftJoin(priceBookEntry, and(eq(priceBookEntry.priceBookingId, priceBook.id), eq(priceBookEntry.productId, products.productId)));
 
     function getSelectedPricing(data) {
       const grouped = data.reduce((acc, item) => {
@@ -93,10 +63,7 @@ export const createOrder = async (req, res) => {
         const { bookingMinGuest, bookingMaxGuest } = items[0];
 
         // 1️⃣ exact match
-        let matched = items.filter(
-          (i) =>
-            bookingMinGuest >= i.lowerSlab && bookingMaxGuest <= i.upperSlab
-        );
+        let matched = items.filter((i) => bookingMinGuest >= i.lowerSlab && bookingMaxGuest <= i.upperSlab);
 
         let selected;
 
@@ -202,119 +169,75 @@ export const createOrder = async (req, res) => {
   }
 };
 
-export const verifyAndSavePayment = async (req, res) => {
+export const verifyPayment = async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
-      req.body;
-    const userId = req.user['custom:user_id'];
+    const { razorpay_payment_id } = req.body;
 
-    // verify payment -> change payment status
-    // create vendor payment
-    // send email to both user and vendor.
+    const razorpayPayment = await razorpayInstance.payments.fetch(razorpay_payment_id);
+    console.log(razorpayPayment);
 
-    const result = await db.transaction(async (tx) => {
-      const bookingRes = await createBookingFromDraft({
-        tx,
-        userId,
-        source,
-        sourceId,
-        amount,
-        bookingDetails,
+    if (razorpayPayment.status === 'captured') {
+      // payment done
+
+      //update payment
+      const [paymentDetials] = await db.update(payment).set({ paymentStatus: 'CAPTURED' }).where(eq(payment.providerOrderId, razorpayPayment.order_id)).returning({ bookingId: payment.bookingId });
+
+      console.log(paymentDetials);
+      // update booking status
+      const [bookingDetails] = await db.update(booking).set({ bookingStatus: 'CONFIRMED' }).where(eq(booking.bookingId, paymentDetials.bookingId)).returning();
+      console.log('bookingDetails', bookingDetails);
+      const bookingItems = await db.select().from(bookingItem).where(eq(bookingItem.bookingId, bookingDetails.bookingId));
+
+      console.log(JSON.stringify(bookingItems));
+
+      const vendorPaymentValues = bookingItems.map((item) => {
+        return {
+          bookingItemId: item.id,
+          vendorId: item.vendorId,
+          amount: item.productPrice,
+          paymentStatus: razorpayPayment.status.toUpperCase(),
+          currency: razorpayPayment.currency,
+        };
       });
 
-      const bookingId = bookingRes.bookingId;
+      console.log(JSON.stringify(vendorPaymentValues));
 
-      const [paymentRow] = await tx
-        .insert(payment)
-        .values({
-          bookingId,
-          userId,
-          provider: 'razorpay',
-          providerPaymentId: razorpay_payment_id,
-          providerOrderId: razorpay_order_id,
-          amount: amount / 100,
-          paymentStatus: 'SUCCESS',
-          paymentType: 'FULL',
-        })
-        .returning();
+      // create vendor payment
+      await db.insert(paymentVendor).values(vendorPaymentValues);
+      console.log('Vendor payment inserted');
+      // send mail
 
-      return {
-        payment: paymentRow,
-        booking: bookingRes,
-      };
-    });
+      const name = bookingDetails.contactName;
+      const [bookingUser] = await db.select().from(users).where(eq(users.userId, bookingDetails.userId));
 
-    const bookingId = result.booking.bookingId;
+      if (!bookingUser || !bookingUser.email) return res.json({ status: false, message: 'User email id not found!!' });
 
-    const bookingData = await db.query.booking.findFirst({
-      where: (t, { eq }) => eq(t.bookingId, bookingId),
-    });
-    const vendorId = bookingData?.vendorId;
-    let vendorEmail = null;
+      const formattedDate = new Date(bookingDetails.startTime).toLocaleDateString('en-IN');
+      const formattedTime = new Date(bookingDetails.startTime).toLocaleTimeString('en-IN');
 
-    if (vendorId) {
-      const [vendorData] = await db
-        .select()
-        .from(vendors)
-        .where(eq(vendors.vendorId, vendorId));
+      const services = bookingItems.map((i) => i.productName).join(', ');
 
-      vendorEmail = vendorData?.email || null;
-    }
-    const totalAmount = bookingData?.totalAmount || 0;
+      const location = `${bookingDetails.latitude || ''}, ${bookingDetails.longitude || ''}`;
 
-    const items = await db
-      .select()
-      .from(bookingItem)
-      .where(eq(bookingItem.bookingId, bookingId));
+      try {
+        await sendMail({
+          to: bookingUser.email,
+          subject: 'Booking Confirmed 🎉',
+          body: bookingConfirmed({
+            bookingId: bookingDetails.bookingId,
+            name,
+            services,
+            date: formattedDate,
+            time: formattedTime,
+            location,
+          }),
+        });
 
-    const name = bookingData.contactName;
-    const userEmail = req.user.email;
-
-    const formattedDate = new Date(bookingData.startTime).toLocaleDateString(
-      'en-IN'
-    );
-    const formattedTime = new Date(bookingData.startTime).toLocaleTimeString(
-      'en-IN'
-    );
-
-    const services = items.map((i) => i.productName).join(', ');
-
-    const location = `${bookingData.latitude || ''}, ${bookingData.longitude || ''}`;
-
-    try {
-      await sendEmail({
-        to: userEmail,
-        subject: 'Booking Confirmed 🎉',
-        html: bookingConfirmed({
-          bookingId,
-          name,
-          services,
-          date: formattedDate,
-          time: formattedTime,
-          location,
-        }),
-      });
-
-      await sendEmail({
-        to: userEmail,
-        subject: 'Payment Successful 💰',
-        html: paymentConfirmation({
-          bookingId,
-          name,
-          services,
-          date: formattedDate,
-          time: formattedTime,
-          location,
-          paymentMethod: 'Razorpay',
-        }),
-      });
-
-      if (vendorEmail) {
-        await sendEmail({
-          to: vendorEmail,
-          subject: 'New Payment Received',
-          html: paymentReceived({
-            bookingId,
+        await sendMail({
+          to: bookingUser.email,
+          subject: 'Payment Successful 💰',
+          body: paymentConfirmation({
+            bookingId: bookingDetails.bookingId,
             name,
             services,
             date: formattedDate,
@@ -323,24 +246,102 @@ export const verifyAndSavePayment = async (req, res) => {
             paymentMethod: 'Razorpay',
           }),
         });
+
+        // if (vendorEmail) {
+        //   await sendMail({
+        //     to: vendorEmail,
+        //     subject: 'New Payment Received',
+        //     body: paymentReceived({
+        //       bookingId: bookingDetails.bookingId,
+        //       name,
+        //       services,
+        //       date: formattedDate,
+        //       time: formattedTime,
+        //       location,
+        //       paymentMethod: 'Razorpay',
+        //     }),
+        //   });
+        // }
+      } catch (e) {
+        console.error('Mail error', e);
       }
-    } catch (e) {
-      console.error('Mail error', e);
+
+      try {
+        // if (vendorId) {
+        //   // console.error('Creating vendor notification for vendor', vendorId);
+        //   await createVendorNotification({
+        //     vendorId,
+        //     title: 'Payment Received 💰',
+        //     message: `₹${totalAmount} received for booking #FC-${bookingId}`,
+        //   });
+        //   // console.log('Vendor notification created');
+        // }
+      } catch (e) {
+        console.error('Notification error', e);
+      }
+    } else {
+      // payment procedding
     }
 
-    try {
-      if (vendorId) {
-        // console.error('Creating vendor notification for vendor', vendorId);
-        await createVendorNotification({
-          vendorId,
-          title: 'Payment Received 💰',
-          message: `₹${totalAmount} received for booking #FC-${bookingId}`,
-        });
-        // console.log('Vendor notification created');
-      }
-    } catch (e) {
-      console.error('Notification error', e);
-    }
+    // verify payment -> change payment status
+    // create vendor payment
+    // send email to both user and vendor.
+
+    // const result = await db.transaction(async (tx) => {
+    //   const bookingRes = await createBookingFromDraft({
+    //     tx,
+    //     userId,
+    //     source,
+    //     sourceId,
+    //     amount,
+    //     bookingDetails,
+    //   });
+
+    //   const bookingId = bookingRes.bookingId;
+
+    //   const [paymentRow] = await tx
+    //     .insert(payment)
+    //     .values({
+    //       bookingId,
+    //       userId,
+    //       provider: 'razorpay',
+    //       providerPaymentId: razorpay_payment_id,
+    //       providerOrderId: razorpay_order_id,
+    //       amount: amount / 100,
+    //       paymentStatus: 'SUCCESS',
+    //       paymentType: 'FULL',
+    //     })
+    //     .returning();
+
+    //   return {
+    //     payment: paymentRow,
+    //     booking: bookingRes,
+    //   };
+    // });
+
+    // const bookingId = result.booking.bookingId;
+
+    // const bookingData = await db.query.booking.findFirst({
+    //   where: (t, { eq }) => eq(t.bookingId, bookingId),
+    // });
+    // const vendorId = bookingData?.vendorId;
+    // let vendorEmail = null;
+
+    // if (vendorId) {
+    //   const [vendorData] = await db
+    //     .select()
+    //     .from(vendors)
+    //     .where(eq(vendors.vendorId, vendorId));
+
+    //   vendorEmail = vendorData?.email || null;
+    // }
+    // const totalAmount = bookingData?.totalAmount || 0;
+
+    // const items = await db
+    //   .select()
+    //   .from(bookingItem)
+    //   .where(eq(bookingItem.bookingId, bookingId));
+
     return res.json({
       success: true,
       bookingId: result.booking.bookingId,
@@ -351,14 +352,7 @@ export const verifyAndSavePayment = async (req, res) => {
   }
 };
 
-export const createBookingFromDraft = async ({
-  tx,
-  userId,
-  source,
-  sourceId,
-  amount,
-  bookingDetails,
-}) => {
+export const createBookingFromDraft = async ({ tx, userId, source, sourceId, amount, bookingDetails }) => {
   // console.log(
   //   'Creating booking from draft with source',
   //   source,
@@ -366,8 +360,7 @@ export const createBookingFromDraft = async ({
   //   sourceId
   // );
   const drafts = await tx.query.bookingDraft.findMany({
-    where: (t, { eq, and }) =>
-      and(eq(t.source, source), eq(t.sourceId, sourceId)),
+    where: (t, { eq, and }) => and(eq(t.source, source), eq(t.sourceId, sourceId)),
   });
 
   if (!drafts.length) {
@@ -465,11 +458,7 @@ export const createBookingFromDraft = async ({
 
   await tx.insert(bookingItem).values(bookingItems);
 
-  await tx
-    .delete(bookingDraft)
-    .where(
-      and(eq(bookingDraft.source, source), eq(bookingDraft.sourceId, sourceId))
-    );
+  await tx.delete(bookingDraft).where(and(eq(bookingDraft.source, source), eq(bookingDraft.sourceId, sourceId)));
 
   return { bookingId };
 };
@@ -495,12 +484,7 @@ export const fetchVendorPayments = async (req, res) => {
       });
     }
 
-    const payments = await db
-      .select()
-      .from(payment)
-      .innerJoin(booking, eq(payment.bookingId, booking.bookingId))
-      .where(eq(booking.vendorId, vendorId))
-      .orderBy(desc(payment.createdAt));
+    const payments = await db.select().from(payment).innerJoin(booking, eq(payment.bookingId, booking.bookingId)).where(eq(booking.vendorId, vendorId)).orderBy(desc(payment.createdAt));
 
     // console.log('payments', payments);
     res.json({
@@ -510,8 +494,6 @@ export const fetchVendorPayments = async (req, res) => {
     });
   } catch (err) {
     console.error('fetch payments error', err);
-    res
-      .status(500)
-      .json({ success: false, message: 'Failed to fetch payments' });
+    res.status(500).json({ success: false, message: 'Failed to fetch payments' });
   }
 };

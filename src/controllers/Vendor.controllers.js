@@ -1552,11 +1552,22 @@ export const getVendorOwnershipDetails = async (req, res) => {
 
 export const getVendorEmployees = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
     if (!vendorId) {
-      return res.status(404).json({
-        message: 'No vendor found.',
+      return res.status(400).json({
+        message: 'vendorId missing',
       });
     }
     const employees = await db.select().from(vendorEmployees).innerJoin(users, eq(vendorEmployees.userId, users.userId)).where(eq(vendorEmployees.vendorId, vendorId));
@@ -1573,14 +1584,25 @@ export const getVendorEmployees = async (req, res) => {
 
 export const createVendorEmployeeInvitation = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
-    const invitations = req.body;
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
     if (!vendorId) {
-      return res.status(404).json({
-        message: 'No vendor found.',
+      return res.status(400).json({
+        message: 'vendorId missing',
       });
     }
+    const invitations = req.body;
 
     if (invitations.length > 0) {
       const invites = invitations.map((invit) => {

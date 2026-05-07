@@ -1,19 +1,11 @@
-import {
-  booking,
-  bookingDraft,
-  bookingItem,
-  products,
-} from '../../db/schema.js';
+import { booking, vendors, bookingDraft, bookingItem, products } from '../../db/schema.js';
 import { db } from '../../db/db.js';
 import { and, ilike, inArray } from 'drizzle-orm';
 import { eq, sql } from 'drizzle-orm';
 import { paginate } from '../helpers/paginate.js';
-import {
-  getCountFromBookingDraft,
-  getCountFromBookingItem,
-  getProductMaximumCount,
-} from '../helpers/serviceAvailabilityChecker.js';
+import { getCountFromBookingDraft, getCountFromBookingItem, getProductMaximumCount } from '../helpers/serviceAvailabilityChecker.js';
 import { createVendorNotification } from '../helpers/vendor.helper.js';
+import { ne, desc } from 'drizzle-orm';
 
 export const createExternalBooking = async (req, res) => {
   try {
@@ -37,10 +29,7 @@ export const createExternalBooking = async (req, res) => {
     }
     const { contactName, contactNumber, services } = req.body;
 
-    const [newBooking] = await db
-      .insert(booking)
-      .values({ contactName, contactNumber, source: 'EXTERNAL' })
-      .returning();
+    const [newBooking] = await db.insert(booking).values({ contactName, contactNumber, source: 'EXTERNAL' }).returning();
 
     const bookingId = newBooking.bookingId;
 
@@ -93,9 +82,7 @@ export const createExternalBooking = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating external booking:', error);
-    return res
-      .status(500)
-      .json({ message: 'Internal server error', error: error.message });
+    return res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 };
 
@@ -103,19 +90,7 @@ export const createBooking = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
 
-    const {
-      eventTypeId,
-      source,
-      contactName,
-      contactNumber,
-      description,
-      startTime,
-      endTime,
-      minGuestCount,
-      maxGuestCount,
-      latitude,
-      longitude,
-    } = req.body;
+    const { eventTypeId, source, contactName, contactNumber, description, startTime, endTime, minGuestCount, maxGuestCount, latitude, longitude } = req.body;
 
     if (!eventTypeId || !source) {
       return res.status(400).json({
@@ -152,13 +127,7 @@ export const createBooking = async (req, res) => {
       const bookingId = createdBooking.bookingId;
 
       // 🔥 CONDITION BASED ON SOURCE
-      const draftFilter =
-        source === 'CART'
-          ? and(
-              eq(bookingDraft.source, 'CART'),
-              eq(bookingDraft.sourceId, req.body.sourceId)
-            )
-          : eq(bookingDraft.userId, userId);
+      const draftFilter = source === 'CART' ? and(eq(bookingDraft.source, 'CART'), eq(bookingDraft.sourceId, req.body.sourceId)) : eq(bookingDraft.userId, userId);
 
       // 2️⃣ Move only relevant drafts
       await tx.insert(bookingItem).select(
@@ -415,27 +384,114 @@ export const getVendorMonthlyBooking = async (req, res) => {
 
 export const getBookingItemDetailsById = async (req, res) => {
   try {
-    const { bookingId } = req.params;
+    const bookingId = Number(req.params.bookingId);
 
-    const bookingData = await db.query.booking.findFirst({
-      where: (t, { eq }) => eq(t.bookingId, Number(bookingId)),
-    });
+    if (!bookingId) {
+      return res.status(400).json({ message: 'Invalid bookingId' });
+    }
 
+    // ✅ 1. FETCH BOOKING + VENDOR (JOIN)
+    const bookingResult = await db
+      .select({
+        // booking fields
+        bookingId: booking.bookingId,
+        userId: booking.userId,
+        eventTypeId: booking.eventTypeId,
+        source: booking.source,
+
+        contactName: booking.contactName,
+        contactNumber: booking.contactNumber,
+        description: booking.description,
+
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+
+        minGuestCount: booking.minGuestCount,
+        maxGuestCount: booking.maxGuestCount,
+
+        latitude: booking.latitude,
+        longitude: booking.longitude,
+
+        bookingStatus: booking.bookingStatus,
+        paymentStatus: booking.paymentStatus,
+
+        totalAmount: booking.totalAmount,
+        createdAt: booking.createdAt,
+        bookedAt: booking.bookedAt,
+
+        // ✅ vendor fields
+        vendorId: booking.vendorId,
+        vendorName: vendors.businessName,
+        vendorLogo: vendors.logoUrl,
+        vendorCity: vendors.city,
+        vendorState: vendors.state,
+      })
+      .from(booking)
+      .leftJoin(vendors, eq(booking.vendorId, vendors.vendorId))
+      .where(eq(booking.bookingId, bookingId));
+
+    if (!bookingResult.length) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    const bookingData = bookingResult[0];
+
+    // ✅ 2. FETCH BOOKING ITEMS
     const items = await db
-      .select()
-      .from(bookingItem)
-      .where(eq(bookingItem.bookingId, Number(bookingId)));
+      .select({
+        id: bookingItem.id,
+        bookingId: bookingItem.bookingId,
 
-    return res.json({
-      message: 'Booking fetched',
+        productId: bookingItem.productId,
+        productName: bookingItem.productName,
+        productImage: bookingItem.productImage,
+        productPrice: bookingItem.productPrice,
+
+        quantity: bookingItem.quantity,
+
+        contactName: bookingItem.contactName,
+        contactNumber: bookingItem.contactNumber,
+
+        startTime: bookingItem.startTime,
+        endTime: bookingItem.endTime,
+
+        minGuestCount: bookingItem.minGuestCount,
+        maxGuestCount: bookingItem.maxGuestCount,
+
+        latitude: bookingItem.latitude,
+        longitude: bookingItem.longitude,
+
+        bookingStatus: bookingItem.bookingStatus,
+        paymentStatus: bookingItem.paymentStatus,
+
+        createdAt: bookingItem.createdAt,
+
+        // optional vendor per item
+        vendorId: bookingItem.vendorId,
+      })
+      .from(bookingItem)
+      .where(eq(bookingItem.bookingId, bookingId));
+
+    console.log('Fetched booking items:', {
       booking: bookingData,
-      items,
+      items: items || [],
+    });
+    // ✅ 3. FINAL RESPONSE
+    return res.json({
+      success: true,
+      data: {
+        booking: bookingData,
+        items: items || [],
+      },
     });
   } catch (err) {
-    return res.status(500).json({ message: 'Error fetching booking' });
+    console.log('Error fetching booking:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching booking',
+    });
   }
 };
-
 export const checkServiceAvailability = async (req, res) => {
   try {
     const { productId, startTime, endTime } = req.body;
@@ -443,12 +499,7 @@ export const checkServiceAvailability = async (req, res) => {
     const startDate = new Date(startTime);
     const endDate = new Date(endTime);
 
-    const [bookingDraftCount, bookingItemCount, productMaximumCount] =
-      await Promise.all([
-        getCountFromBookingDraft(startDate, endDate, productId),
-        getCountFromBookingItem(startDate, endDate, productId),
-        getProductMaximumCount(productId),
-      ]);
+    const [bookingDraftCount, bookingItemCount, productMaximumCount] = await Promise.all([getCountFromBookingDraft(startDate, endDate, productId), getCountFromBookingItem(startDate, endDate, productId), getProductMaximumCount(productId)]);
 
     const totalUsedServices = bookingDraftCount + bookingItemCount;
 
@@ -479,18 +530,52 @@ export const checkServiceAvailability = async (req, res) => {
 export const getMyBookings = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
+    const { completed } = req.query;
 
-    const bookings = await db.query.booking.findMany({
-      where: (t, { eq }) => eq(t.userId, userId),
-      orderBy: (t, { desc }) => desc(t.createdAt),
-    });
+    const whereCondition = completed === 'true' ? and(eq(booking.userId, userId), eq(booking.bookingStatus, 'COMPLETED')) : and(eq(booking.userId, userId), ne(booking.bookingStatus, 'COMPLETED'));
 
+    const bookings = await db
+      .select({
+        bookingId: booking.bookingId,
+        userId: booking.userId,
+        eventTypeId: booking.eventTypeId,
+        source: booking.source,
+        contactName: booking.contactName,
+        contactNumber: booking.contactNumber,
+        description: booking.description,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        minGuestCount: booking.minGuestCount,
+        maxGuestCount: booking.maxGuestCount,
+        latitude: booking.latitude,
+        longitude: booking.longitude,
+        bookingStatus: booking.bookingStatus,
+        paymentStatus: booking.paymentStatus,
+        vendorId: booking.vendorId,
+        totalAmount: booking.totalAmount,
+        adminCommissionPercentage: booking.adminCommissionPercentage,
+        platformFees: booking.platformFees,
+        bookedAt: booking.bookedAt,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        vendorName: vendors.businessName,
+        vendorLogo: vendors.logoUrl,
+      })
+      .from(booking)
+      .leftJoin(vendors, eq(booking.vendorId, vendors.vendorId))
+      .where(whereCondition)
+      .orderBy(desc(booking.createdAt));
+
+    console.log('Fetched bookings:', bookings);
     return res.json({
       success: true,
       data: bookings,
     });
   } catch (err) {
-    console.log('fetch booking error', err);
-    return res.status(500).json({ success: false });
+    console.error('fetch booking error', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch bookings',
+    });
   }
 };

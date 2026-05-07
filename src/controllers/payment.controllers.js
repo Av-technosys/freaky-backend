@@ -4,24 +4,33 @@ import { db } from '../../db/db.js';
 import { payment, booking, bookingItem, bookingDraft, products, vendors, priceBook, priceBookEntry, paymentVendor, users } from '../../db/schema.js';
 import { desc, and, eq, inArray } from 'drizzle-orm';
 import { createVendorNotification } from '../helpers/vendor.helper.js';
-import { sendEmail } from '../helpers/emailService.js';
 import { bookingConfirmed } from '../utils/email/bookingConfirmation.js';
 import { paymentConfirmation } from '../utils/email/paymentConfirmation.js';
 import { paymentReceived } from '../utils/email/paymentReceived.js';
+// import { sendMail } from '../helpers/emailService.js';
 
 export const createOrder = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
 
-    const { source, sourceId } = req.body;
+    const { source, sourceId, bookingDraftId } = req.body;
 
+    console.log(source, sourceId, userId, bookingDraftId);
     // Source CART || EVENT
     // BOOKING_DRAFT -> PRODCUT_ID
     // PRODUCT_ID --> VENDOR_ID
     // VENDORID --> VENDOR_ACTIVE_PRICEBOOK
     // VENDOR_ACTIVE_PRICEBOOK --> SERVICE_PRICING
 
-    const condition = source === 'CART' ? and(eq(bookingDraft.sourceId, sourceId), eq(bookingDraft.source, source)) : and(eq(bookingDraft.sourceId, sourceId), eq(bookingDraft.source, source));
+    let condition;
+
+    if (source === 'EVENT') {
+      condition = and(eq(bookingDraft.source, 'EVENT'), eq(bookingDraft.sourceId, sourceId));
+    }
+
+    if (source === 'CART') {
+      condition = and(eq(bookingDraft.source, 'CART'), eq(bookingDraft.bookingDraftId, bookingDraftId));
+    }
 
     const bookingResult = await db
       .select({
@@ -32,6 +41,7 @@ export const createOrder = async (req, res) => {
         contactName: bookingDraft.contactName,
         contactNumber: bookingDraft.contactNumber,
         startTime: bookingDraft.startTime,
+        quantity: bookingDraft.quantity,
         endTime: bookingDraft.endTime,
         vendorId: products.vendorId,
         productName: products.title,
@@ -99,9 +109,10 @@ export const createOrder = async (req, res) => {
 
     const selectedQuery = getSelectedPricing(bookingResult);
     const total = selectedQuery.reduce((acc, item) => {
-      return Number(acc) + Number(item.price);
+      return acc + Number(item.price) * Number(item.quantity || 1);
     }, 0);
 
+    console.log('selectedQuery finding closest', selectedQuery);
     const [newBooking] = await db
       .insert(booking)
       .values({
@@ -134,7 +145,7 @@ export const createOrder = async (req, res) => {
         productImage: item.productImage,
         productPrice: item.price,
         vendorId: item.vendorId,
-        quantity: 1,
+        quantity: item.quantity,
       };
     });
 
@@ -205,66 +216,76 @@ export const verifyPayment = async (req, res) => {
       // create vendor payment
       await db.insert(paymentVendor).values(vendorPaymentValues);
       console.log('Vendor payment inserted');
+
+      // remove booking drafts after successful booking
+      const bookingProductIds = bookingItems.map((item) => item.productId);
+
+      await db.delete(bookingDraft).where(and(eq(bookingDraft.source, bookingDetails.source), inArray(bookingDraft.productId, bookingProductIds)));
+      console.log('Booking drafts removed');
+      return res.json({
+        success: true,
+        bookingId: bookingDetails.bookingId,
+      });
       // send mail
 
-      const name = bookingDetails.contactName;
-      const [bookingUser] = await db.select().from(users).where(eq(users.userId, bookingDetails.userId));
+      // const name = bookingDetails.contactName;
+      // const [bookingUser] = await db.select().from(users).where(eq(users.userId, bookingDetails.userId));
 
-      if (!bookingUser || !bookingUser.email) return res.json({ status: false, message: 'User email id not found!!' });
+      // if (!bookingUser || !bookingUser.email) return res.json({ status: false, message: 'User email id not found!!' });
 
-      const formattedDate = new Date(bookingDetails.startTime).toLocaleDateString('en-IN');
-      const formattedTime = new Date(bookingDetails.startTime).toLocaleTimeString('en-IN');
+      // const formattedDate = new Date(bookingDetails.startTime).toLocaleDateString('en-IN');
+      // const formattedTime = new Date(bookingDetails.startTime).toLocaleTimeString('en-IN');
 
-      const services = bookingItems.map((i) => i.productName).join(', ');
+      // const services = bookingItems.map((i) => i.productName).join(', ');
 
-      const location = `${bookingDetails.latitude || ''}, ${bookingDetails.longitude || ''}`;
+      // const location = `${bookingDetails.latitude || ''}, ${bookingDetails.longitude || ''}`;
 
-      try {
-        await sendMail({
-          to: bookingUser.email,
-          subject: 'Booking Confirmed 🎉',
-          body: bookingConfirmed({
-            bookingId: bookingDetails.bookingId,
-            name,
-            services,
-            date: formattedDate,
-            time: formattedTime,
-            location,
-          }),
-        });
+      // try {
+      // await sendMail({
+      //   to: bookingUser.email,
+      //   subject: 'Booking Confirmed 🎉',
+      //   body: bookingConfirmed({
+      //     bookingId: bookingDetails.bookingId,
+      //     name,
+      //     services,
+      //     date: formattedDate,
+      //     time: formattedTime,
+      //     location,
+      //   }),
+      // });
 
-        await sendMail({
-          to: bookingUser.email,
-          subject: 'Payment Successful 💰',
-          body: paymentConfirmation({
-            bookingId: bookingDetails.bookingId,
-            name,
-            services,
-            date: formattedDate,
-            time: formattedTime,
-            location,
-            paymentMethod: 'Razorpay',
-          }),
-        });
+      // await sendMail({
+      //   to: bookingUser.email,
+      //   subject: 'Payment Successful 💰',
+      //   body: paymentConfirmation({
+      //     bookingId: bookingDetails.bookingId,
+      //     name,
+      //     services,
+      //     date: formattedDate,
+      //     time: formattedTime,
+      //     location,
+      //     paymentMethod: 'Razorpay',
+      //   }),
+      // });
 
-        // if (vendorEmail) {
-        //   await sendMail({
-        //     to: vendorEmail,
-        //     subject: 'New Payment Received',
-        //     body: paymentReceived({
-        //       bookingId: bookingDetails.bookingId,
-        //       name,
-        //       services,
-        //       date: formattedDate,
-        //       time: formattedTime,
-        //       location,
-        //       paymentMethod: 'Razorpay',
-        //     }),
-        //   });
-        // }
-      } catch (e) {
-        console.error('Mail error', e);
-      }
+      // if (vendorEmail) {
+      //   await sendMail({
+      //     to: vendorEmail,
+      //     subject: 'New Payment Received',
+      //     body: paymentReceived({
+      //       bookingId: bookingDetails.bookingId,
+      //       name,
+      //       services,
+      //       date: formattedDate,
+      //       time: formattedTime,
+      //       location,
+      //       paymentMethod: 'Razorpay',
+      //     }),
+      //   });
+      // }
+      // } catch (e) {
+      //   console.error('Mail error', e);
+      // }
 
       try {
         // if (vendorId) {
@@ -341,127 +362,122 @@ export const verifyPayment = async (req, res) => {
     //   .select()
     //   .from(bookingItem)
     //   .where(eq(bookingItem.bookingId, bookingId));
-
-    return res.json({
-      success: true,
-      bookingId: result.booking.bookingId,
-    });
   } catch (err) {
     console.error('verify error', err);
     return res.status(500).json({ success: false });
   }
 };
 
-export const createBookingFromDraft = async ({ tx, userId, source, sourceId, amount, bookingDetails }) => {
-  // console.log(
-  //   'Creating booking from draft with source',
-  //   source,
-  //   'and sourceId',
-  //   sourceId
-  // );
-  const drafts = await tx.query.bookingDraft.findMany({
-    where: (t, { eq, and }) => and(eq(t.source, source), eq(t.sourceId, sourceId)),
-  });
+// export const createBookingFromDraft = async ({ tx, userId, source, sourceId, amount, bookingDetails }) => {
+//   // console.log(
+//   //   'Creating booking from draft with source',
+//   //   source,
+//   //   'and sourceId',
+//   //   sourceId
+//   // );
+//   const drafts = await tx.query.bookingDraft.findMany({
+//     where: (t, { eq, and }) => and(eq(t.source, source), eq(t.sourceId, sourceId)),
+//   });
 
-  if (!drafts.length) {
-    throw new Error('No booking drafts found');
-  }
+//   if (!drafts.length) {
+//     throw new Error('No booking drafts found');
+//   }
 
-  const baseData = bookingDetails || drafts[0];
+//   const baseData = bookingDetails || drafts[0];
 
-  const productIds = drafts.map((d) => d.productId);
+//   const productIds = drafts.map((d) => d.productId);
 
-  const productsData = await tx
-    .select({
-      productId: products.productId,
-      title: products.title,
-      bannerImage: products.bannerImage,
-      vendorId: products.vendorId,
-    })
-    .from(products)
-    .where(inArray(products.productId, productIds));
+//   const productsData = await tx
+//     .select({
+//       productId: products.productId,
+//       title: products.title,
+//       bannerImage: products.bannerImage,
+//       vendorId: products.vendorId,
+//     })
+//     .from(products)
+//     .where(inArray(products.productId, productIds));
 
-  const productMap = new Map(productsData.map((p) => [p.productId, p]));
+//   const productMap = new Map(productsData.map((p) => [p.productId, p]));
 
-  const totalAmount = drafts.reduce((sum, d) => {
-    return sum + Number(d.price || 0) * (d.quantity || 1);
-  }, 0);
-  const firstProduct = productMap.get(baseData.productId);
+//   const totalAmount = drafts.reduce((sum, d) => {
+//     return sum + Number(d.price || 0) * (d.quantity || 1);
+//   }, 0);
+//   const firstProduct = productMap.get(baseData.productId);
 
-  const vendorIds = new Set(productsData.map((p) => p.vendorId));
+//   const vendorIds = new Set(productsData.map((p) => p.vendorId));
 
-  if (vendorIds.size > 1) {
-    throw new Error('Multiple vendors not supported in one booking');
-  }
+//   if (vendorIds.size > 1) {
+//     throw new Error('Multiple vendors not supported in one booking');
+//   }
 
-  const vendorId = [...vendorIds][0];
+//   const vendorId = [...vendorIds][0];
 
-  const [createdBooking] = await tx
-    .insert(booking)
-    .values({
-      userId,
-      source,
+//   const [createdBooking] = await tx
+//     .insert(booking)
+//     .values({
+//       userId,
+//       source,
 
-      contactName: baseData.contactName,
-      contactNumber: baseData.contactNumber,
+//       contactName: baseData.contactName,
+//       contactNumber: baseData.contactNumber,
 
-      startTime: new Date(baseData.startTime),
-      endTime: new Date(baseData.endTime),
+//       startTime: new Date(baseData.startTime),
+//       endTime: new Date(baseData.endTime),
 
-      minGuestCount: baseData.minGuestCount,
-      maxGuestCount: baseData.maxGuestCount,
+//       minGuestCount: baseData.minGuestCount,
+//       maxGuestCount: baseData.maxGuestCount,
 
-      latitude: baseData.latitude,
-      longitude: baseData.longitude,
+//       latitude: baseData.latitude,
+//       longitude: baseData.longitude,
 
-      vendorId: vendorId || null,
+//       vendorId: vendorId || null,
 
-      totalAmount,
-    })
-    .returning({
-      bookingId: booking.bookingId,
-    });
+//       totalAmount,
+//     })
+//     .returning({
+//       bookingId: booking.bookingId,
+//     });
 
-  const bookingId = createdBooking.bookingId;
+//   const bookingId = createdBooking.bookingId;
 
-  const perItemPrice = totalAmount / drafts.length;
+//   const perItemPrice = totalAmount / drafts.length;
 
-  const bookingItems = drafts.map((draft) => {
-    const product = productMap.get(draft.productId);
-    const ProductPrice = Number(draft.price ?? 0);
+//   const bookingItems = drafts.map((draft) => {
+//     const product = productMap.get(draft.productId);
+//     const ProductPrice = Number(draft.price ?? 0);
 
-    return {
-      bookingId,
-      productId: draft.productId,
+//     return {
+//       bookingId,
+//       productId: draft.productId,
 
-      productName: product?.title || null,
-      productImage: product?.bannerImage || null,
-      vendorId: product?.vendorId || null,
+//       productName: product?.title || null,
+//       productImage: product?.bannerImage || null,
+//       vendorId: product?.vendorId || null,
 
-      contactName: baseData.contactName,
-      contactNumber: baseData.contactNumber,
+//       contactName: baseData.contactName,
+//       contactNumber: baseData.contactNumber,
 
-      startTime: new Date(baseData.startTime),
-      endTime: new Date(baseData.endTime),
+//       startTime: new Date(baseData.startTime),
+//       endTime: new Date(baseData.endTime),
 
-      minGuestCount: baseData.minGuestCount,
-      maxGuestCount: baseData.maxGuestCount,
+//       minGuestCount: baseData.minGuestCount,
+//       maxGuestCount: baseData.maxGuestCount,
 
-      productPrice: ProductPrice,
+//       productPrice: ProductPrice,
 
-      quantity: draft.quantity || 1,
+//       quantity: draft.quantity || 1,
 
-      bookingStatus: 'CONFIRMED',
-      paymentStatus: 'SUCCESS',
-    };
-  });
+//       bookingStatus: 'CONFIRMED',
+//       paymentStatus: 'SUCCESS',
+//     };
+//   });
 
-  await tx.insert(bookingItem).values(bookingItems);
+//   await tx.insert(bookingItem).values(bookingItems);
 
-  await tx.delete(bookingDraft).where(and(eq(bookingDraft.source, source), eq(bookingDraft.sourceId, sourceId)));
+//   await tx.delete(bookingDraft).where(and(eq(bookingDraft.source, source), eq(bookingDraft.sourceId, sourceId)));
 
-  return { bookingId };
-};
+//   return { bookingId };
+// };
 
 export const fetchVendorPayments = async (req, res) => {
   try {

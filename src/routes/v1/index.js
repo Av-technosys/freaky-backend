@@ -9,6 +9,7 @@ import product from './product.route.js';
 import admin from './admin.route.js';
 import booking from './booking.route.js';
 import payment from './payment.route.js';
+import email from './emailRoutes.js';
 
 const router = Router();
 
@@ -21,5 +22,6 @@ router.use('/product', product);
 router.use('/admin', admin);
 router.use('/booking', booking);
 router.use('/payment', payment);
+router.use('/email', email);
 
 export default router;

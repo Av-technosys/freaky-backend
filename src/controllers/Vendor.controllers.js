@@ -1,6 +1,6 @@
 import { and, asc, eq, ilike, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
-import { vendorEmployees, vendorEmployeeRequests, vendorOwnerships, vendors, products, featuredCategorys, featuredProdcuts, priceBook, priceBookEntry, productMedia, vendorDocuments, users, vendorInvites, vendorNotifications, paymentVendor, booking } from '../../db/schema.js';
+import { vendorEmployees, vendorEmployeeRequests, vendorOwnerships, vendors, products, featuredCategorys, featuredProdcuts, priceBook, priceBookEntry, productMedia, vendorDocuments, users, vendorInvites, vendorNotifications, paymentVendor, booking, vendorAvailability } from '../../db/schema.js';
 import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
 import { cognito } from '../../lib/cognitoClient.js';
 import { USER_POOL_ID } from '../../const/env.js';
@@ -1553,7 +1553,6 @@ export const getVendorOwnershipDetails = async (req, res) => {
 export const getVendorEmployees = async (req, res) => {
   try {
     const raw = req.user['custom:vendor_ids'];
-
     let vendorId;
 
     try {
@@ -1626,34 +1625,32 @@ export const createVendorEmployeeInvitation = async (req, res) => {
 
 export const updateEmployeePermissions = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
-    const permissions = req.body;
-    const { employeeId } = req.params;
+    const userId = req.params.empUserId;
 
-    if (!vendorId) {
+    if (!userId) {
       return res.status(404).json({
-        message: 'No vendor found.',
+        message: 'id not found.',
       });
     }
+    console.log(userId);
+    const permissions = req.body;
+    if (!Array.isArray(permissions)) return res.json({ status: false });
 
-    const [updateEmployeeRes] = await db
-      .update(vendorEmployees)
-      .set({ permissions: permissions })
-      .where(and(eq(vendorEmployees.vendorEmployeeId, employeeId), eq(vendorEmployees.vendorId, vendorId)))
-      .returning();
+    await db.update(vendorEmployees).set({ permissions: permissions }).where(eq(vendorEmployees.userId, userId));
+    const [updateUserRes] = await db.select({ email: users.email }).from(users).where(eq(users.userId, userId));
 
+    if (!updateUserRes) return res.json({ status: false });
+
+    console.log('email: ', updateUserRes.email);
     const userAttribute = [
       {
         Name: 'custom:permissions',
         Value: JSON.stringify(permissions),
       },
     ];
-    const [user] = await db.select({ email: users.email, userId: users.userId }).from(users).where(eq(users.userId, updateEmployeeRes.userId));
 
     // add userid to cognito attribute
-
-    await Promise.all([cognitoUpdateUserAttribute({ email: user.email, userAttribute }), cognitoAdminUserGlobalSignOut({ email: user.email })]);
+    await Promise.all([cognitoUpdateUserAttribute({ email: updateUserRes.email, userAttribute }), cognitoAdminUserGlobalSignOut({ email: updateUserRes.email })]);
 
     return res.status(200).json({
       message: 'Permissions updated  successfully.',
@@ -1666,35 +1663,19 @@ export const updateEmployeePermissions = async (req, res) => {
 
 export const getEmployeePermissions = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
-    const { employeeId } = req.params;
+    const userId = req.user['custom:user_id'];
 
-    if (!vendorId) {
+    if (!userId) {
       return res.status(404).json({
-        message: 'No vendor found.',
+        message: 'No User id not found.',
       });
     }
 
-    const [user] = await db
-      .select({ email: users.email, userId: users.userId })
-      .from(vendorEmployees)
-      .innerJoin(users, eq(vendorEmployees.userId, users.userId))
-      .where(and(eq(vendorEmployees.vendorEmployeeId, employeeId), eq(vendorEmployees.vendorId, vendorId)));
-
-    if (!user) {
-      return res.status(404).json({
-        message: 'No user found.',
-      });
-    }
-
-    // add userid to cognito attribute
-    const data = await cognitoAdminGetUser({ email: user.email });
-    const userPermissionArray = JSON.parse(JSON.stringify(data?.UserAttributes?.find((attr) => attr.Name === 'custom:permissions')?.Value || []));
+    const [vendorEmployeeUser] = await db.select().from(vendorEmployees).where(eq(vendorEmployees.userId, userId));
 
     return res.status(200).json({
       message: 'Permissions fetched successfully.',
-      data: userPermissionArray,
+      data: vendorEmployeeUser,
     });
   } catch (error) {
     console.error('Error: ', error);
@@ -1987,6 +1968,7 @@ export const getAllVendorPayments = async (req, res) => {
       .select({
         paymentId: paymentVendor.paymentId,
         paymentStatus: paymentVendor.paymentStatus,
+        amount: paymentVendor.amount,
         createdAt: paymentVendor.createdAt,
         bookingItemId: paymentVendor.bookingItemId,
         contactName: bookingItem.contactName,
@@ -1998,6 +1980,50 @@ export const getAllVendorPayments = async (req, res) => {
       .leftJoin(products, eq(products.productId, bookingItem.productId));
 
     return res.json({ data: paymentDetails, status: true });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const getVendorAvailability = async (req, res) => {
+  try {
+    const query = req.query;
+    let vendorId = query?.vendorId;
+    if (!vendorId) {
+      const raw = req.user['custom:vendor_ids'];
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    }
+    if (!vendorId) return res.json({ status: false, msg: 'Vendor ID missing' });
+
+    const availabilityData = await db
+      .select()
+      .from(vendorAvailability)
+      .where(eq(vendorAvailability.vendorId, Number(vendorId)));
+
+    return res.json({ data: availabilityData, status: true });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const updateVendorAvailability = async (req, res) => {
+  try {
+    const weekDays = req.body;
+    const raw = req.user['custom:vendor_ids'];
+    let vendorId;
+    const parsed = JSON.parse(raw);
+    vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+
+    if (!weekDays || !vendorId) return res.json({ status: false, msg: 'Vendor Id or week days missing' });
+    if (!Array.isArray(weekDays)) return res.json({ status: false, msg: 'Week days should be an array' });
+
+    const formatedData = weekDays.map((item) => ({ ...item, vendorId }));
+
+    await db.delete(vendorAvailability).where(eq(vendorAvailability.vendorId, Number(vendorId)));
+    await db.insert(vendorAvailability).values(formatedData);
+
+    return res.json({ msg: 'Availability updated successfully.', status: true });
   } catch (error) {
     console.log(error);
   }

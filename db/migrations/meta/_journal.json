@@ -50,6 +50,13 @@
       "when": 1777887872757,
       "tag": "0006_freezing_blue_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778145606276,
+      "tag": "0007_tired_anthem",
+      "breakpoints": true
     }
   ]
 }

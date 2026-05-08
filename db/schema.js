@@ -16,12 +16,10 @@ export const paymentStatusEnum = enums.paymentStatusEnum;
 export const eventStatusEnum = enums.eventStatusEnum;
 export const vendorStatusEnum = enums.vendorStatusEnum;
 export const platformEnum = enums.platformEnum;
-export const paymentPendingTrackerStatusEnum =
-  enums.paymentPendingTrackerStatusEnum;
+export const paymentPendingTrackerStatusEnum = enums.paymentPendingTrackerStatusEnum;
 export const paymentTypeEnum = enums.paymentTypeEnum;
 export const bookingSourceEnum = enums.bookingSourceEnum;
-export const applicationContractReferenceEnum =
-  enums.applicationContractReferenceEnum;
+export const applicationContractReferenceEnum = enums.applicationContractReferenceEnum;
 
 export const userTypes = user.userType;
 export const users = user.user;
@@ -63,6 +61,8 @@ export const featuredProdcuts = vendor.featuredProdcut;
 export const productMedia = vendor.productMedia;
 export const productAddons = vendor.productAddon;
 export const applicationContract = vendor.applicationContract;
+export const vendorAvailability = vendor.vendorAvailability;
+export const vendorHolidays = vendor.vendorHolidays;
 
 // export const contractProductType = vendor.contractProductType;
 // export const featuredCategoryProducts = vendor.featuredCategoryProduct;

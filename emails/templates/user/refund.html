@@ -1,5 +1,4 @@
-export const welcome = ({ name }) => {
-  return `
+ `
      <body style="margin:0; padding:0; background-color:#f5f5f5;">
      <div style="height:5px; background-color:#ff5722; width:100%"></div>
     <div style="height:5px; background-color:#ffc107; width:100%"></div>
@@ -19,93 +18,95 @@ export const welcome = ({ name }) => {
         alt="logo"
         style="max-width:180px; width:auto; max-height:48px;"
       />
-    </div>    <!-- Welcome Image -->
-    <div style="margin-bottom:14px;">
-
-      <img src="https://freaky-files.s3.ap-south-1.amazonaws.com/email-media/freekywelcome.png" alt="Welcome" style="width: 100%; max-width: 280px; height: auto" />
     </div>
+        <!-- Welcome Image -->
+    <div style="margin-bottom:14px;">
+            <img src="https://freaky-files.s3.ap-south-1.amazonaws.com/email-media/cancelbooking.png" alt="Welcome" style="width: 100%; max-width: 280px; height: auto" />
+        </div>
 
-  <!-- Heading -->
-    <h2 style="
+        <!-- Heading -->
+        <h2 style="
       font-size:30px;
       color:#3e3e3e;
-      margin:0 0 12px;
+      margin:0 0 10px;
       font-weight:700;
       line-height:1.3;
     ">
-      Welcome to<br />
-      <span style="color:#ffc107; font-weight:900;">Freaky</span>
-      <span style="color:#ff5722; font-weight:900;">Chimp</span>
-    </h2>
+            Refund Initiated for Your Cancelled Booking
+        </h2>
 
-    <!-- Message -->
-    <p style="
+        <!-- Message -->
+        <p style="
       color:#3e3e3e;
       font-size:15px;
       line-height:1.6;
       margin:0 0 26px;
       padding:0 14px;
     ">
-      Hi Ramesh, your account is all set! You can now start exploring everything
-      we’ve built to make your experience smooth, enjoyable, and valuable.
-    </p>
+            Hi Ramesh, we’d like to inform you that your event booking has been
+            cancelled by the customer and the refund process has been initiated.
+            Please find the details below.
+        </p>
 
-    <!-- CTA Button -->
-    <a href="#" style="
-        display:inline-block;
-        width:100%;
-        max-width:260px;
-        padding:14px 0;
-        background-color:#ff5a1f;
-        color:#ffffff;
-        text-decoration:none;
-        border-radius:30px;
-        font-size:16px;
-        font-weight:600;
-        margin-bottom:36px;
-      ">
-      Explore Now
-    </a>
-
-    <!-- Next Steps -->
-    <div style="
+        <!-- Cancellation Details Card -->
+        <div style="
       background-color:#fffbee;
       border-radius:14px;
       padding:20px;
       margin-bottom:26px;
+      text-align:left;
     ">
 
-      <h3 style="
+            <p style="
         font-size:20px;
         color:#3e3e3e;
-        margin:0 0 14px;
+        margin:0 0 16px;
         font-weight:700;
+        text-align:center;
       ">
-        What you can do next
-      </h3>
+                Cancellation & Refund Details
+            </p>
 
-      <p style="color:#555; font-size:14px; margin:6px 0;">
-        🚀 Explore our latest features
-      </p>
-      <p style="color:#555; font-size:14px; margin:6px 0;">
-        🛍️ Discover products & services curated for you
-      </p>
-      <p style="color:#555; font-size:14px; margin:6px 0;">
-        🔔 Stay updated with new launches and offers
-      </p>
+            <div style="font-size:15px; line-height:1.9; color:#1f2937;">
 
-    </div>
+                <div style="display:flex; margin-bottom:6px;">
+                    <div style="width:170px; font-weight:bold;">Cancelled By:</div>
+                    <div style="text-align:right; width:100%;">Ravindra Singh</div>
+                </div>
 
-    <!-- Footer Message -->
-    <p style="
+                <div style="display:flex; margin-bottom:6px;">
+                    <div style="width:170px; font-weight:bold;">Cancellation Date:</div>
+                    <div style="text-align:right; width:100%;">15 Dec, 2025</div>
+                </div>
+
+                <div style="display:flex;">
+                    <div style="width:170px; font-weight:bold;">Refund Status:</div>
+                    <div style="
+            text-align:right;
+            width:100%;
+            font-weight:bold;
+            color:#f59e0b;
+          ">
+                        Initiated (Within 3 Working Days)
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Footer Message -->
+        <p style="
       color:#999;
       font-size:12px;
       line-height:1.6;
       margin:0 0 20px;
     ">
-      Thank you for choosing Freaky Chimp<br />
-      We’re excited to be part of your journey!
-    </p>
+            Thank you for choosing Freaky Chimp<br />
+            We’re always here to support you.
+        </p>
+
+
+
  <!-- Social Icons -->
         <div style="
         margin: auto;
@@ -147,5 +148,4 @@ export const welcome = ({ name }) => {
         </p>
 
     </div>
-</body>      `;
-};
+</body>`

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 import { Router } from 'express';
 import { reviewMedia, reviews, users } from './../../../db/schema.js';
 import { db } from '../../../db/db.js';
@@ -7,7 +7,18 @@ const vendorReviewRouter = Router();
 vendorReviewRouter.get('/', async (req, res) => {
   const { page, page_size, time } = req.query;
 
-  const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
+  const raw = req.user['custom:vendor_ids'];
+
+  let vendorId;
+
+  try {
+    const parsed = JSON.parse(raw);
+    vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+  } catch {
+    vendorId = raw;
+  }
+
+  vendorId = Number(vendorId);
 
   const limit = Number(page_size);
   const offset = (Number(page) - 1) * limit;
@@ -17,33 +28,27 @@ vendorReviewRouter.get('/', async (req, res) => {
   if (vendorId) {
     filters.push(eq(reviews.vendorId, vendorId));
   }
-  const now = Date.now();
+  // const now = Date.now();
 
-  try {
-    if (time) {
-      switch (time) {
-        case 'recent':
-          filters.push(
-            gte(reviews.createdAt, new Date(now - 24 * 60 * 60 * 1000))
-          );
-          break;
-        case 'last_week':
-          filters.push(
-            gt(reviews.createdAt, new Date(now - 7 * 24 * 60 * 60 * 1000))
-          );
-          break;
-        case 'last_month':
-          filters.push(
-            gt(reviews.createdAt, new Date(now - 30 * 24 * 60 * 60 * 1000))
-          );
-          break;
-        default:
-          break;
-      }
-    }
-  } catch (error) {
-    console.log(error);
-  }
+  // try {
+  //   if (time) {
+  //     switch (time) {
+  //       case 'recent':
+  //         filters.push(gte(reviews.createdAt, new Date(now - 24 * 60 * 60 * 1000)));
+  //         break;
+  //       case 'last_week':
+  //         filters.push(gt(reviews.createdAt, new Date(now - 7 * 24 * 60 * 60 * 1000)));
+  //         break;
+  //       case 'last_month':
+  //         filters.push(gt(reviews.createdAt, new Date(now - 30 * 24 * 60 * 60 * 1000)));
+  //         break;
+  //       default:
+  //         break;
+  //     }
+  //   }
+  // } catch (error) {
+  //   console.log(error);
+  // }
   //   if (page) {
   //     filters.push(eq(reviews.page, page));
   //   }
@@ -53,7 +58,7 @@ vendorReviewRouter.get('/', async (req, res) => {
   const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
   try {
-    const vnedorReviews = await db
+    const vendorReviews = await db
       .select({
         id: reviews.reviewId,
         productId: reviews.productId,
@@ -65,16 +70,52 @@ vendorReviewRouter.get('/', async (req, res) => {
         userId: reviews.userId,
         userName: users.firstName,
         userImage: users.profileImage,
+
+        // media fields
+        mediaId: reviewMedia.reviewMediaId,
+        mediaUrl: reviewMedia.mediaUrl,
+        mediaType: reviewMedia.mediaType,
       })
       .from(reviews)
       .where(whereClause)
-      .limit(limit)
-      .offset(offset)
-      .innerJoin(users, eq(reviews.userId, users.userId));
+      .innerJoin(users, eq(reviews.userId, users.userId))
+      .leftJoin(reviewMedia, eq(reviews.reviewId, reviewMedia.reviewId))
+      .orderBy(desc(reviews.createdAt));
 
-    return res
-      .status(200)
-      .json({ meddage: 'Review fetched successfully', data: vnedorReviews });
+    console.log(vendorReviews);
+
+    // group media separately
+    const reviewsMap = new Map();
+
+    for (const row of vendorReviews) {
+      if (!reviewsMap.has(row.id)) {
+        reviewsMap.set(row.id, {
+          id: row.id,
+          productId: row.productId,
+          vendorId: row.vendorId,
+          title: row.title,
+          description: row.description,
+          rating: row.rating,
+          createdAt: row.createdAt,
+          userId: row.userId,
+          userName: row.userName,
+          userImage: row.userImage,
+          userImages: [],
+        });
+      }
+
+      if (row.mediaId) {
+        reviewsMap.get(row.id).userImages.push({
+          id: row.mediaId,
+          url: row.mediaUrl,
+          type: row.mediaType,
+        });
+      }
+    }
+
+    const formattedReviews = Array.from(reviewsMap.values());
+
+    return res.status(200).json({ meddage: 'Review fetched successfully', data: formattedReviews });
   } catch (error) {
     console.error('Error', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -114,22 +155,8 @@ vendorReviewRouter.get('/:id', async (req, res) => {
       .leftJoin(reviewMedia, eq(reviewMedia.reviewId, reviews.reviewId))
       .innerJoin(users, eq(reviews.userId, users.userId))
       .where(eq(reviews.reviewId, id))
-      .groupBy(
-        reviews.reviewId,
-        reviews.productId,
-        reviews.vendorId,
-        reviews.title,
-        reviews.description,
-        reviews.rating,
-        reviews.createdAt,
-        reviews.userId,
-        users.firstName,
-        users.lastName,
-        users.profileImage
-      );
-    return res
-      .status(200)
-      .json({ message: 'Review fetched successfully', data: review });
+      .groupBy(reviews.reviewId, reviews.productId, reviews.vendorId, reviews.title, reviews.description, reviews.rating, reviews.createdAt, reviews.userId, users.firstName, users.lastName, users.profileImage);
+    return res.status(200).json({ message: 'Review fetched successfully', data: review });
   } catch (error) {
     console.error('Error', error);
     return res.status(500).json({ message: 'Internal server error' });

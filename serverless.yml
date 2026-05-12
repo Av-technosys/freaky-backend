@@ -1,17 +1,17 @@
 # "org" ensures this Service is used with the correct Serverless Framework Access Key.
-org: freakychimp
+org: freakyt
 # "app" enables Serverless Framework Dashboard features and sharing them with other Services.
-app: freakychimp
+app: my-app
 # "service" is the name of this project. This will also be added to your AWS resource names.
-service: candidate
+service: my-service
 
 provider:
   name: aws
   runtime: nodejs20.x
   region: ap-south-1
-  profile: freaky-dev
+  profile: freaky-dev1
   deploymentBucket:
-    name: freaky-serverless-deployments
+    name: freaky-serverless
 
   logs:
     httpApi: true # <--- ADD THIS

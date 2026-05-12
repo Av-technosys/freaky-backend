@@ -16,10 +16,10 @@ export const paymentStatusEnum = enums.paymentStatusEnum;
 export const eventStatusEnum = enums.eventStatusEnum;
 export const vendorStatusEnum = enums.vendorStatusEnum;
 export const platformEnum = enums.platformEnum;
-export const paymentPendingTrackerStatusEnum =
-  enums.paymentPendingTrackerStatusEnum;
+export const paymentPendingTrackerStatusEnum = enums.paymentPendingTrackerStatusEnum;
 export const paymentTypeEnum = enums.paymentTypeEnum;
 export const bookingSourceEnum = enums.bookingSourceEnum;
+export const applicationContractReferenceEnum = enums.applicationContractReferenceEnum;
 
 export const userTypes = user.userType;
 export const users = user.user;
@@ -31,11 +31,11 @@ export const bookingDraft = user.bookingDraft;
 export const booking = user.booking;
 export const bookingItem = user.bookingItem;
 export const payment = user.payment;
-export const paymentPendingTracker = user.paymentPendingTracker;
+export const paymentVendor = user.paymentVendor;
 export const reviews = user.review;
 export const reviewMedia = user.reviewMedia;
 export const pricingSettings = user.pricingSetting;
-export const taxZones = user.taxZone;
+// export const taxZones = user.taxZone;
 
 export const eventType = event.eventType;
 export const eventProductType = event.eventProductType;
@@ -51,7 +51,6 @@ export const vendorInvites = vendor.vendorInvite;
 export const vendorEmployeeRequests = vendor.vendorEmployeeRequest;
 export const vendorMedias = vendor.vendorMedia;
 export const vendorEmployees = vendor.vendorEmployee;
-export const vendorContracts = vendor.vendorContract;
 export const priceBook = vendor.priceBook;
 export const priceBookEntry = vendor.priceBookEntry;
 export const productTypes = vendor.productType;
@@ -61,7 +60,9 @@ export const featuredCategorys = vendor.featuredCategory;
 export const featuredProdcuts = vendor.featuredProdcut;
 export const productMedia = vendor.productMedia;
 export const productAddons = vendor.productAddon;
-export const contractProductTypes = vendor.contractProductType;
+export const applicationContract = vendor.applicationContract;
+export const vendorAvailability = vendor.vendorAvailability;
+export const vendorHolidays = vendor.vendorHolidays;
 
 // export const contractProductType = vendor.contractProductType;
 // export const featuredCategoryProducts = vendor.featuredCategoryProduct;

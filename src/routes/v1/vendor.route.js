@@ -1,42 +1,8 @@
 import { Router } from 'express';
-import {
-  createVendor,
-  createVendorEmpRequest,
-  getCompanyProfile,
-  listAllVendors,
-  fetchVendorProducts,
-  getAllFeaturedCategories,
-  getVendorInfo,
-  listAllPriceBooksById,
-  deletePriceBookById,
-  updatePriceBookById,
-  createVendorDocument,
-  getVendorCompanyInfo,
-  getVendorDocuments,
-  deleteVendorDocument,
-  getVendorOwnershipDetails,
-  updateVendorDocument,
-  getVendorInvites,
-  requestedVendors,
-  createVendorEmployeeRequest,
-  updateBankDetails,
-  updateContactDetails,
-  updateCompanyDetails,
-  updateOwnershipDetails,
-  updateAddressDetails,
-  createCompanyDetails,
-  getVendorNotifications,
-  getAllSearchItems,
-  deleteCompanyLogo,
-  acceptVendorInvite,
-  updateCompanyLogo,
-} from '../../controllers/Vendor.controllers.js';
+import { createVendor, createVendorEmpRequest, getCompanyProfile, listAllVendors, fetchVendorProducts, getAllFeaturedCategories, getVendorInfo, getVendorInfoForProduct, listAllPriceBooksById, deletePriceBookById, updatePriceBookById, createVendorDocument, getVendorCompanyInfo, getVendorDocuments, deleteVendorDocument, getVendorOwnershipDetails, updateVendorDocument, getVendorInvites, requestedVendors, createVendorEmployeeRequest, updateBankDetails, updateContactDetails, updateCompanyDetails, updateOwnershipDetails, updateAddressDetails, createCompanyDetails, getVendorNotifications, getAllSearchItems, deleteCompanyLogo, acceptVendorInvite, updateCompanyLogo, getAllVendorPayments, getVendorAvailability, updateVendorAvailability } from '../../controllers/Vendor.controllers.js';
 import { checkVendor } from '../../middleware/vendor.middleware.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
-import {
-  getAllProductMeta,
-  getAllProducts,
-} from '../../controllers/product.controller.js';
+import { getAllProductMeta, getAllProducts } from '../../controllers/product.controller.js';
 import vendorReviewRouter from './vendor.review.router.js';
 import vendorcalendarRouter from './vendor.calendar.route.js';
 import vendorpricebookRouter from './vendor.pricebook.router.js';
@@ -46,27 +12,20 @@ import vendorEmployeeRouter from './vendor.employee.router.js';
 import vendorNotificationRouter from './vendor.notifications.router.js';
 const router = Router();
 
-router.get(
-  '/company_profile',
-  confirmUserToken,
-  checkVendor,
-  getCompanyProfile
-);
+router.get('/company_profile', confirmUserToken, checkVendor, getCompanyProfile);
 router.use('/review', confirmUserToken, vendorReviewRouter);
 router.use('/calendar', vendorcalendarRouter);
 router.use('/pricebook', vendorpricebookRouter);
-router.use('/employees/', checkVendor, vendorEmployeeRouter);
+router.use('/employees/', confirmUserToken, vendorEmployeeRouter);
 router.use('/notifications', checkVendor, vendorNotificationRouter);
 
+router.get('/detail/:productId', getVendorInfoForProduct);
 router.get('/detail', checkVendor, getVendorInfo);
 router.get('/vendors', listAllVendors);
 router.post('/cerate_vendor', confirmUserToken, createVendor);
+router.get('/payments', confirmUserToken, getAllVendorPayments);
 // router.get('/update_vendor', confirmUserToken, updateVendor);
-router.post(
-  '/create_vendor_emp_request',
-  confirmUserToken,
-  createVendorEmpRequest
-);
+router.post('/create_vendor_emp_request', confirmUserToken, createVendorEmpRequest);
 router.put('/address', confirmUserToken, updateAddressDetails);
 router.put('/bank_details', confirmUserToken, updateBankDetails);
 router.put('/contact_details', confirmUserToken, updateContactDetails);
@@ -93,6 +52,10 @@ router.get('/documents', confirmUserToken, getVendorDocuments);
 router.delete('/document/:id', confirmUserToken, deleteVendorDocument);
 router.get('/vendor_details', confirmUserToken, getVendorCompanyInfo);
 router.get('/ownership_details', confirmUserToken, getVendorOwnershipDetails);
+
+router.get('/availability', confirmUserToken, getVendorAvailability);
+router.put('/availability', confirmUserToken, updateVendorAvailability);
+
 router.post('/send_mail', async (req, res) => {
   const { name, email, number } = req.body;
   try {

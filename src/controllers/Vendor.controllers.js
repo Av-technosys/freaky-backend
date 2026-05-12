@@ -1,44 +1,37 @@
 import { and, asc, eq, ilike, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
-import {
-  vendorEmployees,
-  vendorEmployeeRequests,
-  vendorOwnerships,
-  vendors,
-  products,
-  featuredCategorys,
-  featuredProdcuts,
-  priceBook,
-  priceBookEntry,
-  productMedia,
-  vendorDocuments,
-  users,
-  vendorInvites,
-  vendorNotifications,
-} from '../../db/schema.js';
+import { vendorEmployees, vendorEmployeeRequests, vendorOwnerships, vendors, products, featuredCategorys, featuredProdcuts, priceBook, priceBookEntry, productMedia, vendorDocuments, users, vendorInvites, vendorNotifications, paymentVendor, booking, vendorAvailability } from '../../db/schema.js';
 import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
-import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
-import {
-  AdminUpdateUserAttributesCommand,
-  AdminUserGlobalSignOutCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
+import { cognito } from '../../lib/cognitoClient.js';
+import { USER_POOL_ID } from '../../const/env.js';
+import { AdminUpdateUserAttributesCommand, AdminUserGlobalSignOutCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { bookingDraft } from '../../db/schema.js';
 import { paginate } from '../helpers/paginate.js';
 import { featuredCategory, featuredProdcut } from '../../db/vendor.js';
-import {
-  cognitoAdminGetUser,
-  cognitoAdminUserGlobalSignOut,
-  cognitoUpdateUserAttribute,
-} from '../helpers/Cognito.helper.js';
-import { user } from '../../db/user.js';
+import { cognitoAdminGetUser, cognitoAdminUserGlobalSignOut, cognitoUpdateUserAttribute } from '../helpers/Cognito.helper.js';
+import { bookingItem, user } from '../../db/user.js';
 
 export const getVendorInfo = async (req, res) => {
   try {
-    const id = req.vendor.vendorId || req.body.vendorId;
-    const [vendorData] = await db
-      .select()
-      .from(vendors)
-      .where(eq(vendors.vendorId, id));
+    const raw = req.user['custom:vendor_ids'];
+
+    let id;
+
+    try {
+      const parsed = JSON.parse(raw);
+      id = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      id = raw;
+    }
+
+    id = Number(id);
+
+    if (!id) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
+    const [vendorData] = await db.select().from(vendors).where(eq(vendors.vendorId, id));
     return res.status(200).json({
       message: 'Vendor info fetched successfully.',
       data: vendorData,
@@ -49,6 +42,43 @@ export const getVendorInfo = async (req, res) => {
   }
 };
 
+export const getVendorInfoForProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    if (!productId) {
+      return res.status(400).json({
+        message: 'productId is required',
+      });
+    }
+
+    const product = await db.query.products.findFirst({
+      where: (t, { eq }) => eq(t.productId, Number(productId)),
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        message: 'Product not found',
+      });
+    }
+
+    const [vendorData] = await db.select().from(vendors).where(eq(vendors.vendorId, product.vendorId));
+
+    if (!vendorData) {
+      return res.status(404).json({
+        message: 'Vendor not found',
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Vendor info fetched successfully.',
+      data: vendorData,
+    });
+  } catch (error) {
+    console.error('Error: ', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
 export const getCompanyProfile = async (req, res) => {
   // try {
   //   const email = req.user?.email || req.body.email;
@@ -202,6 +232,14 @@ export const createVendor = async (req, res) => {
       })
       .returning();
 
+    await db.insert(priceBook).values({
+      vendorId: newVendor.vendorId,
+      isStandard: true,
+      isDefault: true,
+      name: 'Default Pricebook',
+      description: 'Base pricing for all services',
+    });
+
     const vendorContactPermission = ['admin'];
 
     const [vnedorContractData] = await db
@@ -230,12 +268,12 @@ export const createVendor = async (req, res) => {
         },
       ],
     };
-    const customParamsCommand = new AdminUpdateUserAttributesCommand(
-      customParams
-    );
-
-    await cognito.send(customParamsCommand);
-
+    const customParamsCommand = new AdminUpdateUserAttributesCommand(customParams);
+    try {
+      const result = await cognito.send(customParamsCommand);
+    } catch (err) {
+      console.error('Cognito update failed:', err);
+    }
     return res.status(200).json({
       success: true,
       message: 'Vendor created successfully.',
@@ -253,10 +291,7 @@ export const createVendorEmpRequest = async (req, res) => {
     const userId = req.user['custom:user_id'];
     const vendorIds = req.user['custom:vendor_ids'];
 
-    if (vendorIds && vendorIds.length > 0)
-      return res
-        .status(400)
-        .json({ message: 'You are already under a vendor' });
+    if (vendorIds && vendorIds.length > 0) return res.status(400).json({ message: 'You are already under a vendor' });
     await db
       .insert(vendorEmployeeRequests)
       .values({
@@ -278,16 +313,7 @@ export const createVendorEmpRequest = async (req, res) => {
 
 export const updateAddressDetails = async (req, res) => {
   try {
-    const {
-      streetAddressLine1,
-      streetAddressLine2,
-      city,
-      state,
-      country,
-      zipcode,
-      latitude,
-      longitude,
-    } = req.body;
+    const { streetAddressLine1, streetAddressLine2, city, state, country, zipcode, latitude, longitude } = req.body;
 
     let vendorId;
 
@@ -336,10 +362,9 @@ export const updateBankDetails = async (req, res) => {
     }
 
     if (!vendorId) {
-      return res.status(504).json({ msg: 'Vendor not found' });
+      return res.status(404).json({ msg: 'Vendor not found' });
     }
-    const { bankAccountNumber, bankName, payeeName, routingNumber, bankType } =
-      req.body;
+    const { bankAccountNumber, bankName, payeeName, routingNumber, bankType } = req.body;
 
     await db
       .update(vendors)
@@ -352,6 +377,23 @@ export const updateBankDetails = async (req, res) => {
       })
       .where(eq(vendors.vendorId, vendorId))
       .returning();
+
+    try {
+      const result = await cognito.send(
+        new AdminUpdateUserAttributesCommand({
+          UserPoolId: USER_POOL_ID,
+          Username: req.user.sub,
+          UserAttributes: [
+            {
+              Name: 'custom:vendor_ids',
+              Value: JSON.stringify(vendorId),
+            },
+          ],
+        })
+      );
+    } catch (err) {
+      console.error('Cognito update failed:', err);
+    }
 
     return res.status(200).json({
       message: 'Bank Details Updated successfully.',
@@ -375,15 +417,7 @@ export const updateContactDetails = async (req, res) => {
     if (!vendorId) {
       return res.status(504).json({ msg: 'Vendor not found' });
     }
-    const {
-      primaryContactName,
-      primaryEmail,
-      primaryPhoneNumber,
-      instagramURL,
-      youtubeURL,
-      linkedinURL,
-      facebookURL,
-    } = req.body;
+    const { primaryContactName, primaryEmail, primaryPhoneNumber, instagramURL, youtubeURL, linkedinURL, facebookURL } = req.body;
 
     await db
       .update(vendors)
@@ -420,16 +454,7 @@ export const updateCompanyDetails = async (req, res) => {
     if (!vendorId) {
       return res.status(504).json({ msg: 'Vendor not found' });
     }
-    const {
-      businessName,
-      websiteURL,
-      logoUrl,
-      description,
-      legalEntityName,
-      businessType,
-      incorporationDate,
-      companyLogo,
-    } = req.body;
+    const { businessName, websiteURL, logoUrl, description, legalEntityName, businessType, incorporationDate, companyLogo } = req.body;
 
     await db
       .update(vendors)
@@ -457,10 +482,7 @@ export const updateCompanyDetails = async (req, res) => {
 export const deleteCompanyLogo = async (req, res) => {
   try {
     const { vendorId } = req.params;
-    await db
-      .update(vendors)
-      .set({ logoUrl: null })
-      .where(eq(vendors.vendorId, vendorId));
+    await db.update(vendors).set({ logoUrl: null }).where(eq(vendors.vendorId, vendorId));
     return res.status(200).json({
       message: 'Image deleted successfully!',
     });
@@ -472,25 +494,20 @@ export const deleteCompanyLogo = async (req, res) => {
 
 export const updateOwnershipDetails = async (req, res) => {
   try {
-    let vendorId;
+    const userId = Number(req.user['custom:user_id']);
 
-    if (req.body.vendorId) {
-      vendorId = req.body.vendorId;
-    } else {
-      const parsed = JSON.parse(req.user['custom:vendor_ids']);
-      vendorId = parsed.vendorId;
-    }
+    const vendor = await db.select().from(vendors).where(eq(vendors.createdBy, userId)).limit(1);
 
-    const { vendorId: _, ...ownersObject } = req.body;
-
-    const ownershipDetailsArray = Object.values(ownersObject);
+    const vendorId = vendor?.[0]?.vendorId;
 
     if (!vendorId) {
-      return res.status(504).json({ msg: 'Vendor not found' });
+      return res.status(404).json({ msg: 'Vendor not found' });
     }
 
+    const owners = req.body.owners || [];
+
     await Promise.all(
-      ownershipDetailsArray.map(async (ownership) => {
+      owners.map(async (ownership) => {
         const ownerId = ownership.id;
 
         const ownerDetailSave = {
@@ -508,43 +525,25 @@ export const updateOwnershipDetails = async (req, res) => {
         };
 
         if (ownerId) {
-          await db
-            .update(vendorOwnerships)
-            .set(ownerDetailSave)
-            .where(eq(vendorOwnerships.id, ownerId));
-
-          return res.status(200).json({
-            message: 'Ownership Details Updated successfully.',
-          });
+          await db.update(vendorOwnerships).set(ownerDetailSave).where(eq(vendorOwnerships.id, ownerId));
         } else {
-          await db
-            .insert(vendorOwnerships)
-            .values({ ...ownerDetailSave, vendorId: vendorId });
-
-          return res.status(200).json({
-            message: 'Ownership Details Created successfully.',
-          });
+          await db.insert(vendorOwnerships).values({ ...ownerDetailSave, vendorId });
         }
       })
     );
+
+    return res.status(200).json({
+      message: 'Ownership details saved successfully',
+    });
   } catch (error) {
-    console.log('error', error);
+    console.error('error', error);
     return res.status(500).json({ error: error.message });
   }
 };
 
 export const createCompanyDetails = async (req, res) => {
   try {
-    const {
-      businessName,
-      websiteURL,
-      description,
-      legalEntityName,
-      businessType,
-      einNumber,
-      DBAname,
-      incorporationDate,
-    } = req.body;
+    const { businessName, websiteURL, description, legalEntityName, businessType, einNumber, DBAname, incorporationDate } = req.body;
 
     const userId = req.user?.['custom:user_id'];
     const [vendor] = await db
@@ -562,6 +561,17 @@ export const createCompanyDetails = async (req, res) => {
       })
       .returning({ vendorId: vendors.vendorId });
 
+    db.insert(priceBook)
+      .values({
+        vendorId: vendor.vendorId,
+        isStandard: false,
+        isDefault: true,
+        name: 'Default Pricebook',
+        description: 'Base pricing for all services',
+      })
+      .catch((err) => {
+        console.error('Pricebook creation failed:', err);
+      });
     return res.status(200).json({
       message: 'Address Details Created successfully.',
       vendorId: vendor.vendorId,
@@ -577,13 +587,8 @@ export const updateCompanyLogo = async (req, res) => {
     const parsed = JSON.parse(req.user['custom:vendor_ids']);
     const vendorId = parsed.vendorId;
     const { companyLogo } = req.body;
-    await db
-      .update(vendors)
-      .set({ logoUrl: companyLogo })
-      .where(eq(vendors.vendorId, vendorId));
-    return res
-      .status(200)
-      .json({ message: 'company logo uploaded successfully!' });
+    await db.update(vendors).set({ logoUrl: companyLogo }).where(eq(vendors.vendorId, vendorId));
+    return res.status(200).json({ message: 'company logo uploaded successfully!' });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -602,9 +607,7 @@ export const fetchVendorProducts = async (req, res) => {
     });
 
     if (vendorProducts.length === 0) {
-      return res
-        .status(404)
-        .json({ error: 'No products found for this vendor.' });
+      return res.status(404).json({ error: 'No products found for this vendor.' });
     }
 
     const productIds = vendorProducts.map((product) => product.productId);
@@ -615,9 +618,7 @@ export const fetchVendorProducts = async (req, res) => {
 
     const data = vendorProducts.map((product) => ({
       ...product,
-      media: productMedia.filter(
-        (media) => media.productId === product.productId
-      ),
+      media: productMedia.filter((media) => media.productId === product.productId),
     }));
 
     return res.json({
@@ -626,9 +627,7 @@ export const fetchVendorProducts = async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching vendor products:', err);
-    return res
-      .status(500)
-      .json({ error: 'Server error fetching vendor products.' });
+    return res.status(500).json({ error: 'Server error fetching vendor products.' });
   }
 };
 
@@ -648,8 +647,7 @@ export const fetchProductPrice = async (req, res) => {
     const vendorId = product.vendorId;
 
     const priceBook = await db.query.priceBook.findMany({
-      where: (t, { eq, and }) =>
-        and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+      where: (t, { eq, and }) => and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
     });
 
     if (!priceBook) {
@@ -659,17 +657,11 @@ export const fetchProductPrice = async (req, res) => {
     const priceBookingIds = priceBook.map((p) => p.id);
 
     const productPrice = await db.query.priceBookEntry.findMany({
-      where: (t, { eq, and, inArray }) =>
-        and(
-          eq(t.productId, productId),
-          inArray(t.priceBookingId, priceBookingIds)
-        ),
+      where: (t, { eq, and, inArray }) => and(eq(t.productId, productId), inArray(t.priceBookingId, priceBookingIds)),
     });
 
     if (!productPrice) {
-      return res
-        .status(404)
-        .json({ error: 'Price not found for this product' });
+      return res.status(404).json({ error: 'Price not found for this product' });
     }
 
     return res.json({
@@ -679,9 +671,7 @@ export const fetchProductPrice = async (req, res) => {
     });
   } catch (err) {
     console.error('Price Fetch Error:', err);
-    return res
-      .status(500)
-      .json({ error: 'Server error fetching product price' });
+    return res.status(500).json({ error: 'Server error fetching product price' });
   }
 };
 
@@ -694,9 +684,7 @@ export const fetchAllProductTypes = async (req, res) => {
     });
   } catch (err) {
     console.error('product type Fetch Error:', err);
-    return res
-      .status(500)
-      .json({ error: 'Server error fetching product type' });
+    return res.status(500).json({ error: 'Server error fetching product type' });
   }
 };
 
@@ -718,31 +706,31 @@ export const productByTypeId = async (req, res) => {
     });
 
     const productsList = result.data;
-    const vendorIds = [
-      ...new Set(productsList.map((product) => product.vendorId)),
-    ];
+    const vendorIds = [...new Set(productsList.map((product) => product.vendorId))];
 
     const productIds = productsList.map((product) => product.productId);
 
     const priceBooks = await db.query.priceBook.findMany({
-      where: (t, { eq, inArray, and }) =>
-        and(inArray(t.vendorId, vendorIds), eq(t.isActive, true)),
+      where: (t, { eq, inArray, and }) => and(inArray(t.vendorId, vendorIds), eq(t.isDefault, true)),
     });
 
     const priceBookIds = priceBooks.map((book) => book.id);
 
     const priceEntries = await db.query.priceBookEntry.findMany({
-      where: (t, { inArray, and }) =>
-        and(
-          inArray(t.productId, productIds),
-          inArray(t.priceBookingId, priceBookIds)
-        ),
+      where: (t, { inArray, and }) => and(inArray(t.productId, productIds), inArray(t.priceBookingId, priceBookIds)),
     });
 
-    const data = productsList.map((product) => ({
-      ...product,
-      prices: priceEntries.filter((p) => p.productId === product.productId),
-    }));
+    const data = productsList.map((product) => {
+      const slabs = priceEntries.filter((p) => p.productId === product.productId).sort((a, b) => a.lowerSlab - b.lowerSlab);
+
+      const firstSlab = slabs[0];
+
+      return {
+        ...product,
+        priceSlabs: slabs,
+        price: product.pricingType === 'FLAT' ? Number(firstSlab?.salePrice || firstSlab?.listPrice || 0) : Number(firstSlab?.salePrice || 0),
+      };
+    });
     return res.status(200).json({
       success: true,
       message: 'Products fetched successfully',
@@ -762,11 +750,7 @@ export const getAllProductsByCategoryId = async (req, res) => {
   try {
     const { categoryId } = req.params;
     if (categoryId) {
-      const response = await db
-        .select()
-        .from(featuredProdcuts)
-        .where(eq(featuredProdcuts.featuredCategoryId, categoryId))
-        .orderBy(asc(featuredProdcuts.priority));
+      const response = await db.select().from(featuredProdcuts).where(eq(featuredProdcuts.featuredCategoryId, categoryId)).orderBy(asc(featuredProdcuts.priority));
 
       const categoryWiseProducts = await Promise.all(
         response.map(async (featureProduct) => {
@@ -784,35 +768,23 @@ export const getAllProductsByCategoryId = async (req, res) => {
           const vendorId = product.vendorId;
 
           const priceBook = await db.query.priceBook.findMany({
-            where: (t, { eq, and }) =>
-              and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+            where: (t, { eq, and }) => and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
           });
 
           if (!priceBook) {
-            return res
-              .status(404)
-              .json({ error: 'No pricebook found for vendor' });
+            return res.status(404).json({ error: 'No pricebook found for vendor' });
           }
 
           const priceBookingIds = priceBook.map((p) => p.id);
 
           const productPrice = await db.query.priceBookEntry.findMany({
-            where: (t, { eq, and, inArray }) =>
-              and(
-                eq(t.productId, productId),
-                inArray(t.priceBookingId, priceBookingIds)
-              ),
+            where: (t, { eq, and, inArray }) => and(eq(t.productId, productId), inArray(t.priceBookingId, priceBookingIds)),
           });
 
           if (!productPrice) {
-            return res
-              .status(404)
-              .json({ error: 'Price not found for this product' });
+            return res.status(404).json({ error: 'Price not found for this product' });
           }
-          const productDetail = await db
-            .select()
-            .from(products)
-            .where(eq(products.productId, product.productId));
+          const productDetail = await db.select().from(products).where(eq(products.productId, product.productId));
           return { ...productDetail[0], price: productPrice };
         })
       );
@@ -856,18 +828,13 @@ export const getAllFeaturedCategories = async (req, res) => {
         )`,
       })
       .from(featuredCategorys)
-      .leftJoin(
-        featuredProdcuts,
-        eq(featuredCategorys.id, featuredProdcuts.featuredCategoryId)
-      )
+      .leftJoin(featuredProdcuts, eq(featuredCategorys.id, featuredProdcuts.featuredCategoryId))
       .leftJoin(products, eq(products.productId, featuredProdcuts.productId))
       .groupBy(featuredCategorys.id);
 
     const parsedCategories = categories.map((category) => ({
       ...category,
-      products: Array.isArray(category.products)
-        ? category.products
-        : JSON.parse(category.products),
+      products: Array.isArray(category.products) ? category.products : JSON.parse(category.products),
     }));
 
     const CategoryWithProductPricing = await Promise.all(
@@ -885,8 +852,7 @@ export const getAllFeaturedCategories = async (req, res) => {
             const vendorId = dbProduct.vendorId;
 
             const priceBook = await db.query.priceBook.findMany({
-              where: (t, { eq, and }) =>
-                and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+              where: (t, { eq, and }) => and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
             });
 
             if (!priceBook.length) return { ...product, price: [] };
@@ -894,11 +860,7 @@ export const getAllFeaturedCategories = async (req, res) => {
             const priceBookingIds = priceBook.map((p) => p.id);
 
             const productPrice = await db.query.priceBookEntry.findMany({
-              where: (t, { eq, and, inArray }) =>
-                and(
-                  eq(t.productId, productId),
-                  inArray(t.priceBookingId, priceBookingIds)
-                ),
+              where: (t, { eq, and, inArray }) => and(eq(t.productId, productId), inArray(t.priceBookingId, priceBookingIds)),
             });
 
             return {
@@ -935,11 +897,7 @@ export const getAllFeaturedProducts = async (req, res) => {
 
     const result = await Promise.all(
       categories.map(async (category) => {
-        const featuredItems = await db
-          .select()
-          .from(featuredProdcut)
-          .where(eq(featuredProdcut.featuredCategoryId, category.id))
-          .orderBy(asc(featuredProdcut.priority));
+        const featuredItems = await db.select().from(featuredProdcut).where(eq(featuredProdcut.featuredCategoryId, category.id)).orderBy(asc(featuredProdcut.priority));
 
         if (!featuredItems.length) {
           return {
@@ -959,8 +917,7 @@ export const getAllFeaturedProducts = async (req, res) => {
             if (!product) return null;
 
             const priceBooks = await db.query.priceBook.findMany({
-              where: (t, { eq, and }) =>
-                and(eq(t.vendorId, product.vendorId), eq(t.isActive, true)),
+              where: (t, { eq, and }) => and(eq(t.vendorId, product.vendorId), eq(t.isDefault, true)),
             });
 
             const priceBookIds = priceBooks.map((p) => p.id);
@@ -968,11 +925,7 @@ export const getAllFeaturedProducts = async (req, res) => {
             const prices =
               priceBookIds.length > 0
                 ? await db.query.priceBookEntry.findMany({
-                    where: (t, { eq, inArray, and }) =>
-                      and(
-                        eq(t.productId, product.productId),
-                        inArray(t.priceBookingId, priceBookIds)
-                      ),
+                    where: (t, { eq, inArray, and }) => and(eq(t.productId, product.productId), inArray(t.priceBookingId, priceBookIds)),
                   })
                 : [];
 
@@ -1012,55 +965,55 @@ export const fetchProductDetailById = async (req, res) => {
       return res.status(400).json({ error: 'Product ID is required.' });
     }
 
+    const id = Number(productId);
+
     const product = await db.query.products.findFirst({
-      where: (t, { eq }) => eq(t.productId, Number(productId)),
+      where: (t, { eq }) => eq(t.productId, id),
     });
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found.' });
     }
 
-    const vendorId = product.vendorId;
-
-    const priceBooks = await db.query.priceBook.findMany({
-      where: (t, { eq, and }) =>
-        and(eq(t.vendorId, vendorId), eq(t.isActive, true)),
+    const defaultPB = await db.query.priceBook.findFirst({
+      where: (t, { eq, and }) => and(eq(t.vendorId, product.vendorId), eq(t.isDefault, true)),
     });
 
-    let productPrices = [];
-
-    if (priceBooks.length > 0) {
-      const priceBookIds = priceBooks.map((pb) => pb.id);
-
-      productPrices = await db.query.priceBookEntry.findMany({
-        where: (t, { eq, inArray, and }) =>
-          and(
-            eq(t.productId, Number(productId)),
-            inArray(t.priceBookingId, priceBookIds)
-          ),
+    if (!defaultPB) {
+      return res.status(404).json({
+        error: 'Default pricebook not found for vendor',
       });
     }
 
-    const productMediaList = await db.query.productMedia.findMany({
-      where: (t, { eq }) => eq(t.productId, Number(productId)),
+    const productPrices = await db.query.priceBookEntry.findMany({
+      where: (t, { eq, and }) => and(eq(t.productId, id), eq(t.priceBookingId, defaultPB.id)),
+      orderBy: (t, { asc }) => asc(t.lowerSlab),
     });
 
+    const productMediaList = await db.query.productMedia.findMany({
+      where: (t, { eq }) => eq(t.productId, id),
+    });
+
+    const primaryPrice = productPrices?.[0];
+
     return res.json({
-      message: 'Product details & price fetched successfully',
+      message: 'Product details fetched successfully',
       product: {
         ...product,
-        prices: productPrices,
+
+        price: primaryPrice ? Number(primaryPrice.salePrice || primaryPrice.listPrice) : null,
+        priceSlabs: productPrices,
+
         media: productMediaList,
       },
     });
   } catch (err) {
-    console.error('Price Fetch Error:', err);
-    return res
-      .status(500)
-      .json({ error: 'Server error fetching product price.' });
+    console.error('Fetch Error:', err);
+    return res.status(500).json({
+      error: 'Server error fetching product.',
+    });
   }
 };
-
 export const listAllPriceBooksById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1088,10 +1041,7 @@ export const listAllPriceBooksById = async (req, res) => {
 export const deletePriceBookById = async (req, res) => {
   try {
     const { priceBookId } = req.params;
-    const existing = await db
-      .select()
-      .from(priceBook)
-      .where(eq(priceBook.id, priceBookId));
+    const existing = await db.select().from(priceBook).where(eq(priceBook.id, priceBookId));
 
     if (!existing.length) {
       return res.status(404).json({ message: 'Pricebook not found.' });
@@ -1113,10 +1063,7 @@ export const updatePriceBookById = async (req, res) => {
     const { priceBookId } = req.params;
     const { pricingType, listPrice, currency } = req.body;
 
-    const pricEntry = await db
-      .select()
-      .from(priceBookEntry)
-      .where(eq(priceBookEntry.priceBookingId, priceBookId));
+    const pricEntry = await db.select().from(priceBookEntry).where(eq(priceBookEntry.priceBookingId, priceBookId));
 
     if (pricEntry.length > 0) {
       await db
@@ -1124,11 +1071,7 @@ export const updatePriceBookById = async (req, res) => {
         .set({ pricingType: pricingType || 'tier' })
         .where(eq(products.productId, pricEntry[0].productId));
       if (pricingType == 'flat') {
-        await db
-          .delete(priceBookEntry)
-          .where(
-            eq(priceBookEntry.priceBookingId, pricEntry[0].priceBookingId)
-          );
+        await db.delete(priceBookEntry).where(eq(priceBookEntry.priceBookingId, pricEntry[0].priceBookingId));
         await db.insert(priceBookEntry).values({
           productId: pricEntry[0].productId,
           priceBookingId: priceBookId,
@@ -1140,11 +1083,7 @@ export const updatePriceBookById = async (req, res) => {
           salePrice: listPrice,
         });
       } else {
-        await db
-          .delete(priceBookEntry)
-          .where(
-            eq(priceBookEntry.priceBookingId, pricEntry[0].priceBookingId)
-          );
+        await db.delete(priceBookEntry).where(eq(priceBookEntry.priceBookingId, pricEntry[0].priceBookingId));
 
         const Entries = req.body.map((data) => ({
           productId: pricEntry[0].productId,
@@ -1177,129 +1116,264 @@ export const updatePriceBookById = async (req, res) => {
 export const updateProductById = async (req, res) => {
   try {
     const data = req.body;
-
     const { productId } = req.params;
-    const product = await db
-      .select()
-      .from(products)
-      .where(eq(products.productId, productId));
 
-    if (!product.length) {
-      return res.status(404).json({
-        message: 'No service found.',
-      });
-    }
+    const safeNumber = (val, fallback = null) => (val !== undefined && val !== null && val !== '' && !isNaN(Number(val)) ? Number(val) : fallback);
+    const result = await db.transaction(async (tx) => {
+      const existing = await tx.select().from(products).where(eq(products.productId, productId));
 
-    await db
-      .update(products)
-      .set({
-        bannerImage: data.bannerImage,
-        title: data.title,
-        description: data.description,
-        type: data.type?.toUpperCase(),
-        maxQuantity: data.maxBooking,
-        deliveryRadius: data.deleveryRadius,
-      })
-      .where(eq(products.productId, productId))
-      .returning();
-    if (data.videoUrl) {
-      const existingVideo = await db
-        .select()
-        .from(productMedia)
-        .where(
-          and(
-            eq(productMedia.productId, productId),
-            eq(productMedia.mediaType, 'video')
-          )
-        )
-        .limit(1);
-
-      if (existingVideo.length > 0) {
-        await db
-          .update(productMedia)
-          .set({ mediaUrl: data.videoUrl })
-          .where(eq(productMedia.id, existingVideo[0].id));
-      } else {
-        await db.insert(productMedia).values({
-          productId: productId,
-          mediaType: 'video',
-          mediaUrl: data.videoUrl,
-          sortOrder: 3,
-        });
+      if (!existing.length) {
+        throw new Error('No service found');
       }
-    }
 
-    if (data.additionalImages.length > 0) {
-      const additionalImages = data?.additionalImages?.map(
-        (mediaUrl, index) => {
-          return {
-            productId: productId,
-            mediaType: 'image',
-            mediaUrl: mediaUrl,
-            sortOrder: index,
-          };
+      const existingProduct = existing[0];
+
+      if (existingProduct.pricingType !== data.pricingType) {
+        throw new Error('Pricing type cannot be changed');
+      }
+
+      await tx
+        .update(products)
+        .set({
+          bannerImage: data.bannerImage,
+          title: data.title,
+          description: data.description,
+          streetAddressLine1: data.streetAddressLine1,
+          streetAddressLine2: data.streetAddressLine2,
+          city: data.city,
+          state: data.state,
+          country: data.country,
+          postalCode: data.postalCode,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          productTypeId: data.productTypeId,
+          type: data.type?.toUpperCase(),
+          deliveryRadius: safeNumber(data.deliveryRadius, 10),
+          minQuantity: safeNumber(data.minQuantity, 1),
+          maxQuantity: safeNumber(data.maxQuantity),
+          maxBookingAtTime: safeNumber(data.maxBookingAtTime, 10),
+          isAvailable: data.isAvailable,
+          returnPolicyURL: data.returnPolicyURL,
+          updatedAt: new Date(),
+        })
+        .where(eq(products.productId, productId));
+
+      if (data.videoUrl) {
+        const existingVideo = await tx
+          .select()
+          .from(productMedia)
+          .where(and(eq(productMedia.productId, productId), eq(productMedia.mediaType, 'video')))
+          .limit(1);
+
+        if (existingVideo.length) {
+          await tx.update(productMedia).set({ mediaUrl: data.videoUrl }).where(eq(productMedia.id, existingVideo[0].id));
+        } else {
+          await tx.insert(productMedia).values({
+            productId,
+            mediaType: 'video',
+            mediaUrl: data.videoUrl,
+            sortOrder: 0,
+          });
         }
-      );
+      }
 
-      await db.insert(productMedia).values(additionalImages);
-    }
+      if (Array.isArray(data.additionalImages)) {
+        await tx.delete(productMedia).where(and(eq(productMedia.productId, productId), eq(productMedia.mediaType, 'image')));
+
+        if (data.additionalImages.length) {
+          const images = data.additionalImages.map((url, index) => ({
+            productId,
+            mediaType: 'image',
+            mediaUrl: url,
+            sortOrder: index,
+          }));
+
+          await tx.insert(productMedia).values(images);
+        }
+      }
+
+      const defaultPB = await tx.query.priceBook.findFirst({
+        where: (t, { eq, and }) => and(eq(t.vendorId, existingProduct.vendorId), eq(t.isDefault, true)),
+      });
+
+      if (!defaultPB) {
+        throw new Error('Standard pricebook not found');
+      }
+
+      if (existingProduct.pricingType === 'FLAT') {
+        await tx
+          .update(priceBookEntry)
+          .set({
+            listPrice: Number(data.price),
+            salePrice: Number(data.price),
+          })
+          .where(and(eq(priceBookEntry.productId, productId), eq(priceBookEntry.priceBookingId, defaultPB.id)));
+      }
+
+      if (existingProduct.pricingType === 'TIER') {
+        if (!Array.isArray(data.productPricing) || !data.productPricing.length) {
+          throw new Error('Tier pricing data missing');
+        }
+
+        await tx.delete(priceBookEntry).where(and(eq(priceBookEntry.productId, productId), eq(priceBookEntry.priceBookingId, defaultPB.id)));
+
+        const entries = data.productPricing.map((item) => ({
+          productId,
+          priceBookingId: defaultPB.id,
+          currency: 'INR',
+          lowerSlab: Number(item.lowerBound),
+          upperSlab: Number(item.upperBound),
+          listPrice: Number(item.price),
+          salePrice: Number(item.price),
+          discountPercentage: 0,
+        }));
+
+        await tx.insert(priceBookEntry).values(entries);
+      }
+
+      return { productId };
+    });
 
     return res.status(200).json({
-      message: 'Service updated successfully!',
+      message: 'Service updated successfully',
+      productId: result.productId,
     });
   } catch (error) {
-    console.error(' Error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Update Error:', error);
+
+    if (error.message === 'No service found') {
+      return res.status(404).json({ message: error.message });
+    }
+
+    if (error.message === 'Pricing type cannot be changed') {
+      return res.status(400).json({ message: error.message });
+    }
+
+    return res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
 export const createProduct = async (req, res) => {
   try {
     const data = req.body;
-    const { vendorId } = JSON.parse(req.user['custom:vendor_ids']);
+    const vendorIdsRaw = req.user['custom:vendor_ids'];
 
-    const insertedProduct = await db
-      .insert(products)
-      .values({
-        bannerImage: data.bannerImage,
-        title: data.title,
-        description: data.description,
-        maxQuantity: data.maxBooking,
-        deliveryRadius: data.deleveryRadius,
-        type: data.type?.toUpperCase(),
-        pricingType: data.pricingType,
-        vendorId: vendorId,
-      })
-      .returning({ productId: products.productId });
+    let vendorId;
 
-    const productId = insertedProduct[0].productId;
-
-    if (data.videoUrl) {
-      await db.insert(productMedia).values({
-        productId: productId,
-        mediaType: 'video',
-        mediaUrl: data.videoUrl,
-        sortOrder: 3,
-      });
+    try {
+      const parsed = JSON.parse(vendorIdsRaw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = vendorIdsRaw;
     }
 
-    if (
-      Array.isArray(data.additionalImages) &&
-      data.additionalImages.length > 0
-    ) {
-      const additionalImages = data.additionalImages.map((mediaUrl, index) => ({
-        productId: productId,
-        mediaType: 'image',
-        mediaUrl: mediaUrl,
-        sortOrder: index,
-      }));
+    vendorId = Number(vendorId);
 
-      await db.insert(productMedia).values(additionalImages);
+    const safeNumber = (val, fallback = null) => (val !== undefined && val !== null && val !== '' ? Number(val) : fallback);
+
+    if (!['FLAT', 'TIER'].includes(data.pricingType)) {
+      throw new Error('Invalid pricingType');
     }
+    const result = await db.transaction(async (tx) => {
+      const insertedProduct = await tx
+        .insert(products)
+        .values({
+          bannerImage: data.bannerImage,
+          title: data.title,
+          description: data.description,
+          streetAddressLine1: data.streetAddressLine1,
+          streetAddressLine2: data.streetAddressLine2,
+          city: data.city,
+          state: data.state,
+          country: data.country,
+          postalCode: data.postalCode,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          productTypeId: data.productTypeId,
+          type: data.type?.toUpperCase(),
+          pricingType: data.pricingType,
+          deliveryRadius: safeNumber(data.deliveryRadius, 10),
+          minQuantity: safeNumber(data.minQuantity, 1),
+          maxQuantity: safeNumber(data.maxQuantity),
+          maxBookingAtTime: safeNumber(data.maxBookingAtTime, 10),
+          isAvailable: data.isAvailable,
+          returnPolicyURL: data.returnPolicyURL,
+          vendorId,
+        })
+        .returning({ productId: products.productId });
+
+      const productId = insertedProduct[0].productId;
+
+      if (data.videoUrl) {
+        await tx.insert(productMedia).values({
+          productId,
+          mediaType: 'video',
+          mediaUrl: data.videoUrl,
+          sortOrder: 3,
+        });
+      }
+
+      if (Array.isArray(data.additionalImages) && data.additionalImages.length) {
+        const images = data.additionalImages.map((url, index) => ({
+          productId,
+          mediaType: 'image',
+          mediaUrl: url,
+          sortOrder: index,
+        }));
+
+        await tx.insert(productMedia).values(images);
+      }
+
+      const allPBs = await tx.select().from(priceBook).where(eq(priceBook.vendorId, vendorId));
+
+      if (!allPBs.length) {
+        throw new Error('No pricebooks found');
+      }
+
+      if (data.pricingType === 'FLAT') {
+        const entries = allPBs.map((pb) => ({
+          productId,
+          priceBookingId: pb.id,
+          currency: 'INR',
+          lowerSlab: 1,
+          upperSlab: null,
+          listPrice: safeNumber(data.price, 0),
+          salePrice: safeNumber(data.price, 0),
+          discountPercentage: 0,
+        }));
+
+        await tx.insert(priceBookEntry).values(entries);
+      }
+
+      if (data.pricingType === 'TIER') {
+        if (!Array.isArray(data.productPricing) || !data.productPricing.length) {
+          throw new Error('Tier pricing data missing');
+        }
+
+        const entries = allPBs.flatMap((pb) =>
+          data.productPricing.map((item) => ({
+            productId,
+            priceBookingId: pb.id,
+            currency: 'INR',
+            lowerSlab: Number(item.lowerBound),
+            upperSlab: Number(item.upperBound),
+            listPrice: Number(item.price),
+            salePrice: Number(item.price),
+            discountPercentage: 0,
+          }))
+        );
+
+        await tx.insert(priceBookEntry).values(entries);
+      }
+
+      return { productId };
+    });
 
     return res.status(201).json({
-      message: 'Service created successfully!',
-      productId,
+      message: 'Service created successfully',
+      productId: result.productId,
     });
   } catch (error) {
     console.error('Create Product Error:', error);
@@ -1356,10 +1430,7 @@ export const updateVendorDocument = async (req, res) => {
       });
     }
 
-    await db
-      .update(vendorDocuments)
-      .set({ documentType: documentType, documentUrl: documentURL })
-      .where(eq(vendorDocuments.id, id));
+    await db.update(vendorDocuments).set({ documentType: documentType, documentUrl: documentURL }).where(eq(vendorDocuments.id, id));
 
     return res.status(200).json({
       message: 'Vendor document updated successfully!',
@@ -1374,10 +1445,7 @@ export const deleteVendorDocument = async (req, res) => {
   try {
     const { id } = req.params;
     if (id) {
-      const document = await db
-        .select()
-        .from(vendorDocuments)
-        .where(eq(vendorDocuments.id, id));
+      const document = await db.select().from(vendorDocuments).where(eq(vendorDocuments.id, id));
       if (document.length > 0) {
         await db.delete(vendorDocuments).where(eq(vendorDocuments.id, id));
         return res.status(200).json({
@@ -1397,19 +1465,23 @@ export const deleteVendorDocument = async (req, res) => {
 
 export const getVendorDocuments = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = req.user?.['custom:vendor_ids'];
+    }
+
+    vendorId = Number(vendorId);
     if (!vendorId) {
       return res.status(404).json({
         message: 'Vendor not found.',
       });
     }
 
-    const response = await db
-      .select()
-      .from(vendorDocuments)
-      .where(eq(vendorDocuments.vendorId, vendorId))
-      .orderBy(asc(vendorDocuments.documentType));
+    const response = await db.select().from(vendorDocuments).where(eq(vendorDocuments.vendorId, vendorId)).orderBy(asc(vendorDocuments.documentType));
     return res.status(200).json({
       message: 'Vendor document fetched successfully!',
       data: response,
@@ -1421,19 +1493,24 @@ export const getVendorDocuments = async (req, res) => {
 };
 
 export const getVendorCompanyInfo = async (req, res) => {
+  console.log('Fetching vendor company info...');
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = req.user?.['custom:vendor_ids'];
+    }
+
+    vendorId = Number(vendorId);
     if (!vendorId) {
       return res.status(404).json({
         message: 'No vendor found.',
       });
     }
-    const [vendorData] = await db
-      .select()
-      .from(vendors)
-      .where(eq(vendors.vendorId, vendorId));
-
+    const [vendorData] = await db.select().from(vendors).where(eq(vendors.vendorId, vendorId));
     return res.status(200).json({
       message: 'Vendor info fetched successfully.',
       data: vendorData,
@@ -1446,17 +1523,22 @@ export const getVendorCompanyInfo = async (req, res) => {
 
 export const getVendorOwnershipDetails = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = req.user?.['custom:vendor_ids'];
+    }
+
+    vendorId = Number(vendorId);
     if (!vendorId) {
       return res.status(404).json({
         message: 'No vendor found.',
       });
     }
-    const ownershipData = await db
-      .select()
-      .from(vendorOwnerships)
-      .where(eq(vendorOwnerships.vendorId, vendorId));
+    const ownershipData = await db.select().from(vendorOwnerships).where(eq(vendorOwnerships.vendorId, vendorId));
 
     return res.status(200).json({
       message: 'Vendor ownership details fetched successfully.',
@@ -1470,18 +1552,24 @@ export const getVendorOwnershipDetails = async (req, res) => {
 
 export const getVendorEmployees = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
+    const raw = req.user['custom:vendor_ids'];
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
     if (!vendorId) {
-      return res.status(404).json({
-        message: 'No vendor found.',
+      return res.status(400).json({
+        message: 'vendorId missing',
       });
     }
-    const employees = await db
-      .select()
-      .from(vendorEmployees)
-      .innerJoin(users, eq(vendorEmployees.userId, users.userId))
-      .where(eq(vendorEmployees.vendorId, vendorId));
+    const employees = await db.select().from(vendorEmployees).innerJoin(users, eq(vendorEmployees.userId, users.userId)).where(eq(vendorEmployees.vendorId, vendorId));
 
     return res.status(200).json({
       message: 'Vendor employees fetched successfully.',
@@ -1495,14 +1583,25 @@ export const getVendorEmployees = async (req, res) => {
 
 export const createVendorEmployeeInvitation = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
-    const invitations = req.body;
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
     if (!vendorId) {
-      return res.status(404).json({
-        message: 'No vendor found.',
+      return res.status(400).json({
+        message: 'vendorId missing',
       });
     }
+    const invitations = req.body;
 
     if (invitations.length > 0) {
       const invites = invitations.map((invit) => {
@@ -1526,45 +1625,32 @@ export const createVendorEmployeeInvitation = async (req, res) => {
 
 export const updateEmployeePermissions = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
-    const permissions = req.body;
-    const { employeeId } = req.params;
+    const userId = req.params.empUserId;
 
-    if (!vendorId) {
+    if (!userId) {
       return res.status(404).json({
-        message: 'No vendor found.',
+        message: 'id not found.',
       });
     }
+    console.log(userId);
+    const permissions = req.body;
+    if (!Array.isArray(permissions)) return res.json({ status: false });
 
-    const [updateEmployeeRes] = await db
-      .update(vendorEmployees)
-      .set({ permissions: permissions })
-      .where(
-        and(
-          eq(vendorEmployees.vendorEmployeeId, employeeId),
-          eq(vendorEmployees.vendorId, vendorId)
-        )
-      )
-      .returning();
+    await db.update(vendorEmployees).set({ permissions: permissions }).where(eq(vendorEmployees.userId, userId));
+    const [updateUserRes] = await db.select({ email: users.email }).from(users).where(eq(users.userId, userId));
 
+    if (!updateUserRes) return res.json({ status: false });
+
+    console.log('email: ', updateUserRes.email);
     const userAttribute = [
       {
         Name: 'custom:permissions',
         Value: JSON.stringify(permissions),
       },
     ];
-    const [user] = await db
-      .select({ email: users.email, userId: users.userId })
-      .from(users)
-      .where(eq(users.userId, updateEmployeeRes.userId));
 
     // add userid to cognito attribute
-
-    await Promise.all([
-      cognitoUpdateUserAttribute({ email: user.email, userAttribute }),
-      cognitoAdminUserGlobalSignOut({ email: user.email }),
-    ]);
+    await Promise.all([cognitoUpdateUserAttribute({ email: updateUserRes.email, userAttribute }), cognitoAdminUserGlobalSignOut({ email: updateUserRes.email })]);
 
     return res.status(200).json({
       message: 'Permissions updated  successfully.',
@@ -1577,45 +1663,19 @@ export const updateEmployeePermissions = async (req, res) => {
 
 export const getEmployeePermissions = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
-    const { employeeId } = req.params;
+    const userId = req.user['custom:user_id'];
 
-    if (!vendorId) {
+    if (!userId) {
       return res.status(404).json({
-        message: 'No vendor found.',
+        message: 'No User id not found.',
       });
     }
 
-    const [user] = await db
-      .select({ email: users.email, userId: users.userId })
-      .from(vendorEmployees)
-      .innerJoin(users, eq(vendorEmployees.userId, users.userId))
-      .where(
-        and(
-          eq(vendorEmployees.vendorEmployeeId, employeeId),
-          eq(vendorEmployees.vendorId, vendorId)
-        )
-      );
-
-    if (!user) {
-      return res.status(404).json({
-        message: 'No user found.',
-      });
-    }
-
-    // add userid to cognito attribute
-    const data = await cognitoAdminGetUser({ email: user.email });
-    const userPermissionArray = JSON.parse(
-      JSON.stringify(
-        data?.UserAttributes?.find((attr) => attr.Name === 'custom:permissions')
-          ?.Value || []
-      )
-    );
+    const [vendorEmployeeUser] = await db.select().from(vendorEmployees).where(eq(vendorEmployees.userId, userId));
 
     return res.status(200).json({
       message: 'Permissions fetched successfully.',
-      data: userPermissionArray,
+      data: vendorEmployeeUser,
     });
   } catch (error) {
     console.error('Error: ', error);
@@ -1627,14 +1687,9 @@ export const deleteVendorEmployee = async (req, res) => {
   try {
     const { id } = req.params;
     if (id) {
-      const employee = await db
-        .select()
-        .from(vendorEmployees)
-        .where(eq(vendorEmployees.vendorEmployeeId, id));
+      const employee = await db.select().from(vendorEmployees).where(eq(vendorEmployees.vendorEmployeeId, id));
       if (employee.length > 0) {
-        await db
-          .delete(vendorEmployees)
-          .where(eq(vendorEmployees.vendorEmployeeId, id));
+        await db.delete(vendorEmployees).where(eq(vendorEmployees.vendorEmployeeId, id));
         return res.status(200).json({
           message: 'Vendor employee deleted successfully!',
         });
@@ -1654,10 +1709,7 @@ export const getVendorInvites = async (req, res) => {
   try {
     const userEmail = req.user.email;
 
-    const userInviteFound = await db
-      .select()
-      .from(vendorInvites)
-      .where(eq(vendorInvites.email, userEmail));
+    const userInviteFound = await db.select().from(vendorInvites).where(eq(vendorInvites.email, userEmail));
 
     if (userInviteFound.length > 0) {
       const vendorInfo = (
@@ -1702,33 +1754,25 @@ export const acceptVendorInvite = async (req, res) => {
     const [userInvite] = await db
       .select()
       .from(vendorInvites)
-      .where(
-        and(
-          eq(vendorInvites.email, userEmail),
-          eq(vendorInvites.vendorId, vendorId)
-        )
-      );
+      .where(and(eq(vendorInvites.email, userEmail), eq(vendorInvites.vendorId, vendorId)));
 
     // add cognito vendorIds and primissions.
 
     if (userInvite) {
-      const [vendorEmployeesRes] = await db
-        .insert(vendorEmployees)
-        .values({
-          vendorId: vendorId,
-          userId: userID,
-          permissions: userInvite.permissions,
-          employeeCode: userInvite.employeeCode,
-        })
-        .returning();
+      // const [vendorEmployeesRes] = await db
+      //   .insert(vendorEmployees)
+      //   .values({
+      //     vendorId: vendorId,
+      //     userId: userID,
+      //     permissions: userInvite.permissions,
+      //     employeeCode: userInvite.employeeCode,
+      //   })
+      //   .returning();
 
       const userAttribute = [
         {
           Name: 'custom:vendor_ids',
-          Value: JSON.stringify({
-            vendorId: vendorId,
-            vendorEmployeesId: vendorEmployeesRes.vendorEmployeeId,
-          }),
+          Value: JSON.stringify(vendorId),
         },
         {
           Name: 'custom:permissions',
@@ -1737,12 +1781,7 @@ export const acceptVendorInvite = async (req, res) => {
       ];
 
       // add userid to cognito attribute
-      await Promise.all([
-        cognitoUpdateUserAttribute({ email: userEmail, userAttribute }),
-        db
-          .delete(vendorInvites)
-          .where(eq(vendorInvites.vendorInviteId, userInvite.vendorInviteId)),
-      ]);
+      await Promise.all([cognitoUpdateUserAttribute({ email: userEmail, userAttribute }), db.delete(vendorInvites).where(eq(vendorInvites.vendorInviteId, userInvite.vendorInviteId))]);
       return res.status(201).json({
         message: 'Vendor accepted successfully.',
       });
@@ -1768,10 +1807,7 @@ export const requestedVendors = async (req, res) => {
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
-    const Vendors = await db
-      .select(reducedVendorFields)
-      .from(vendors)
-      .where(whereClause);
+    const Vendors = await db.select(reducedVendorFields).from(vendors).where(whereClause);
 
     return res.json({
       message: 'Vendors fetched successfully',
@@ -1793,21 +1829,14 @@ export const createVendorEmployeeRequest = async (req, res) => {
     const EmployeeRequest = await db
       .select()
       .from(vendorEmployeeRequests)
-      .where(
-        and(
-          eq(vendorEmployeeRequests.userId, userId),
-          eq(vendorEmployeeRequests.vendorId, vendorId)
-        )
-      );
+      .where(and(eq(vendorEmployeeRequests.userId, userId), eq(vendorEmployeeRequests.vendorId, vendorId)));
 
     if (EmployeeRequest.length > 0) {
       return res.status(409).json({
         message: 'Request already exists',
       });
     } else {
-      await db
-        .insert(vendorEmployeeRequests)
-        .values({ vendorId: vendorId, userId: userId });
+      await db.insert(vendorEmployeeRequests).values({ vendorId: vendorId, userId: userId });
 
       return res.status(200).json({
         message: 'Employee request created successfully',
@@ -1823,12 +1852,26 @@ export const createVendorEmployeeRequest = async (req, res) => {
 
 export const getVendorNotifications = async (req, res) => {
   try {
-    const parsed = JSON.parse(req.user?.['custom:vendor_ids']);
-    const vendorId = parsed?.vendorId;
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
 
     if (!vendorId) {
-      return res.status(404).json({ message: 'No vendor found.' });
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
     }
+
+    console.log('Fetching notifications for vendorId:', vendorId);
 
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
@@ -1906,5 +1949,79 @@ export const getAllSearchItems = async (req, res) => {
     return res.status(500).json({
       message: error.message,
     });
+  }
+};
+
+export const getAllVendorPayments = async (req, res) => {
+  try {
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+    const parsed = JSON.parse(raw);
+    vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    console.log(vendorId);
+
+    const paymentDetails = await db
+      .select({
+        paymentId: paymentVendor.paymentId,
+        paymentStatus: paymentVendor.paymentStatus,
+        amount: paymentVendor.amount,
+        createdAt: paymentVendor.createdAt,
+        bookingItemId: paymentVendor.bookingItemId,
+        contactName: bookingItem.contactName,
+        productName: products.title,
+      })
+      .from(paymentVendor)
+      .where(eq(paymentVendor.vendorId, vendorId))
+      .leftJoin(bookingItem, eq(bookingItem.id, paymentVendor.bookingItemId))
+      .leftJoin(products, eq(products.productId, bookingItem.productId));
+
+    return res.json({ data: paymentDetails, status: true });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const getVendorAvailability = async (req, res) => {
+  try {
+    const query = req.query;
+    let vendorId = query?.vendorId;
+    if (!vendorId) {
+      const raw = req.user['custom:vendor_ids'];
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    }
+    if (!vendorId) return res.json({ status: false, msg: 'Vendor ID missing' });
+
+    const availabilityData = await db
+      .select()
+      .from(vendorAvailability)
+      .where(eq(vendorAvailability.vendorId, Number(vendorId)));
+
+    return res.json({ data: availabilityData, status: true });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const updateVendorAvailability = async (req, res) => {
+  try {
+    const weekDays = req.body;
+    const raw = req.user['custom:vendor_ids'];
+    let vendorId;
+    const parsed = JSON.parse(raw);
+    vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+
+    if (!weekDays || !vendorId) return res.json({ status: false, msg: 'Vendor Id or week days missing' });
+    if (!Array.isArray(weekDays)) return res.json({ status: false, msg: 'Week days should be an array' });
+
+    const formatedData = weekDays.map((item) => ({ ...item, vendorId }));
+
+    await db.delete(vendorAvailability).where(eq(vendorAvailability.vendorId, Number(vendorId)));
+    await db.insert(vendorAvailability).values(formatedData);
+
+    return res.json({ msg: 'Availability updated successfully.', status: true });
+  } catch (error) {
+    console.log(error);
   }
 };

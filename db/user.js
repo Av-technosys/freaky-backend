@@ -147,6 +147,7 @@ export const bookingDraft = pgTable('booking_draft', {
 // booking
 export const booking = pgTable('booking', {
   bookingId: integer('booking_id').generatedAlwaysAsIdentity().primaryKey(),
+  // Userid is nullable becauser we are accepting external booking also, from vendor web.
   userId: integer('user_id').references(() => user.userId),
   eventTypeId: integer('event_type_id').references(() => eventType.id),
   source: bookingSourceEnum('source').notNull(),
@@ -236,7 +237,7 @@ export const payment = pgTable('payment', {
   paymentStatus: paymentStatusEnum('payment_status').default('PENDING'),
 
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
-  currency: varchar('currency', { length: 10 }).default('USD'),
+  currency: varchar('currency', { length: 10 }).default('INR'),
 
   initiatedAt: timestamp('initiated_at').defaultNow(),
   completedAt: timestamp('completed_at'),
@@ -249,32 +250,25 @@ export const payment = pgTable('payment', {
 });
 
 // partial reminder table for payment pending with expire time.
-export const paymentPendingTracker = pgTable('payment_pending_tracker', {
-  trackerId: integer('tracker_id').generatedAlwaysAsIdentity().primaryKey(),
+export const paymentVendor = pgTable('payment_vendor', {
+  paymentId: integer('payment_id').generatedAlwaysAsIdentity().primaryKey(),
 
-  bookingId: integer('booking_id')
-    .references(() => booking.bookingId)
+  bookingItemId: integer('booking_item_id')
+    .references(() => bookingItem.id)
     .notNull(),
 
-  userId: integer('user_id')
-    .references(() => user.userId)
+  vendorId: integer('vendor_id')
+    .references(() => vendor.vendorId)
     .notNull(),
 
-  pendingAmount: decimal('pending_amount', {
+  amount: decimal('amount', {
     precision: 10,
     scale: 2,
   }).notNull(),
 
-  status: paymentPendingTrackerStatusEnum('tracker_status').default('ACTIVE'),
-
-  nextReminderAt: timestamp('next_reminder_at'),
-  lastReminderAt: timestamp('last_reminder_at'),
-  reminderCount: integer('reminder_count').default(0),
-
-  expiresAt: timestamp('expires_at'), // optional cutoff (eg: booking date)
-
+  paymentStatus: paymentStatusEnum('payment_status').default('PENDING'),
+  currency: varchar('currency', { length: 10 }).default('INR'),
   createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 export const review = pgTable('review', {

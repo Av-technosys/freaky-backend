@@ -1,0 +1,1 @@
+ALTER TABLE "price_book" RENAME COLUMN "is_active" TO "is_default";

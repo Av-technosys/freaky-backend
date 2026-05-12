@@ -30,6 +30,7 @@ router.get(
   getAllProductsByCategoryId
 );
 router.get('/featuredProducts/', confirmUserToken, getAllFeaturedProducts);
+// router.get('/types/', confirmUserToken, getAllProductTypes);
 router.put('/update/:productId', confirmUserToken, updateProductById);
 router.post('/create', confirmUserToken, createProduct);
 router.delete('/image/:id', confirmUserToken, deleteProductImage);

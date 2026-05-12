@@ -11,6 +11,7 @@ export const productPricingTypeEnum = pgEnum('pricing_type_enum', [
   'FLAT',
   'PERCENTAGE',
   'TIRE',
+  'TIER',
   'MODULAR',
 ]);
 
@@ -27,7 +28,11 @@ export const paymentStatusEnum = pgEnum('payment_status', [
   'FAILED',
   'REFUNDED',
   'PARTIAL',
+  'CREATED',
+  'AUTHORIZED',
+  'CAPTURED',
 ]);
+
 export const paymentTypeEnum = pgEnum('payment_type', [
   'FULL',
   'PARTIAL',
@@ -68,3 +73,8 @@ export const vendorStatusEnum = pgEnum('vendor_status', [
   'REJECTED',
   'SUSPENDED',
 ]);
+
+export const applicationContractReferenceEnum = pgEnum(
+  'application_contract_reference_type',
+  ['VENDOR', 'PRODUCT_TYPE']
+);

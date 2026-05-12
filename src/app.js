@@ -3,18 +3,14 @@ import serverless from 'serverless-http';
 import cors from 'cors';
 import routes from './routes/index.js';
 import { resendOTP } from './controllers/Auth.controllers.js';
+import { sendEmail } from '../emails/email.service.js';
+import { vendorSubjects } from '../emails/subjects/vendorSubject.js';
+import { userSubjects } from '../emails/subjects/userSubjects.js';
 
 const app = express();
 
 const corsOptions = {
-  origin: [
-    'https://freaky-web-vendor-new.vercel.app/',
-    'http://localhost:5173',
-    'https://dev.vendor.freakychimp.com/',
-    'https://dev.admin.freakychimp.com/',
-    'https://staging.vendor.freakychimp.com/',
-    'https://staging.vendor.freakychimp.com',
-  ],
+  origin: ['https://freaky-web-vendor-new.vercel.app/', 'http://localhost:5173', 'https://dev.vendor.freakychimp.com/', 'https://dev.admin.freakychimp.com/', 'https://staging.vendor.freakychimp.com/', 'https://staging.vendor.freakychimp.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 };

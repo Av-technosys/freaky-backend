@@ -29,6 +29,34 @@
       "when": 1776409341823,
       "tag": "0003_first_mac_gargan",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777028840619,
+      "tag": "0004_dazzling_giant_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777029715492,
+      "tag": "0005_brief_valkyrie",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777887872757,
+      "tag": "0006_freezing_blue_blade",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778145606276,
+      "tag": "0007_tired_anthem",
+      "breakpoints": true
     }
   ]
 }

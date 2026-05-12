@@ -10,12 +10,17 @@ import {
 } from '../../db/schema.js';
 import { createBookingDraft } from '../helpers/createBookingDraft.js';
 import { SOURCE, STATUS } from '../../const/global.js';
+import { eventComing } from '../utils/email/eventComing.js';
+import { sendMail } from '../utils/email/sendMail.js';
 
 import { db } from '../../db/db.js';
 export const createEvent = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
-    const {
+    const { eventTypeId, contactName, contactNumber, description, startTime, endTime, minGuestCount, maxGuestCount, latitude, longitude } = req.body;
+
+    console.log('Received event data:', {
+      userId,
       eventTypeId,
       contactName,
       contactNumber,
@@ -26,7 +31,7 @@ export const createEvent = async (req, res) => {
       maxGuestCount,
       latitude,
       longitude,
-    } = req.body;
+    });
 
     const parsedStartTime = new Date(startTime);
     const parsedEndTime = new Date(endTime);
@@ -36,6 +41,17 @@ export const createEvent = async (req, res) => {
         message: 'Invalid startTime or endTime',
       });
     }
+
+    const formattedDate = new Date(startTime).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const formattedTime = new Date(startTime).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
     const [createdEvent] = await db
       .insert(events)
@@ -54,6 +70,26 @@ export const createEvent = async (req, res) => {
       })
       .returning();
 
+    //  we wont get product id here get it from somewhere else
+    // const productData = await db.query.products.findFirst({
+    //   where: (t, { eq }) => eq(t.productId, productId),
+    // });
+
+    // const vendorName = productData?.vendorName || 'Vendor';
+    // const serviceName = productData?.title || 'Service';
+    // const location = `${latitude || ''}, ${longitude || ''}`;
+    // await sendMail({
+    //   to: userEmail,
+    //   subject: 'Your Event is Coming 🎉',
+    //   body: eventComing({
+    //     name: contactName,
+    //     eventDate: formattedDate,
+    //     eventTime: formattedTime,
+    //     vendorName,
+    //     serviceName,
+    //     location,
+    //   }),
+    // });
     return res.status(201).json({
       message: 'Event created successfully...',
       data: createdEvent,
@@ -66,19 +102,7 @@ export const createEvent = async (req, res) => {
 
 export const editEvent = async (req, res) => {
   try {
-    const {
-      eventId,
-      eventTypeId,
-      contactName,
-      contactNumber,
-      description,
-      startTime,
-      endTime,
-      minGuestCount,
-      maxGuestCount,
-      latitude,
-      longitude,
-    } = req.body;
+    const { eventId, eventTypeId, contactName, contactNumber, description, startTime, endTime, minGuestCount, maxGuestCount, latitude, longitude } = req.body;
 
     const parsedStartTime = new Date(startTime);
     const parsedEndTime = new Date(endTime);
@@ -88,6 +112,16 @@ export const editEvent = async (req, res) => {
         message: 'Invalid startTime or endTime',
       });
     }
+    const formattedDate = new Date(startTime).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const formattedTime = new Date(startTime).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
     const data = await db
       .update(events)
@@ -107,6 +141,24 @@ export const editEvent = async (req, res) => {
       .where(eq(events.eventId, eventId))
       .returning();
 
+    const items = await db.select().from(bookingDraft).where(eq(bookingDraft.sourceId, eventId));
+
+    const serviceNames = items.map((i) => i.productName).join(', ');
+
+    const location = `${latitude || ''}, ${longitude || ''}`;
+
+    await sendMail({
+      to: req.user.email,
+      subject: 'Event Updated',
+      body: eventComing({
+        name: contactName,
+        eventDate: formattedDate,
+        eventTime: formattedTime,
+        vendorName: 'Freaky Chimp',
+        serviceName: serviceNames || 'Service',
+        location,
+      }),
+    });
     return res.status(201).json({
       message: 'Event updated successfully...',
       data: data,
@@ -121,10 +173,7 @@ export const listAllEvents = async (req, res) => {
   try {
     const { eventid } = req.params;
     if (eventid) {
-      const event = await db
-        .select()
-        .from(events)
-        .where(eq(events.eventId, eventid));
+      const event = await db.select().from(events).where(eq(events.eventId, eventid));
       return res.status(200).json({
         message: 'Event details Fetched Successfully.',
         data: event,
@@ -144,10 +193,7 @@ export const listAllEvents = async (req, res) => {
 
 export const listAllEventTypes = async (req, res) => {
   try {
-    const response = await db
-      .select()
-      .from(eventType)
-      .orderBy(asc(eventType.name));
+    const response = await db.select().from(eventType).orderBy(asc(eventType.name));
 
     return res.status(200).json({
       message: 'Event Type Fetched Successfully...',
@@ -168,10 +214,7 @@ export const listAllServicesByEventTypeId = async (req, res) => {
       .from(eventProductType)
       .where(eq(eventProductType.eventTypeId, eventTypeId))
       .orderBy(asc(eventProductType.id))
-      .innerJoin(
-        productTypes,
-        eq(productTypes.id, eventProductType.productTypeId)
-      )
+      .innerJoin(productTypes, eq(productTypes.id, eventProductType.productTypeId))
       .then((res) => res.map((r) => r.product_types));
 
     return res.status(200).json({
@@ -186,11 +229,9 @@ export const listAllServicesByEventTypeId = async (req, res) => {
 
 export const createEventItem = async (req, res) => {
   try {
-    const { eventId, productId, startTime, endTime } = req.body;
+    const { eventId, productId, startTime, endTime, minGuestCount, maxGuestCount } = req.body;
+
     const quantity = req.body.quantity || 1;
-    // await db
-    //   .insert(eventItems)
-    //   .values({ eventId: eventId, productId: productId, quantity: quantity });
 
     const item = await createBookingDraft({
       source: SOURCE.EVENT,
@@ -199,8 +240,11 @@ export const createEventItem = async (req, res) => {
       quantity,
       startTime,
       endTime,
+      minGuestCount,
+      maxGuestCount,
       status: STATUS.HOLD,
     });
+
     return res.status(201).json({
       message: 'Event item created successfully',
       data: item,
@@ -267,10 +311,7 @@ export const getFeaturedEvents = async (req, res) => {
 };
 
 export const getBanner = async (req, res) => {
-  const response = await db
-    .select()
-    .from(featuredBanners)
-    .orderBy(asc(featuredBanners.priority));
+  const response = await db.select().from(featuredBanners).orderBy(asc(featuredBanners.priority));
   try {
     return res.status(200).json({
       success: true,
@@ -290,14 +331,10 @@ export const getBanner = async (req, res) => {
 export const createFeaturedBanner = async (req, res) => {
   try {
     const { name, mediaURL, altText } = req.body;
-    const result = await db
-      .select({ count: sql`count(*)` })
-      .from(featuredBanners);
+    const result = await db.select({ count: sql`count(*)` }).from(featuredBanners);
 
     const newPriority = Number(result[0].count) + 1;
-    await db
-      .insert(featuredBanners)
-      .values({ name, mediaURL, altText, priority: newPriority });
+    await db.insert(featuredBanners).values({ name, mediaURL, altText, priority: newPriority });
     return res.status(201).json({
       success: true,
       message: 'Banner created successfully',

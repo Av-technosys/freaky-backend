@@ -1,5 +1,6 @@
 import { AdminSetUserPasswordCommand } from '@aws-sdk/client-cognito-identity-provider';
-import { cognito, USER_POOL_ID } from '../../lib/cognitoClient.js';
+import { cognito } from '../../lib/cognitoClient.js';
+import { USER_POOL_ID } from '../../const/env.js';
 import {
   eventType,
   featuredBanners,

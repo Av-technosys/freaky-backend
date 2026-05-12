@@ -9,8 +9,25 @@ import { checkVendor } from '../../middleware/vendor.middleware.js';
 const calendarRouter = Router();
 
 calendarRouter.get('/get_events', checkVendor, async (req, res) => {
-  try { 
-    const vendorId = req.vendor.vendorId;
+  try {
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
+    if (!vendorId) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
     const now = new Date();
     const startTime = req.query.date
       ? new Date(req.query.date)
@@ -24,32 +41,28 @@ calendarRouter.get('/get_events', checkVendor, async (req, res) => {
       59,
       999
     );
-const bookingItems = await db
-  .select({
-    id: bookingItem.id,
-    bookingId: bookingItem.bookingId,
-    productId: bookingItem.productId,
-    contactName: bookingItem.contactName,
-    contactNumber: bookingItem.contactNumber,
-    startDate: bookingItem.startTime,
-    endDate: bookingItem.endTime,
-    title: bookingItem.productName,
-    minGuestCount: bookingItem.minGuestCount,
-    maxGuestCount: bookingItem.maxGuestCount,
-    latitude: bookingItem.latitude,
-    longitude: bookingItem.longitude,
-    bookingStatus: bookingItem.bookingStatus,
-    paymentStatus: bookingItem.paymentStatus,
-    quantity: bookingItem.quantity,
-    createdAt: bookingItem.createdAt,
-  })
-  .from(bookingItem)
-  .innerJoin(
-    products,
-    eq(bookingItem.productId, products.productId)
-  )
-  .where(eq(products.vendorId, vendorId));
-
+    const bookingItems = await db
+      .select({
+        id: bookingItem.id,
+        bookingId: bookingItem.bookingId,
+        productId: bookingItem.productId,
+        contactName: bookingItem.contactName,
+        contactNumber: bookingItem.contactNumber,
+        startDate: bookingItem.startTime,
+        endDate: bookingItem.endTime,
+        title: bookingItem.productName,
+        minGuestCount: bookingItem.minGuestCount,
+        maxGuestCount: bookingItem.maxGuestCount,
+        latitude: bookingItem.latitude,
+        longitude: bookingItem.longitude,
+        bookingStatus: bookingItem.bookingStatus,
+        paymentStatus: bookingItem.paymentStatus,
+        quantity: bookingItem.quantity,
+        createdAt: bookingItem.createdAt,
+      })
+      .from(bookingItem)
+      .innerJoin(products, eq(bookingItem.productId, products.productId))
+      .where(eq(products.vendorId, vendorId));
 
     const updatedArr = bookingItems.map((item) => ({
       ...item,

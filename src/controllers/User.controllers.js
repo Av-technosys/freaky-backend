@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, or, and, inArray } from 'drizzle-orm';
 import { db } from '../../db/db.js';
 import {
   cart,
@@ -11,10 +11,10 @@ import {
 import { removePassowrd } from '../helpers/User.helper.js';
 import { paginate } from '../helpers/paginate.js';
 import { sendNotificationToUser } from '../helpers/SendNotification.js';
-import { bookingDraft } from '../../db/schema.js';
+import { bookingDraft, events, products, priceBook, priceBookEntry } from '../../db/schema.js';
 import { createBookingDraft } from '../helpers/createBookingDraft.js';
 import { SOURCE, STATUS } from '../../const/global.js';
-
+import { desc } from 'drizzle-orm'
 export const getUserInfo = async (req, res) => {
   try {
     const email = req.user?.email || req.body.email;
@@ -120,47 +120,80 @@ export const addAddress = async (req, res) => {
       if (!value) return res.status(400).json({ error: `${key} is required.` });
     }
 
-    // Fetch User
-    const user = await db.query.users.findFirst({
+    const userData = await db.query.users.findFirst({
       where: (users, { eq }) => eq(users.email, email),
     });
 
-    // if user is not present
-    if (!user) {
+    if (!userData) {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    const userId = user.userId;
+    const userId = userData.userId;
 
-    // await db.insert(userAddresses).values({
-    //   userId,
-    //   address: req.body.address,
-    // });
+    const existingAddress = await db.execute(sql`
+      SELECT id FROM user_address WHERE user_id = ${userId} LIMIT 1
+    `);
 
-    await db.execute(sql`
-    INSERT INTO user_address (user_id, title, address_line_one, address_line_two, reciver_name, reciver_number, city, state, postal_code, country, latitude, longitude, location)
-    VALUES (
-      ${userId},
-      ${title},
-      ${addressLineOne},
-      ${addressLineTwo},
-      ${reciverName},
-      ${reciverNumber},
-      ${city},
-      ${state},
-      ${postalCode},
-      ${country},
-      ${latitude},
-      ${longitude},
-      ${sql`ST_SetSRID(ST_MakePoint(${latitude}, ${longitude}), 4326)::geography`}
-    );
-  `);
+    const rows = existingAddress?.rows || existingAddress || []
+    const isFirstAddress = rows.length === 0
+    const inserted = await db.execute(sql`
+      INSERT INTO user_address (
+        user_id,
+        title,
+        address_line_one,
+        address_line_two,
+        reciver_name,
+        reciver_number,
+        city,
+        state,
+        postal_code,
+        country,
+        latitude,
+        longitude,
+        is_default,
+        location
+      )
+      VALUES (
+        ${userId},
+        ${title},
+        ${addressLineOne},
+        ${addressLineTwo},
+        ${reciverName},
+        ${reciverNumber},
+        ${city},
+        ${state},
+        ${postalCode},
+        ${country},
+        ${latitude},
+        ${longitude},
+        ${isFirstAddress},
+        ${sql`ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography`}
+      )
+      RETURNING id;
+    `);
+
+    const newAddressId =
+      inserted?.rows?.[0]?.id ||
+      inserted?.[0]?.id;
+
+    if (!newAddressId) {
+      console.log('INSERT RESPONSE:', inserted);
+      return res.status(500).json({ error: 'Failed to insert address' });
+    }
+    if (isFirstAddress) {
+      await db.execute(sql`
+        UPDATE "user"
+        SET current_address_id = ${newAddressId}
+        WHERE user_id = ${userId}
+      `);
+    }
 
     return res.status(201).json({
       message: 'Address added successfully.',
     });
+
   } catch (err) {
-    console.error('Error fetching user info:', err);
+    console.error('Error adding address:', err);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 };
@@ -442,30 +475,293 @@ export const cartHandler = async (req, res) => {
       where: (t, { eq }) => eq(t.userId, userId),
     });
 
-    if (req.method === 'GET') {
-      if (!userCart) {
+    if (req.method === 'GET' && req.params.bookingDraftId) {
+      try {
+        const { bookingDraftId } = req.params;
+
+        if (!bookingDraftId) {
+          return res.status(400).json({ error: 'bookingDraftId required' });
+        }
+
+        // 1️⃣ Fetch bookingDraft
+        const booking = await db.query.bookingDraft.findFirst({
+          where: (t, { eq }) => eq(t.bookingDraftId, Number(bookingDraftId)),
+        });
+
+        if (!booking) {
+          return res.status(404).json({ error: 'Item not found' });
+        }
+
+        // 2️⃣ Fetch product
+        const product = await db.query.products.findFirst({
+          where: (t, { eq }) => eq(t.productId, booking.productId),
+        });
+
+        if (!product) {
+          return res.status(404).json({ error: 'Product not found' });
+        }
+
+        // 3️⃣ Fetch default pricebook
+        const defaultPB = await db.query.priceBook.findFirst({
+          where: (t, { eq, and }) =>
+            and(eq(t.vendorId, product.vendorId), eq(t.isDefault, true)),
+        });
+
+        if (!defaultPB) {
+          return res.status(404).json({
+            error: 'Default pricebook not found',
+          });
+        }
+
+        // 4️⃣ Fetch price slabs
+        const priceSlabs = await db.query.priceBookEntry.findMany({
+          where: (t, { eq, and }) =>
+            and(
+              eq(t.productId, product.productId),
+              eq(t.priceBookingId, defaultPB.id)
+            ),
+          orderBy: (t, { asc }) => asc(t.lowerSlab),
+        });
+
+        // 5️⃣ Pick correct slab based on guest count
+        const guestCount = booking.maxGuestCount || booking.minGuestCount || 1;
+
+        let selectedPrice = priceSlabs.find(
+          (slab) =>
+            guestCount >= slab.lowerSlab &&
+            (!slab.upperSlab || guestCount <= slab.upperSlab)
+        );
+
+        if (!selectedPrice) {
+          selectedPrice = priceSlabs[0];
+        }
+
+        const unitPrice = Number(
+          selectedPrice?.salePrice || selectedPrice?.listPrice || 0
+        );
+
+        // 6️⃣ Calculate pricing
+        const quantity = booking.quantity || 1;
+
+        const subtotal = unitPrice * quantity;
+        const serviceFee = subtotal * 0.08;
+        const tax = subtotal * 0.1;
+        const total = subtotal + serviceFee + tax;
+
+        // 7️⃣ Response (matches your frontend)
         return res.json({
-          message: 'Cart is empty',
+          cartId: userCart.cartId,
+          booking: {
+            title: product.title,
+            city: product.city,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            guestRange: `${booking.minGuestCount} - ${booking.maxGuestCount}`,
+          },
+
+          items: [
+            {
+              id: product.productId,
+              title: product.title,
+              city: product.city,
+              quantity,
+              price: unitPrice,
+              image: product.bannerImage,
+            },
+          ],
+
+          pricing: {
+            subtotal,
+            serviceFee,
+            tax,
+            total,
+          },
+        });
+      } catch (err) {
+        console.error('Cart Detail Error:', err);
+        return res.status(500).json({ error: 'Server error' });
+      }
+    }
+    if (req.method === 'GET') {
+      const userEvents = await db
+        .select({ eventId: events.eventId })
+        .from(events)
+        .where(eq(events.userId, userId));
+
+      const eventIds = userEvents.map(e => e.eventId);
+
+      let condition;
+
+      if (userCart && eventIds.length > 0) {
+        condition = or(
+          and(eq(bookingDraft.sourceId, userCart.cartId), eq(bookingDraft.source, 'CART')),
+          and(inArray(bookingDraft.sourceId, eventIds), eq(bookingDraft.source, 'EVENT'))
+        );
+      } else if (userCart) {
+        condition = and(eq(bookingDraft.sourceId, userCart.cartId), eq(bookingDraft.source, 'CART'));
+      } else if (eventIds.length > 0) {
+        condition = and(inArray(bookingDraft.sourceId, eventIds), eq(bookingDraft.source, 'EVENT'));
+      } else {
+        return res.json({
+          message: 'Cart is empty and no events found',
           cartId: null,
           items: [],
         });
       }
 
-      const items = await db
-        .select()
+      const bookingResult = await db
+        .select({
+          bookingDraftId: bookingDraft.bookingDraftId,
+          source: bookingDraft.source,
+          sourceId: bookingDraft.sourceId,
+          bookingMinGuest: bookingDraft.minGuestCount,
+          bookingMaxGuest: bookingDraft.maxGuestCount,
+          productId: bookingDraft.productId,
+          contactName: bookingDraft.contactName,
+          contactNumber: bookingDraft.contactNumber,
+          startTime: bookingDraft.startTime,
+          endTime: bookingDraft.endTime,
+          quantity: bookingDraft.quantity,
+          status: bookingDraft.status,
+          vendorId: products.vendorId,
+          productName: products.title,
+          productImage: products.bannerImage,
+          pricebookId: priceBook.id,
+          lowerSlab: priceBookEntry.lowerSlab,
+          upperSlab: priceBookEntry.upperSlab,
+          price: priceBookEntry.salePrice,
+          eventMinGuest: events.minGuestCount,
+          eventMaxGuest: events.maxGuestCount,
+          eventContactName: events.contactName,
+          eventContactNumber: events.contactNumber,
+          eventStartTime: events.startTime,
+          eventEndTime: events.endTime,
+        })
         .from(bookingDraft)
-        .where(eq(bookingDraft.sourceId, userCart.cartId));
+        .where(condition)
+        .orderBy(desc(bookingDraft.createdAt))
+        .leftJoin(products, eq(products.productId, bookingDraft.productId))
+        .leftJoin(events, eq(events.eventId, bookingDraft.sourceId))
+        .leftJoin(
+          priceBook,
+          and(
+            eq(priceBook.vendorId, products.vendorId),
+            eq(priceBook.isDefault, true)
+          )
+        )
+        .leftJoin(
+          priceBookEntry,
+          and(
+            eq(priceBookEntry.priceBookingId, priceBook.id),
+            eq(priceBookEntry.productId, products.productId)
+          )
+        );
 
-      return res.json({
+      const grouped = bookingResult.reduce((acc, item) => {
+        if (!acc[item.bookingDraftId]) {
+          acc[item.bookingDraftId] = [];
+        }
+        acc[item.bookingDraftId].push(item);
+        return acc;
+      }, {});
+
+      const finalItems = [];
+
+      for (const bookingId in grouped) {
+        const items = grouped[bookingId];
+        const bookingMinGuest = items[0].bookingMinGuest || items[0].eventMinGuest || 1;
+        const bookingMaxGuest = items[0].bookingMaxGuest || items[0].eventMaxGuest || 1;
+
+        let matched = items.filter(
+          (i) =>
+            bookingMinGuest >= i.lowerSlab && bookingMaxGuest <= i.upperSlab
+        );
+
+        let selected;
+
+        if (matched.length > 0) {
+          matched.sort((a, b) => a.upperSlab - b.upperSlab);
+          selected = matched[0];
+        } else {
+          selected = items
+            .map((i) => {
+              let distance = 0;
+              if (bookingMaxGuest < i.lowerSlab) {
+                distance = i.lowerSlab - bookingMaxGuest;
+              } else if (bookingMinGuest > i.upperSlab) {
+                distance = bookingMinGuest - i.upperSlab;
+              }
+              return { ...i, distance };
+            })
+            .sort((a, b) => a.distance - b.distance)[0];
+        }
+
+        if (selected) {
+          selected.contactName = selected.contactName || selected.eventContactName;
+          selected.contactNumber = selected.contactNumber || selected.eventContactNumber;
+          selected.startTime = selected.startTime || selected.eventStartTime;
+          selected.endTime = selected.endTime || selected.eventEndTime;
+          selected.minGuestCount = bookingMinGuest;
+          selected.maxGuestCount = bookingMaxGuest;
+
+          delete selected.distance;
+
+          finalItems.push(selected);
+        }
+      }
+
+      const cartItems = finalItems.filter((i) => i.source === 'CART');
+      const eventItemsRaw = finalItems.filter((i) => i.source === 'EVENT');
+
+      const eventsMap = {};
+      for (const item of eventItemsRaw) {
+        const eventId = item.sourceId;
+        if (!eventsMap[eventId]) {
+          eventsMap[eventId] = {
+            eventId: eventId,
+            eventDetails: {
+              contactName: item.eventContactName,
+              contactNumber: item.eventContactNumber,
+              startTime: item.eventStartTime,
+              endTime: item.eventEndTime,
+              minGuestCount: item.eventMinGuest,
+              maxGuestCount: item.eventMaxGuest,
+            },
+            services: [],
+          };
+        }
+        eventsMap[eventId].services.push(item);
+      }
+
+      const formattedEvents = Object.values(eventsMap);
+
+      console.log("all response coming up ", {
         cartId: userCart.cartId,
-        items,
+        cartItems,
+        formattedEvents
+      });
+      return res.json({
+        cartId: userCart ? userCart.cartId : null,
+        items: cartItems,
+        events: formattedEvents,
       });
     }
 
     if (req.method === 'POST') {
       if (!userCart) {
-        const newCart = await db.insert(cart).values({ userId }).returning();
-        userCart = newCart[0];
+        const newCart = await db
+          .insert(cart)
+          .values({ userId })
+          .onConflictDoNothing()
+          .returning();
+
+        if (newCart.length) {
+          userCart = newCart[0];
+        } else {
+          userCart = await db.query.cart.findFirst({
+            where: (t, { eq }) => eq(t.userId, userId),
+          });
+        }
       }
 
       const cartId = userCart.cartId;
@@ -502,6 +798,8 @@ export const cartHandler = async (req, res) => {
       if (existing) {
         return res.json({
           message: 'item already exists',
+          item: existing,
+          cartId: cartId,
         });
       }
 
@@ -523,7 +821,8 @@ export const cartHandler = async (req, res) => {
 
       return res.json({
         message: 'Item added to cart',
-        // item: newItem[0],
+        item: newItem,
+        cartId: cartId,
       });
     }
 
@@ -870,6 +1169,16 @@ export const updateDetails = async (req, res) => {
       longitude,
     } = req.body;
 
+    const lat =
+      latitude !== undefined && latitude !== null && latitude !== ''
+        ? Number(latitude)
+        : null;
+
+    const lng =
+      longitude !== undefined && longitude !== null && longitude !== ''
+        ? Number(longitude)
+        : null;
+
     if (userId) {
       await db.transaction(async (tx) => {
         await tx
@@ -884,8 +1193,8 @@ export const updateDetails = async (req, res) => {
 
         // currentAddressId update address  if exist or create if not
 
-        if(currentAddressId){
-  await tx.execute(sql`
+        if (currentAddressId) {
+          await tx.execute(sql`
   UPDATE user_address
   SET
     address_line_one = ${addressLine1},
@@ -894,12 +1203,15 @@ export const updateDetails = async (req, res) => {
     state = ${state},
     postal_code = ${zipCode},
     country = ${country},
-    latitude = ${latitude},
-    longitude = ${longitude},
-    location = ST_SetSRID(ST_MakePoint(${longitude}::float, ${latitude}::float), 4326)::geography
+    latitude = ${lat},
+    longitude = ${lng},
+    location = ${lat !== null && lng !== null
+              ? sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`
+              : null
+            }
   WHERE id = ${currentAddressId}
 `);
-        }else{
+        } else {
           const [address] = await tx.execute(sql`
   WITH inserted AS (
     INSERT INTO user_address (
@@ -922,20 +1234,21 @@ export const updateDetails = async (req, res) => {
       ${state},
       ${zipCode},
       ${country},
-      ${latitude},
-      ${longitude},
-      ST_SetSRID(ST_MakePoint(${longitude}::float, ${latitude}::float), 4326)::geography
+      ${lat},
+      ${lng},
+      ${lat !== null && lng !== null
+              ? sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`
+              : null
+            }
     )
     RETURNING id
   )
-  UPDATE users
+  UPDATE "user"
   SET current_address_id = inserted.id
   FROM inserted
-  WHERE users.user_id = ${userId}
+  WHERE "user".user_id = ${userId}
 `);
-
         }
-        
       });
       return res.status(200).json({
         message: 'User details updated successfully.',

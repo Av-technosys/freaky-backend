@@ -1,28 +1,35 @@
-import {
-  booking,
-  bookingDraft,
-  bookingItem,
-  products,
-} from '../../db/schema.js';
+import { booking, vendors, bookingDraft, bookingItem, products } from '../../db/schema.js';
 import { db } from '../../db/db.js';
 import { and, ilike, inArray } from 'drizzle-orm';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { paginate } from '../helpers/paginate.js';
-import {
-  getCountFromBookingDraft,
-  getCountFromBookingItem,
-  getProductMaximumCount,
-} from '../helpers/serviceAvailabilityChecker.js';
+import { getCountFromBookingDraft, getCountFromBookingItem, getProductMaximumCount } from '../helpers/serviceAvailabilityChecker.js';
+import { createVendorNotification } from '../helpers/vendor.helper.js';
+import { ne, desc } from 'drizzle-orm';
 
 export const createExternalBooking = async (req, res) => {
   try {
-    const vendorId = req.vendor.vendorId;
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
+    if (!vendorId) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
     const { contactName, contactNumber, services } = req.body;
 
-    const [newBooking] = await db
-      .insert(booking)
-      .values({ contactName, contactNumber, source: 'EXTERNAL' })
-      .returning();
+    const [newBooking] = await db.insert(booking).values({ contactName, contactNumber, source: 'EXTERNAL' }).returning();
 
     const bookingId = newBooking.bookingId;
 
@@ -39,27 +46,32 @@ export const createExternalBooking = async (req, res) => {
 
       const productMap = new Map(productsData.map((p) => [p.productId, p]));
 
-      const bookingItems = services.map((service) => {
-        const product = productMap.get(Number(service.serviceId));
+      const bookingItems = await Promise.all(
+        services.map(async (service) => {
+          const product = productMap.get(Number(service.serviceId));
 
-        return {
-          bookingId,
-          contactName,
-          contactNumber,
-          productId: service.serviceId,
-          productName: product ? product.title : null,
-          productImage: product ? product.bannerImage : null,
-          // startTime: new Date(service.startTime),
-          // endTime: new Date(service.endTime),
-          startTime: new Date(service.startTime + 'Z'),
-          endTime: new Date(service.endTime + 'Z'),
+          await createVendorNotification({
+            vendorId,
+            title: 'New External Booking',
+            message: `New booking from ${contactName}`,
+          });
 
-          minGuestCount: service.minPerson,
-          maxGuestCount: service.maxPerson,
-          vendorId,
-          quantity: 1, // Default quantity as it is required by schema but not provided in input
-        };
-      });
+          return {
+            bookingId,
+            contactName,
+            contactNumber,
+            productId: service.serviceId,
+            productName: product ? product.title : null,
+            productImage: product ? product.bannerImage : null,
+            startTime: new Date(service.startTime + 'Z'),
+            endTime: new Date(service.endTime + 'Z'),
+            minGuestCount: service.minPerson,
+            maxGuestCount: service.maxPerson,
+            vendorId,
+            quantity: 1,
+          };
+        })
+      );
 
       await db.insert(bookingItem).values(bookingItems);
     }
@@ -70,9 +82,7 @@ export const createExternalBooking = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating external booking:', error);
-    return res
-      .status(500)
-      .json({ message: 'Internal server error', error: error.message });
+    return res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 };
 
@@ -80,19 +90,7 @@ export const createBooking = async (req, res) => {
   try {
     const userId = req.user['custom:user_id'];
 
-    const {
-      eventTypeId,
-      source,
-      contactName,
-      contactNumber,
-      description,
-      startTime,
-      endTime,
-      minGuestCount,
-      maxGuestCount,
-      latitude,
-      longitude,
-    } = req.body;
+    const { eventTypeId, source, contactName, contactNumber, description, startTime, endTime, minGuestCount, maxGuestCount, latitude, longitude } = req.body;
 
     if (!eventTypeId || !source) {
       return res.status(400).json({
@@ -100,69 +98,113 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const [createdBooking] = await db
-      .insert(booking)
-      .values({
-        userId,
-        eventTypeId,
-        source,
+    const result = await db.transaction(async (tx) => {
+      const [createdBooking] = await tx
+        .insert(booking)
+        .values({
+          userId,
+          eventTypeId,
+          source,
 
-        contactName,
-        contactNumber,
-        description,
-        startTime: startTime ? new Date(startTime) : undefined,
-        endTime: endTime ? new Date(endTime) : undefined,
-        minGuestCount,
-        maxGuestCount,
+          contactName,
+          contactNumber,
+          description,
+          startTime: startTime ? new Date(startTime) : undefined,
+          endTime: endTime ? new Date(endTime) : undefined,
 
-        latitude,
-        longitude,
+          minGuestCount,
+          maxGuestCount,
+          latitude,
+          longitude,
 
-        bookingStatus: 'HOLD',
-        paymentStatus: 'PENDING',
-      })
-      .returning({
-        bookingId: booking.bookingId,
-        bookingStatus: booking.bookingStatus,
-        paymentStatus: booking.paymentStatus,
-        createdAt: booking.createdAt,
-      });
+          bookingStatus: 'HOLD',
+          paymentStatus: 'PENDING',
+        })
+        .returning({
+          bookingId: booking.bookingId,
+        });
+
+      const bookingId = createdBooking.bookingId;
+
+      // 🔥 CONDITION BASED ON SOURCE
+      const draftFilter = source === 'CART' ? and(eq(bookingDraft.source, 'CART'), eq(bookingDraft.sourceId, req.body.sourceId)) : eq(bookingDraft.userId, userId);
+
+      // 2️⃣ Move only relevant drafts
+      await tx.insert(bookingItem).select(
+        tx
+          .select({
+            bookingId: sql`${bookingId}`,
+            productId: bookingDraft.productId,
+
+            contactName: bookingDraft.contactName,
+            contactNumber: bookingDraft.contactNumber,
+
+            startTime: bookingDraft.startTime,
+            endTime: bookingDraft.endTime,
+
+            minGuestCount: bookingDraft.minGuestCount,
+            maxGuestCount: bookingDraft.maxGuestCount,
+
+            productName: sql`''`, // optional fill later
+            productImage: sql`''`,
+            productPrice: sql`0`,
+
+            vendorId: sql`0`,
+
+            latitude: bookingDraft.latitude,
+            longitude: bookingDraft.longitude,
+
+            quantity: bookingDraft.quantity,
+          })
+          .from(bookingDraft)
+          .where(draftFilter)
+      );
+
+      //       const userEmail = req.user.email;
+
+      // await createVendorNotification({
+      //   vendorId: null,
+      //   title: 'New Booking',
+      //   message: `Booking created by ${contactName}`,
+      // });
+
+      // await sendMail({
+      //   to: userEmail,
+      //   subject: 'Booking Created',
+      //   body: bookingConfirmation({ name: contactName }),
+      // });
+      // 3️⃣ Delete only those drafts
+      await tx.delete(bookingDraft).where(draftFilter);
+
+      return createdBooking;
+    });
 
     return res.status(201).json({
-      message: 'Booking created successfully',
-      data: createdBooking,
+      message: 'Booking created with items successfully',
+      data: result,
     });
   } catch (error) {
     console.error('Create booking failed', error);
+
     return res.status(500).json({
-      message: 'Internal server error',
+      message: error.message || 'Internal server error',
     });
   }
 };
 
 export const createBookingItem = async (req, res) => {
   try {
-    const {
-      bookingId,
-      productId,
-      contactName,
-      contactNumber,
-      startTime,
-      endTime,
-      minGuestCount,
-      maxGuestCount,
-      quantity,
-      latitude,
-      longitude,
-    } = req.body;
+    const { bookingId, items } = req.body;
 
-    if (!productId || !quantity) {
+    if (!bookingId || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
-        message: 'productId and quantity are required',
+        message: 'bookingId and items[] are required',
       });
     }
 
-    const [productData] = await db
+    const productIds = items.map((i) => i.productId);
+
+    const productsData = await db
       .select({
         productId: products.productId,
         name: products.title,
@@ -171,67 +213,44 @@ export const createBookingItem = async (req, res) => {
         vendorId: products.vendorId,
       })
       .from(products)
-      .where(eq(products.productId, productId));
+      .where(inArray(products.productId, productIds));
 
-    if (!productData) {
-      return res.status(404).json({
-        message: 'Product not found',
-      });
-    }
-    // check hold
+    const productMap = new Map(productsData.map((p) => [p.productId, p]));
 
-    const startDate = new Date(startTime);
-    const endDate = new Date(endTime);
+    const bookingItems = items.map((item) => {
+      const product = productMap.get(item.productId);
 
-    const [bookingDraftCount, bookingItemCount, productMaximumCount] =
-      await Promise.all([
-        getCountFromBookingDraft(startDate, endDate, productId),
-        getCountFromBookingItem(startDate, endDate, productId),
-        getProductMaximumCount(productId),
-      ]);
+      return {
+        bookingId,
+        productId: item.productId,
 
-    const totalUsedServices = bookingDraftCount + bookingItemCount;
+        contactName: item.contactName,
+        contactNumber: item.contactNumber,
 
-    const availableSlots = productMaximumCount - totalUsedServices;
+        startTime: new Date(item.startTime),
+        endTime: new Date(item.endTime),
 
-    if (availableSlots > 0) {
-      const [createdItem] = await db
-        .insert(bookingItem)
-        .values({
-          bookingId,
-          productId: productData.productId,
+        minGuestCount: item.minGuestCount,
+        maxGuestCount: item.maxGuestCount,
 
-          contactName,
-          contactNumber,
-          startTime: startTime ? new Date(startTime) : undefined,
-          endTime: endTime ? new Date(endTime) : undefined,
-          minGuestCount,
-          maxGuestCount,
+        productName: product?.name,
+        productImage: product?.image,
+        productPrice: product?.price,
+        vendorId: product?.vendorId,
 
-          productName: productData.name,
-          productImage: productData.image,
-          productPrice: productData.price,
-          vendorId: productData.vendorId,
-          latitude,
-          longitude,
+        latitude: item.latitude,
+        longitude: item.longitude,
 
-          quantity,
-        })
-        .returning();
+        quantity: item.quantity ?? 1,
+      };
+    });
 
-      return res.status(201).json({
-        message:
-          'The service is available and your booking has been created successfully.',
-        data: createdItem,
-        availableServices: availableSlots,
-      });
-    } else {
-      return res.status(200).json({
-        success: true,
-        message: 'No service is available for this product at this time.',
-        availableServices: 0,
-      });
-    }
+    await db.insert(bookingItem).values(bookingItems);
+
+    return res.status(201).json({
+      message: 'Booking items created successfully',
+      count: bookingItems.length,
+    });
   } catch (error) {
     console.error('Create booking item failed', error);
     return res.status(500).json({
@@ -239,18 +258,35 @@ export const createBookingItem = async (req, res) => {
     });
   }
 };
-
 export const getBooking = async (req, res) => {
   try {
     const { text = '', page = 1, page_size = 12 } = req.query;
 
-    const vendorId = req.vendor.vendorId;
+    const raw = req.user['custom:vendor_ids'];
 
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
+    if (!vendorId) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
     const filters = [eq(bookingItem.vendorId, vendorId)];
 
     if (text.trim()) {
       filters.push(ilike(bookingItem.productName, `%${text}%`));
     }
+
+    console.log(vendorId);
 
     const whereClause = and(...filters);
 
@@ -262,6 +298,69 @@ export const getBooking = async (req, res) => {
         productName: bookingItem.productName,
         productPrice: bookingItem.productPrice,
         bookingStatus: bookingItem.bookingStatus,
+        createdAt: bookingItem.createdAt,
+      },
+      where: whereClause,
+      orderBy: bookingItem.createdAt,
+      page,
+      page_size,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Products fetched successfully',
+      ...result,
+    });
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const getVendorMonthlyBooking = async (req, res) => {
+  try {
+    const { text = '', page = 1, page_size = 12 } = req.query;
+
+    const raw = req.user['custom:vendor_ids'];
+
+    let vendorId;
+
+    try {
+      const parsed = JSON.parse(raw);
+      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch {
+      vendorId = raw;
+    }
+
+    vendorId = Number(vendorId);
+
+    if (!vendorId) {
+      return res.status(400).json({
+        message: 'vendorId missing',
+      });
+    }
+    const filters = [eq(bookingItem.vendorId, vendorId)];
+
+    if (text.trim()) {
+      filters.push(ilike(bookingItem.productName, `%${text}%`));
+    }
+
+    console.log(vendorId);
+
+    const whereClause = and(...filters);
+
+    const result = await paginate({
+      table: bookingItem,
+      select: {
+        id: bookingItem.id,
+        contactName: bookingItem.contactName,
+        productName: bookingItem.productName,
+        productPrice: bookingItem.productPrice,
+        bookingStatus: bookingItem.bookingStatus,
+        createdAt: bookingItem.createdAt,
       },
       where: whereClause,
       orderBy: bookingItem.createdAt,
@@ -285,25 +384,158 @@ export const getBooking = async (req, res) => {
 
 export const getBookingItemDetailsById = async (req, res) => {
   try {
-    const { bookingId } = req.params;
+    const bookingItemId = Number(req.params.bookingItemId);
+    console.log(bookingItemId);
+    if (!bookingItemId) {
+      return res.status(400).json({ message: 'Invalid bookingItemId' });
+    }
+    const [bookingItemData] = await db
+      .select({
+        id: bookingItem.id,
+        contactName: bookingItem.contactName,
+        contactNumber: bookingItem.contactNumber,
+        startTime: bookingItem.startTime,
+        endTime: bookingItem.endTime,
 
-    const bookingItemDetails = await db
-      .select()
+        minGuestCount: bookingItem.minGuestCount,
+        maxGuestCount: bookingItem.maxGuestCount,
+
+        productName: bookingItem.productName,
+        productImage: bookingItem.productImage,
+        productPrice: bookingItem.productPrice,
+        bookingStatus: bookingItem.bookingStatus,
+        createdAt: bookingItem.createdAt,
+      })
       .from(bookingItem)
-      .where(eq(bookingItem.id, bookingId));
-
+      .where(eq(bookingItem.id, bookingItemId));
+    console.log('bookingItemData', bookingItemData);
+    if (!bookingItemData) {
+      return res.status(404).json({ message: 'Booking item not found' });
+    }
     return res.status(200).json({
-      message: 'Booking item details fetched successfully.',
-      data: bookingItemDetails,
+      success: true,
+      message: 'Booking item details fetched successfully',
+      data: bookingItemData,
     });
   } catch (error) {
-    console.error('Unable to fetch booking item details', error);
+    console.error('Error fetching booking item details:', error);
     return res.status(500).json({
-      message: 'Internal server error',
+      success: false,
+      message: error.message,
     });
   }
 };
 
+export const getBookingDetailsById = async (req, res) => {
+  try {
+    const bookingId = Number(req.params.bookingId);
+
+    if (!bookingId) {
+      return res.status(400).json({ message: 'Invalid bookingId' });
+    }
+
+    // ✅ 1. FETCH BOOKING + VENDOR (JOIN)
+    const bookingResult = await db
+      .select({
+        // booking fields
+        bookingId: booking.bookingId,
+        userId: booking.userId,
+        eventTypeId: booking.eventTypeId,
+        source: booking.source,
+
+        contactName: booking.contactName,
+        contactNumber: booking.contactNumber,
+        description: booking.description,
+
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+
+        minGuestCount: booking.minGuestCount,
+        maxGuestCount: booking.maxGuestCount,
+
+        latitude: booking.latitude,
+        longitude: booking.longitude,
+
+        bookingStatus: booking.bookingStatus,
+        paymentStatus: booking.paymentStatus,
+
+        totalAmount: booking.totalAmount,
+        createdAt: booking.createdAt,
+        bookedAt: booking.bookedAt,
+
+        // ✅ vendor fields
+        vendorId: booking.vendorId,
+        vendorName: vendors.businessName,
+        vendorLogo: vendors.logoUrl,
+        vendorCity: vendors.city,
+        vendorState: vendors.state,
+      })
+      .from(booking)
+      .leftJoin(vendors, eq(booking.vendorId, vendors.vendorId))
+      .where(eq(booking.bookingId, bookingId));
+
+    if (!bookingResult.length) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    const bookingData = bookingResult[0];
+
+    // ✅ 2. FETCH BOOKING ITEMS
+    const items = await db
+      .select({
+        id: bookingItem.id,
+        bookingId: bookingItem.bookingId,
+
+        productId: bookingItem.productId,
+        productName: bookingItem.productName,
+        productImage: bookingItem.productImage,
+        productPrice: bookingItem.productPrice,
+
+        quantity: bookingItem.quantity,
+
+        contactName: bookingItem.contactName,
+        contactNumber: bookingItem.contactNumber,
+
+        startTime: bookingItem.startTime,
+        endTime: bookingItem.endTime,
+
+        minGuestCount: bookingItem.minGuestCount,
+        maxGuestCount: bookingItem.maxGuestCount,
+
+        latitude: bookingItem.latitude,
+        longitude: bookingItem.longitude,
+
+        bookingStatus: bookingItem.bookingStatus,
+        paymentStatus: bookingItem.paymentStatus,
+
+        createdAt: bookingItem.createdAt,
+
+        // optional vendor per item
+        vendorId: bookingItem.vendorId,
+      })
+      .from(bookingItem)
+      .where(eq(bookingItem.bookingId, bookingId));
+
+    console.log('Fetched booking items:', {
+      booking: bookingData,
+      items: items || [],
+    });
+    // ✅ 3. FINAL RESPONSE
+    return res.json({
+      success: true,
+      data: {
+        booking: bookingData,
+        items: items || [],
+      },
+    });
+  } catch (err) {
+    console.log('Error fetching booking:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching booking',
+    });
+  }
+};
 export const checkServiceAvailability = async (req, res) => {
   try {
     const { productId, startTime, endTime } = req.body;
@@ -311,12 +543,7 @@ export const checkServiceAvailability = async (req, res) => {
     const startDate = new Date(startTime);
     const endDate = new Date(endTime);
 
-    const [bookingDraftCount, bookingItemCount, productMaximumCount] =
-      await Promise.all([
-        getCountFromBookingDraft(startDate, endDate, productId),
-        getCountFromBookingItem(startDate, endDate, productId),
-        getProductMaximumCount(productId),
-      ]);
+    const [bookingDraftCount, bookingItemCount, productMaximumCount] = await Promise.all([getCountFromBookingDraft(startDate, endDate, productId), getCountFromBookingItem(startDate, endDate, productId), getProductMaximumCount(productId)]);
 
     const totalUsedServices = bookingDraftCount + bookingItemCount;
 
@@ -344,67 +571,55 @@ export const checkServiceAvailability = async (req, res) => {
   }
 };
 
-// export const createBooking = async () => {
-//   try {
-//     const userId = req.user['custom:user_id'];
-//     const now = new Date();
-//     const { productId } = req.params;
+export const getMyBookings = async (req, res) => {
+  try {
+    const userId = req.user['custom:user_id'];
+    const { completed } = req.query;
 
-//     const {
-//       eventTypeId,
-//       source,
-//       contactName,
-//       contactNumber,
-//       description,
-//       startTime,
-//       endTime,
-//       minGuestCount,
-//       maxGuestCount,
-//       latitude,
-//       longitude,
-//     } = req.body;
+    const whereCondition = completed === 'true' ? and(eq(booking.userId, userId), eq(booking.bookingStatus, 'COMPLETED')) : and(eq(booking.userId, userId), ne(booking.bookingStatus, 'COMPLETED'));
 
-//     const draft = await db.query.bookingDraft.findFirst({
-//       where: and(
-//         eq(bookingDraft.productId, Number(productId)),
-//         eq(bookingDraft.status, 'HOLD'),
-//         gt(bookingDraft.expiredAt, now)
-//       ),
-//     });
+    const bookings = await db
+      .select({
+        bookingId: booking.bookingId,
+        userId: booking.userId,
+        eventTypeId: booking.eventTypeId,
+        source: booking.source,
+        contactName: booking.contactName,
+        contactNumber: booking.contactNumber,
+        description: booking.description,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        minGuestCount: booking.minGuestCount,
+        maxGuestCount: booking.maxGuestCount,
+        latitude: booking.latitude,
+        longitude: booking.longitude,
+        bookingStatus: booking.bookingStatus,
+        paymentStatus: booking.paymentStatus,
+        vendorId: booking.vendorId,
+        totalAmount: booking.totalAmount,
+        adminCommissionPercentage: booking.adminCommissionPercentage,
+        platformFees: booking.platformFees,
+        bookedAt: booking.bookedAt,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        vendorName: vendors.businessName,
+        vendorLogo: vendors.logoUrl,
+      })
+      .from(booking)
+      .leftJoin(vendors, eq(booking.vendorId, vendors.vendorId))
+      .where(whereCondition)
+      .orderBy(desc(booking.createdAt));
 
-//     if (!draft) {
-//       return res.status(409).json({
-//         success: false,
-//         message: 'Booking unavailable for this product',
-//       });
-//     }
-
-//     await db.insert(booking).values({
-//       userId,
-//       eventTypeId,
-//       source,
-//       contactName,
-//       contactNumber,
-//       description,
-//       startTime: startTime ? new Date(startTime) : draft.startTime,
-//       endTime: endTime ? new Date(endTime) : draft.endTime,
-//       minGuestCount,
-//       maxGuestCount,
-//       latitude,
-//       longitude,
-//       bookingStatus: 'CONFIRMED',
-//       paymentStatus: 'PENDING',
-//     });
-
-//     return res.status(201).json({
-//       success: true,
-//       message: 'Booking created successfully',
-//     });
-//   } catch (error) {
-//     console.error('Create booking error:', error);
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-//   }
-// };
+    console.log('Fetched bookings:', bookings);
+    return res.json({
+      success: true,
+      data: bookings,
+    });
+  } catch (err) {
+    console.error('fetch booking error', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch bookings',
+    });
+  }
+};

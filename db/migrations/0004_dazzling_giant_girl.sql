@@ -1,0 +1,1 @@
+ALTER TYPE "public"."pricing_type_enum" ADD VALUE 'TIER' BEFORE 'MODULAR';

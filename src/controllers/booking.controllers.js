@@ -384,6 +384,50 @@ export const getVendorMonthlyBooking = async (req, res) => {
 
 export const getBookingItemDetailsById = async (req, res) => {
   try {
+    const bookingItemId = Number(req.params.bookingItemId);
+    console.log(bookingItemId);
+    if (!bookingItemId) {
+      return res.status(400).json({ message: 'Invalid bookingItemId' });
+    }
+    const [bookingItemData] = await db
+      .select({
+        id: bookingItem.id,
+        contactName: bookingItem.contactName,
+        contactNumber: bookingItem.contactNumber,
+        startTime: bookingItem.startTime,
+        endTime: bookingItem.endTime,
+
+        minGuestCount: bookingItem.minGuestCount,
+        maxGuestCount: bookingItem.maxGuestCount,
+
+        productName: bookingItem.productName,
+        productImage: bookingItem.productImage,
+        productPrice: bookingItem.productPrice,
+        bookingStatus: bookingItem.bookingStatus,
+        createdAt: bookingItem.createdAt,
+      })
+      .from(bookingItem)
+      .where(eq(bookingItem.id, bookingItemId));
+    console.log('bookingItemData', bookingItemData);
+    if (!bookingItemData) {
+      return res.status(404).json({ message: 'Booking item not found' });
+    }
+    return res.status(200).json({
+      success: true,
+      message: 'Booking item details fetched successfully',
+      data: bookingItemData,
+    });
+  } catch (error) {
+    console.error('Error fetching booking item details:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const getBookingDetailsById = async (req, res) => {
+  try {
     const bookingId = Number(req.params.bookingId);
 
     if (!bookingId) {

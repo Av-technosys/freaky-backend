@@ -40,7 +40,7 @@
   margin: 0 0 26px;
   padding: 0 14px;
 ">
-  Payment Confirmed! Thanks, ${name} — we’ve received your payment for this booking.
+  Payment Confirmed! Thanks, {{name}} — we’ve received your payment for this booking.
 </p>
 
 <div style="
@@ -64,37 +64,37 @@
 
     <div style="display: flex; margin-bottom: 6px">
       <div style="width: 170px; font-weight: bold">Booking ID:</div>
-      <div style="text-align: right; width: 100%">#FC-${bookingId}</div>
+      <div style="text-align: right; width: 100%">#{{bookingId}}</div>
     </div>
 
     <div style="display: flex; margin-bottom: 6px">
       <div style="width: 170px; font-weight: bold">Name:</div>
-      <div style="text-align: right; width: 100%">${name}</div>
+      <div style="text-align: right; width: 100%">{{name}}</div>
     </div>
 
     <div style="display: flex; margin-bottom: 6px">
       <div style="width: 170px; font-weight: bold">Service / Product:</div>
-      <div style="text-align: right; width: 100%">${services}</div>
+      <div style="text-align: right; width: 100%">{{services}}</div>
     </div>
 
     <div style="display: flex; margin-bottom: 6px">
       <div style="width: 170px; font-weight: bold">Date:</div>
-      <div style="text-align: right; width: 100%">${date}</div>
+      <div style="text-align: right; width: 100%">{{date}}</div>
     </div>
 
     <div style="display: flex; margin-bottom: 6px">
       <div style="width: 170px; font-weight: bold">Time:</div>
-      <div style="text-align: right; width: 100%">${time}</div>
+      <div style="text-align: right; width: 100%">{{time}}</div>
     </div>
 
     <div style="display: flex; margin-bottom: 6px">
       <div style="width: 170px; font-weight: bold">Location:</div>
-      <div style="text-align: right; width: 100%">${location}</div>
+      <div style="text-align: right; width: 100%">{{location}}</div>
     </div>
 
     <div style="display: flex; margin-bottom: 6px">
       <div style="width: 170px; font-weight: bold">Payment Method:</div>
-      <div style="text-align: right; width: 100%">${paymentMethod}</div>
+      <div style="text-align: right; width: 100%">{{paymentMethod}}</div>
     </div>
 
     <div style="display: flex">

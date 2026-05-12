@@ -45,7 +45,7 @@
   font-weight:400;
   padding: 0 12px;
 ">
-  Hi ${name}, your booking is confirmed and everything is set for your event.
+  Hi {{name}}, your booking is confirmed and everything is set for your event.
 </p>
 
 <div style="
@@ -69,32 +69,32 @@
 
     <div style="display:flex; margin-bottom:6px; width:100%;">
       <div style="width:186px; font-weight:bold;">Booking ID:</div>
-      <div style="text-align: end; width:100%;">#FC-${bookingId}</div>
+      <div style="text-align: end; width:100%;">#FC-{{bookingId}}</div>
     </div>
 
     <div style="display:flex; margin-bottom:6px;">
       <div style="width:186px; font-weight:bold;">Name:</div>
-      <div style="text-align: end; width:100%;">${name}</div>
+      <div style="text-align: end; width:100%;">{{name}}</div>
     </div>
 
     <div style="display:flex; margin-bottom:6px;">
       <div style="width:186px; font-weight:bold;">Service / Product:</div>
-      <div style="text-align: end; width:100%;">${services}</div>
+      <div style="text-align: end; width:100%;">{{services}}</div>
     </div>
 
     <div style="display:flex; margin-bottom:6px;">
       <div style="width:186px; font-weight:bold;">Date:</div>
-      <div style="text-align: end; width:100%;">${date}</div>
+      <div style="text-align: end; width:100%;">{{date}}</div>
     </div>
 
     <div style="display:flex; margin-bottom:6px;">
       <div style="width:186px; font-weight:bold;">Time:</div>
-      <div style="text-align: end; width:100%;">${time}</div>
+      <div style="text-align: end; width:100%;">{{time}}</div>
     </div>
 
     <div style="display:flex; margin-bottom:6px;">
       <div style="width:186px; font-weight:bold;">Location:</div>
-      <div style="text-align: end; width:100%;">${location}</div>
+      <div style="text-align: end; width:100%;">{{location}}</div>
     </div>
 
     <div style="display:flex;">

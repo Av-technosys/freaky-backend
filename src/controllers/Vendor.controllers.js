@@ -1759,23 +1759,20 @@ export const acceptVendorInvite = async (req, res) => {
     // add cognito vendorIds and primissions.
 
     if (userInvite) {
-      const [vendorEmployeesRes] = await db
-        .insert(vendorEmployees)
-        .values({
-          vendorId: vendorId,
-          userId: userID,
-          permissions: userInvite.permissions,
-          employeeCode: userInvite.employeeCode,
-        })
-        .returning();
+      // const [vendorEmployeesRes] = await db
+      //   .insert(vendorEmployees)
+      //   .values({
+      //     vendorId: vendorId,
+      //     userId: userID,
+      //     permissions: userInvite.permissions,
+      //     employeeCode: userInvite.employeeCode,
+      //   })
+      //   .returning();
 
       const userAttribute = [
         {
           Name: 'custom:vendor_ids',
-          Value: JSON.stringify({
-            vendorId: vendorId,
-            vendorEmployeesId: vendorEmployeesRes.vendorEmployeeId,
-          }),
+          Value: JSON.stringify(vendorId),
         },
         {
           Name: 'custom:permissions',

@@ -44,7 +44,7 @@
           margin: 0 0 26px;
           padding: 0 14px;
         ">
-            Hii Ramesh, This is a friendly reminder that a payment is pending for
+            Hii {{name}}, This is a friendly reminder that a payment is pending for
             your upcoming booking. Please complete the transaction to ensure your
             service is confirmed.
         </p>
@@ -70,41 +70,37 @@
             <div style="font-size: 15px; line-height: 1.9; color: #1f2937">
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Booking ID:</div>
-                    <div style="text-align: right; width: 100%">#3434-ht</div>
+                    <div style="text-align: right; width: 100%">#{{bookingId}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Name:</div>
-                    <div style="text-align: right; width: 100%">Ramesh</div>
+                    <div style="text-align: right; width: 100%">{{name}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">
                         Service / Product:
                     </div>
-                    <div style="text-align: right; width: 100%">Bar Tendor</div>
+                    <div style="text-align: right; width: 100%">{{service}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Date:</div>
-                    <div style="text-align: right; width: 100%">25 July 2004</div>
+                    <div style="text-align: right; width: 100%">{{date}}</div>
                 </div>
-
-                <div style="display: flex">
-                    <div style="width: 170px; font-weight: bold">Time:</div>
-                    <div style="text-align: right; width: 100%">9:30 pm</div>
-                </div>
+ 
                 <div style="display: flex">
                     <div style="width: 170px; font-weight: bold">Location:</div>
-                    <div style="text-align: right; width: 100%">Mansarovar,Jaipur</div>
+                    <div style="text-align: right; width: 100%">{{location}}</div>
                 </div>
                 <div style="display: flex">
                     <div style="width: 170px; font-weight: bold">Payment Status :</div>
-                    <div style="text-align: right; width: 100%">Pending</div>
+                    <div style="text-align: right; width: 100%">{{status}}</div>
                 </div>
                 <div style="display: flex">
                     <div style="width: 170px; font-weight: bold">Due Date :</div>
-                    <div style="text-align: right; width: 100%">25 July 2025</div>
+                    <div style="text-align: right; width: 100%">{{dueDate}}</div>
                 </div>
             </div>
         </div>

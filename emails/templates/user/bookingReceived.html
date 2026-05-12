@@ -42,7 +42,7 @@
           margin: 0 0 26px;
           padding: 0 14px;
         ">
-            New Booking Confirmed: Hello [vendor_name], a new reservation has been added. Below are the service details
+            New Booking Confirmed: Hello {{vendorName}}, a new reservation has been added. Below are the service details
             and customer requirements for your records
         </p>
 
@@ -69,47 +69,30 @@
             <div style="font-size: 15px; line-height: 1.9; color: #1f2937">
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Booking ID:</div>
-                    <div style="text-align: right; width: 100%">#FC-45892</div>
+                    <div style="text-align: right; width: 100%">#{{bookingId}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Name:</div>
-                    <div style="text-align: right; width: 100%">Ramesh</div>
+                    <div style="text-align: right; width: 100%">{{name}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">
                         Service / Product:
                     </div>
-                    <div style="text-align: right; width: 100%">Bar Tendor</div>
+                    <div style="text-align: right; width: 100%">{{service}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Date:</div>
-                    <div style="text-align: right; width: 100%">17 Dec, 2025</div>
-                </div>
-
-                <div style="display: flex; margin-bottom: 6px">
-                    <div style="width: 170px; font-weight: bold">Time:</div>
-                    <div style="text-align: right; width: 100%">9:30 PM</div>
+                    <div style="text-align: right; width: 100%">{{date}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Location:</div>
                     <div style="text-align: right; width: 100%">
-                        233, Mansarovar, Jaipur
-                    </div>
-                </div>
-
-                <div style="display: flex">
-                    <div style="width: 170px; font-weight: bold">Payment Status:</div>
-                    <div style="
-                text-align: right;
-                width: 100%;
-                color: #16a34a;
-                font-weight: bold;
-              ">
-                        Paid ✅
+                        {{location}}
                     </div>
                 </div>
             </div>

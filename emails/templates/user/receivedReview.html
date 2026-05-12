@@ -23,7 +23,6 @@
     <div style="margin-bottom:14px;">
             <img src="https://freaky-files.s3.ap-south-1.amazonaws.com/email-media/review.png" alt="Welcome" style="width: 100%; max-width: 280px; height: auto" />
         </div>
-
        <!-- Heading -->
         <h2 style="
           font-size: 30px;
@@ -68,22 +67,22 @@
             <div style="font-size: 15px; line-height: 1.9; color: #1f2937">
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Reviewer Name:</div>
-                    <div style="text-align: right; width: 100%">Shashank Garg</div>
+                    <div style="text-align: right; width: 100%">{{reviewerName}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Event Date:</div>
-                    <div style="text-align: right; width: 100%">24 Nov, 2025</div>
+                    <div style="text-align: right; width: 100%">{{eventDate}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Service:</div>
-                    <div style="text-align: right; width: 100%">Bar Tendor</div>
+                    <div style="text-align: right; width: 100%">{{serviceName}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Vendor Name:</div>
-                    <div style="text-align: right; width: 100%">Clubby Bar</div>
+                    <div style="text-align: right; width: 100%">{{vendorName}}</div>
                 </div>
 
                 <div style="display: flex">
@@ -94,7 +93,7 @@
                 font-weight: bold;
                 color: #f59e0b;
               ">
-                        ⭐ 4 / 5
+                        ⭐ {{rating}} / 5
                     </div>
                 </div>
             </div>

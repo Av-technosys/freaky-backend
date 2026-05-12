@@ -44,7 +44,7 @@
           margin: 0 0 26px;
           padding: 0 14px;
         ">
-            Hi [Vendor Name], We noticed you were in the middle of setting up your
+            Hi {{name}}, We noticed you were in the middle of setting up your
             vendor profile but didn't quite finish. You're just a few steps away
             from joining the Freaky Chimp community!
         </p>
@@ -70,29 +70,29 @@
             <div style="font-size: 15px; line-height: 1.9; color: #1f2937">
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Field Details:</div>
-                    <div style="text-align: right; width: 100%">#3434-ht</div>
+                    <div style="text-align: right; width: 100%">#{{bookingId}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Vendor Type:</div>
-                    <div style="text-align: right; width: 100%">Category</div>
+                    <div style="text-align: right; width: 100%">{{vendorType}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Profile Status:</div>
-                    <div style="text-align: right; width: 100%">Incomplete</div>
+                    <div style="text-align: right; width: 100%">{{status}}</div>
                 </div>
 
                 <div style="display: flex; margin-bottom: 6px">
                     <div style="width: 170px; font-weight: bold">Steps Remaining:</div>
                     <div style="text-align: right; width: 100%">
-                        [eg.Upload ID / Add Pricing]
+                        {{remainingSteps}}
                     </div>
                 </div>
 
                 <div style="display: flex">
                     <div style="width: 170px; font-weight: bold">Estimated Time:</div>
-                    <div style="text-align: right; width: 100%">2 min</div>
+                    <div style="text-align: right; width: 100%">{{estTime}}</div>
                 </div>
             </div>
         </div>

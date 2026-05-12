@@ -43,7 +43,7 @@
       margin:0 0 26px;
       padding:0 14px;
     ">
-            Hi Ramesh, we’d like to inform you that your event booking has been
+            Hi {{name}}, we’d like to inform you that your event booking has been
             cancelled by the customer and the refund process has been initiated.
             Please find the details below.
         </p>
@@ -71,12 +71,12 @@
 
                 <div style="display:flex; margin-bottom:6px;">
                     <div style="width:170px; font-weight:bold;">Cancelled By:</div>
-                    <div style="text-align:right; width:100%;">Ravindra Singh</div>
+                    <div style="text-align:right; width:100%;">{{cancelledBy}}</div>
                 </div>
 
                 <div style="display:flex; margin-bottom:6px;">
                     <div style="width:170px; font-weight:bold;">Cancellation Date:</div>
-                    <div style="text-align:right; width:100%;">15 Dec, 2025</div>
+                    <div style="text-align:right; width:100%;">{{cancellationDate}}</div>
                 </div>
 
                 <div style="display:flex;">

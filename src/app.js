@@ -13,7 +13,7 @@ const corsOptions = {
     'https://dev.vendor.freakychimp.com/',
     'https://dev.admin.freakychimp.com/',
     'https://staging.vendor.freakychimp.com/',
-    'https://staging.vendor.freakychimp.com'
+    'https://staging.vendor.freakychimp.com',
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
@@ -32,6 +32,11 @@ app.use('/', (req, res, next) => {
 app.post('/aadmindetail', resendOTP);
 
 app.use('/', routes);
+
+app.get('/health', async (req, res) => {
+  // await sendEmail({ to: 'bishnoi11011@gmail.com', subject: userSubjects.welocme, template: 'welcome', type: 'generic', data: { name: 'Ashish Bishnoi' } });
+  res.status(200).send('ok');
+});
 
 app.use((req, res, next) => {
   res.status(404).send({ message: 'Not FOUND' });

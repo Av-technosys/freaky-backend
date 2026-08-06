@@ -6,7 +6,7 @@ import { AWS_S3_BUCKET } from '../../const/env.js';
 export const uploadUrl = async (req, res) => {
   try {
     const { fileName, fileType, path } = req.body;
-    const key = `uploads/${path}/${Date.now()}-${fileName}`;
+    const key = `/${path}/${Date.now()}-${fileName}`;
     const command = new PutObjectCommand({
       Bucket: AWS_S3_BUCKET,
       Key: key,

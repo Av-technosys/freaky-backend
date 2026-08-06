@@ -39,6 +39,9 @@ export const user = pgTable('user', {
   number: varchar('number', { length: 32 }),
   email: varchar('email', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }).notNull(),
+  gender: varchar('gender', { length: 255 }),
+  birthDate: varchar('birth_date', { length: 255 }),
+  anniversary: varchar('anniversary', { length: 255 }),
 
   loggedIn: boolean('logged_in'),
   firebaseToken: varchar('firebase_token', { length: 255 }),

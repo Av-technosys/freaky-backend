@@ -57,7 +57,7 @@ export const updateUserInfo = async (req, res) => {
 
     const userId = user.userId;
 
-    const allowedFields = ['firstName', 'lastName', 'profileImage', 'gender'];
+    const allowedFields = ['firstName', 'lastName', 'profileImage', 'gender', 'number', 'birthDate', 'anniversary'];
     const updateData = Object.fromEntries(
       Object.entries(req.body).filter(
         ([key, value]) => allowedFields.includes(key) && value !== undefined
@@ -323,7 +323,7 @@ export const editAddresses = async (req, res) => {
         country = ${country},
         latitude = ${latitude},
         longitude = ${longitude},
-        location = ${sql`ST_SetSRID(ST_MakePoint(${latitude}, ${longitude}), 4326)::geography`}
+        location = ${sql`ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography`}
       WHERE user_id = ${userId} AND id = ${id}; 
     `);
 

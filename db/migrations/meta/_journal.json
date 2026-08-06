@@ -57,6 +57,13 @@
       "when": 1778145606276,
       "tag": "0007_tired_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785997638087,
+      "tag": "0008_sudden_pretty_boy",
+      "breakpoints": true
     }
   ]
 }

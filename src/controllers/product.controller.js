@@ -9,6 +9,21 @@ import {
 import { products, vendors } from '../../db/schema.js';
 import { paginate } from '../helpers/paginate.js';
 
+const getVendorIdFromUser = (user) => {
+  const raw = user?.['custom:vendor_ids'];
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === 'number') return parsed;
+    if (typeof parsed === 'string') return Number(parsed) || null;
+    if (Array.isArray(parsed)) return Number(parsed[0]) || null;
+    return Number(parsed.vendorId) || null;
+  } catch {
+    return Number(raw) || null;
+  }
+};
+
 export const getAllProductReviews = async (req, res) => {
   try {
     const { productid } = req.params;
@@ -55,19 +70,7 @@ export const getAllProductReviews = async (req, res) => {
 export const getAllProducts = async (req, res) => {
   try {
     const { text = '', page = 1, page_size = 12 } = req.query;
-
-    const raw = req.user['custom:vendor_ids'];
-
-    let vendorId;
-
-    try {
-      const parsed = JSON.parse(raw);
-      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
-    } catch {
-      vendorId = raw;
-    }
-
-    vendorId = Number(vendorId);
+    const vendorId = getVendorIdFromUser(req.user);
 
     const filters = [eq(products.vendorId, vendorId)];
 
@@ -107,19 +110,7 @@ export const getAllProductMeta = async (req, res) => {
     const currentPage = Number(page);
     const limit = Number(page_size);
     const offset = (currentPage - 1) * limit;
-
-    const raw = req.user['custom:vendor_ids'];
-
-    let vendorId;
-
-    try {
-      const parsed = JSON.parse(raw);
-      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
-    } catch {
-      vendorId = raw;
-    }
-
-    vendorId = Number(vendorId);
+    const vendorId = getVendorIdFromUser(req.user);
 
     if (!vendorId) {
       return res.status(400).json({

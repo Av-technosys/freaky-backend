@@ -315,6 +315,16 @@ export const productMedia = pgTable('product_media', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+export const productInclusion = pgTable('product_inclusion', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+  productId: integer('product_id')
+    .references(() => product.productId, { onDelete: 'cascade' })
+    .notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
 export const productAddon = pgTable('product_addon', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(), // auto-increment
   mainProductId: integer('main_product_id').references(() => product.productId),

@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 export const COGNITO_CLIENT_ID = process.env.COGNITO_CLIENT_ID;
 export const AWS_REGION = process.env.AWS_REGION;
@@ -13,6 +13,9 @@ export const FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY; // e.g. 'a
 export const COGNITO_CLIENT_SECRET = process.env.COGNITO_CLIENT_SECRET;
 export const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
 export const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+export const AWS_MAIL_ACCESS_KEY_ID = process.env.AWS_MAIL_ACCESS_KEY_ID || AWS_ACCESS_KEY_ID;
+export const AWS_MAIL_SECRET_ACCESS_KEY =
+  process.env.AWS_MAIL_SECRET_ACCESS_KEY || AWS_SECRET_ACCESS_KEY;
 
 export const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 export const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;

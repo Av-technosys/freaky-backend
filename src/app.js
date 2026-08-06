@@ -10,7 +10,7 @@ import { userSubjects } from '../emails/subjects/userSubjects.js';
 const app = express();
 
 const corsOptions = {
-  origin: ['https://freaky-web-vendor-new.vercel.app/', 'http://localhost:5173', 'https://dev.vendor.freakychimp.com/', 'https://dev.admin.freakychimp.com/', 'https://staging.vendor.freakychimp.com/', 'https://staging.vendor.freakychimp.com'],
+  origin: ['https://freaky-web-vendor-new.vercel.app/', 'http://localhost:5173', 'http://192.168.1.21:5173', 'https://dev.vendor.freakychimp.com/', 'https://dev.admin.freakychimp.com/', 'https://staging.vendor.freakychimp.com/', 'https://staging.vendor.freakychimp.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 };
@@ -23,6 +23,15 @@ app.use(express.json());
 app.use('/', (req, res, next) => {
   console.log('path: ', req.path);
   next();
+});
+
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'Freaky backend is running' });
+});
+
+app.get(['/favicon.ico', '/service-worker.js'], (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.status(204).end();
 });
 
 app.post('/aadmindetail', resendOTP);
@@ -38,4 +47,14 @@ app.use((req, res, next) => {
   res.status(404).send({ message: 'Not FOUND' });
 });
 
-export const handler = serverless(app);
+const serverlessHandler = serverless(app);
+
+export { app };
+
+export const handler = async (event, context) => {
+  if (context) {
+    context.callbackWaitsForEmptyEventLoop = false;
+  }
+
+  return serverlessHandler(event, context);
+};

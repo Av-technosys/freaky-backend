@@ -59,6 +59,7 @@ export const productReviewSummary = vendor.productReviewSummary;
 export const featuredCategorys = vendor.featuredCategory;
 export const featuredProdcuts = vendor.featuredProdcut;
 export const productMedia = vendor.productMedia;
+export const productInclusions = vendor.productInclusion;
 export const productAddons = vendor.productAddon;
 export const applicationContract = vendor.applicationContract;
 export const vendorAvailability = vendor.vendorAvailability;

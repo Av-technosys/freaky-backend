@@ -1,6 +1,6 @@
-import { and, asc, eq, ilike, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { db } from '../../db/db.js';
-import { vendorEmployees, vendorEmployeeRequests, vendorOwnerships, vendors, products, featuredCategorys, featuredProdcuts, priceBook, priceBookEntry, productMedia, vendorDocuments, users, vendorInvites, vendorNotifications, paymentVendor, booking, vendorAvailability } from '../../db/schema.js';
+import { vendorEmployees, vendorEmployeeRequests, vendorOwnerships, vendors, products, featuredCategorys, featuredProdcuts, priceBook, priceBookEntry, productMedia, productInclusions, productAddons, vendorDocuments, users, vendorInvites, vendorNotifications, paymentVendor, booking, vendorAvailability } from '../../db/schema.js';
 import { commonVendorFields, reducedVendorFields } from '../../const/vendor.js';
 import { cognito } from '../../lib/cognitoClient.js';
 import { USER_POOL_ID } from '../../const/env.js';
@@ -10,6 +10,21 @@ import { paginate } from '../helpers/paginate.js';
 import { featuredCategory, featuredProdcut } from '../../db/vendor.js';
 import { cognitoAdminGetUser, cognitoAdminUserGlobalSignOut, cognitoUpdateUserAttribute } from '../helpers/Cognito.helper.js';
 import { bookingItem, user } from '../../db/user.js';
+
+const getVendorIdFromUser = (user) => {
+  const raw = user?.['custom:vendor_ids'];
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === 'number') return parsed;
+    if (typeof parsed === 'string') return Number(parsed) || null;
+    if (Array.isArray(parsed)) return Number(parsed[0]) || null;
+    return Number(parsed.vendorId) || null;
+  } catch {
+    return Number(raw) || null;
+  }
+};
 
 export const getVendorInfo = async (req, res) => {
   try {
@@ -994,6 +1009,72 @@ export const fetchProductDetailById = async (req, res) => {
       where: (t, { eq }) => eq(t.productId, id),
     });
 
+    const productInclusionList = await db.query.productInclusions.findMany({
+      where: (t, { eq }) => eq(t.productId, id),
+      orderBy: (t, { asc }) => asc(t.sortOrder),
+    });
+
+    const productAddonList = await db.query.productAddons.findMany({
+      where: (t, { eq }) => eq(t.mainProductId, id),
+    });
+
+    const addonProductIds = productAddonList
+      .map((item) => item.addonProductId)
+      .filter(Boolean);
+
+    const addonProducts = addonProductIds.length
+      ? await db.query.products.findMany({
+          where: (t, { inArray }) => inArray(t.productId, addonProductIds),
+          orderBy: (t, { asc }) => asc(t.productId),
+        })
+      : [];
+
+    const addonVendorIds = [...new Set(addonProducts.map((item) => item.vendorId))];
+
+    const addonDefaultPB = addonVendorIds.length
+      ? await db.query.priceBook.findMany({
+          where: (t, { inArray, and, eq }) =>
+            and(inArray(t.vendorId, addonVendorIds), eq(t.isDefault, true)),
+        })
+      : [];
+
+    const addonPriceBookIds = addonDefaultPB.map((item) => item.id);
+
+    const addonPriceEntries = addonProductIds.length && addonPriceBookIds.length
+      ? await db.query.priceBookEntry.findMany({
+          where: (t, { inArray, and }) =>
+            and(
+              inArray(t.productId, addonProductIds),
+              inArray(t.priceBookingId, addonPriceBookIds)
+            ),
+          orderBy: (t, { asc }) => asc(t.lowerSlab),
+        })
+      : [];
+
+    const addonMediaList = addonProductIds.length
+      ? await db.query.productMedia.findMany({
+          where: (t, { inArray }) => inArray(t.productId, addonProductIds),
+          orderBy: (t, { asc }) => asc(t.sortOrder),
+        })
+      : [];
+
+    const addons = addonProducts.map((addon) => {
+      const priceBookIds = addonDefaultPB
+        .filter((item) => item.vendorId === addon.vendorId)
+        .map((item) => item.id);
+      const priceSlabs = addonPriceEntries.filter(
+        (item) => item.productId === addon.productId && priceBookIds.includes(item.priceBookingId)
+      );
+      const primaryAddonPrice = priceSlabs[0];
+
+      return {
+        ...addon,
+        price: primaryAddonPrice ? Number(primaryAddonPrice.salePrice || primaryAddonPrice.listPrice) : null,
+        priceSlabs,
+        media: addonMediaList.filter((item) => item.productId === addon.productId),
+      };
+    });
+
     const primaryPrice = productPrices?.[0];
 
     return res.json({
@@ -1005,6 +1086,9 @@ export const fetchProductDetailById = async (req, res) => {
         priceSlabs: productPrices,
 
         media: productMediaList,
+        inclusions: productInclusionList,
+        addonProductIds,
+        addons,
       },
     });
   } catch (err) {
@@ -1231,6 +1315,45 @@ export const updateProductById = async (req, res) => {
         await tx.insert(priceBookEntry).values(entries);
       }
 
+
+      if (Array.isArray(data.inclusions)) {
+        await tx.delete(productInclusions).where(eq(productInclusions.productId, productId));
+
+        const inclusions = data.inclusions
+          .map((item, index) => ({
+            productId,
+            title: typeof item === 'string' ? item.trim() : String(item?.title || '').trim(),
+            sortOrder: Number(item?.sortOrder ?? index),
+          }))
+          .filter((item) => item.title);
+
+        if (inclusions.length) {
+          await tx.insert(productInclusions).values(inclusions);
+        }
+      }
+
+      if (Array.isArray(data.addonProductIds)) {
+        await tx.delete(productAddons).where(eq(productAddons.mainProductId, productId));
+
+        const addonProductIds = [...new Set(data.addonProductIds.map(Number))]
+          .filter((addonProductId) => addonProductId && addonProductId !== Number(productId));
+
+        if (addonProductIds.length) {
+          const validAddons = await tx
+            .select({ productId: products.productId })
+            .from(products)
+            .where(and(eq(products.vendorId, existingProduct.vendorId), inArray(products.productId, addonProductIds)));
+
+          const addons = validAddons.map((item) => ({
+            mainProductId: productId,
+            addonProductId: item.productId,
+          }));
+
+          if (addons.length) {
+            await tx.insert(productAddons).values(addons);
+          }
+        }
+      }
       return { productId };
     });
 
@@ -1258,18 +1381,7 @@ export const updateProductById = async (req, res) => {
 export const createProduct = async (req, res) => {
   try {
     const data = req.body;
-    const vendorIdsRaw = req.user['custom:vendor_ids'];
-
-    let vendorId;
-
-    try {
-      const parsed = JSON.parse(vendorIdsRaw);
-      vendorId = Array.isArray(parsed) ? parsed[0] : parsed;
-    } catch {
-      vendorId = vendorIdsRaw;
-    }
-
-    vendorId = Number(vendorId);
+    const vendorId = getVendorIdFromUser(req.user);
 
     const safeNumber = (val, fallback = null) => (val !== undefined && val !== null && val !== '' ? Number(val) : fallback);
 
@@ -1368,6 +1480,41 @@ export const createProduct = async (req, res) => {
         await tx.insert(priceBookEntry).values(entries);
       }
 
+
+      if (Array.isArray(data.inclusions)) {
+        const inclusions = data.inclusions
+          .map((item, index) => ({
+            productId,
+            title: typeof item === 'string' ? item.trim() : String(item?.title || '').trim(),
+            sortOrder: Number(item?.sortOrder ?? index),
+          }))
+          .filter((item) => item.title);
+
+        if (inclusions.length) {
+          await tx.insert(productInclusions).values(inclusions);
+        }
+      }
+
+      if (Array.isArray(data.addonProductIds)) {
+        const addonProductIds = [...new Set(data.addonProductIds.map(Number))]
+          .filter((addonProductId) => addonProductId && addonProductId !== Number(productId));
+
+        if (addonProductIds.length) {
+          const validAddons = await tx
+            .select({ productId: products.productId })
+            .from(products)
+            .where(and(eq(products.vendorId, vendorId), inArray(products.productId, addonProductIds)));
+
+          const addons = validAddons.map((item) => ({
+            mainProductId: productId,
+            addonProductId: item.productId,
+          }));
+
+          if (addons.length) {
+            await tx.insert(productAddons).values(addons);
+          }
+        }
+      }
       return { productId };
     });
 

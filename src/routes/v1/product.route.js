@@ -18,19 +18,18 @@ import {
 } from '../../controllers/Vendor.controllers.js';
 
 const router = Router();
-router.get('/reviews/:productid', confirmUserToken, getAllProductReviews);
-router.get('/info', confirmUserToken, fetchProductDetailById);
+router.get('/reviews/:productid', getAllProductReviews);
+router.get('/info', fetchProductDetailById);
 router.post('/product_price/:productId', confirmUserToken, fetchProductPrice);
-router.get('/products_type', confirmUserToken, getAllProductTypes);
+router.get('/products_type', getAllProductTypes);
 
-router.get('/by_product_type_id', confirmUserToken, productByTypeId);
+router.get('/by_product_type_id', productByTypeId);
 router.get(
   '/products_by_categoryId/:categoryId',
-  confirmUserToken,
   getAllProductsByCategoryId
 );
-router.get('/featuredProducts/', confirmUserToken, getAllFeaturedProducts);
-// router.get('/types/', confirmUserToken, getAllProductTypes);
+router.get('/featuredProducts/', getAllFeaturedProducts);
+// router.get('/types/', getAllProductTypes);
 router.put('/update/:productId', confirmUserToken, updateProductById);
 router.post('/create', confirmUserToken, createProduct);
 router.delete('/image/:id', confirmUserToken, deleteProductImage);

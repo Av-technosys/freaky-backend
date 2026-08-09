@@ -1093,22 +1093,24 @@ export const getUserNotification = async (req, res) => {
 };
 
 export const markNotificationAsRead = async (req, res) => {
-  const { notificationId } = req.body;
-  await db
-    .update(userNotifications)
-    .set({ status: true })
-    .where(eq(userNotifications.notificationId, notificationId))
-    .returning();
   try {
+    const { notificationId } = req.body;
+    if (!notificationId) {
+      return res.status(400).json({ success: false, message: 'notificationId is required' });
+    }
+    await db
+      .update(userNotifications)
+      .set({ status: true })
+      .where(eq(userNotifications.id, Number(notificationId)));
     return res.status(200).json({
       success: true,
-      message: 'Successfully marked as true',
+      message: 'Notification marked as read',
     });
   } catch (error) {
-    console.error('Error deleting review:', error);
+    console.error('Error marking notification as read:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to delete review',
+      message: 'Failed to mark notification as read',
     });
   }
 };
@@ -1267,7 +1269,7 @@ export const saveFcmToken = async (req, res) => {
   try {
     const { userId, fcmToken, platform } = req.body;
 
-    if (!userId || !fcmToken || !platform) {
+    if (!userId || !platform) {
       return res.status(400).json({
         success: false,
         message: 'Missing required fields',
@@ -1277,7 +1279,7 @@ export const saveFcmToken = async (req, res) => {
     await db
       .update(users)
       .set({
-        firebaseToken: fcmToken,
+        firebaseToken: fcmToken || null,
         platform: platform,
         updatedAt: new Date(),
       })

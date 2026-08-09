@@ -16,7 +16,7 @@ import { sendMail } from '../utils/email/sendMail.js';
 import { db } from '../../db/db.js';
 export const createEvent = async (req, res) => {
   try {
-    const userId = req.user['custom:user_id'];
+    const userId = req.user ? req.user['custom:user_id'] : null;
     const { eventTypeId, contactName, contactNumber, description, startTime, endTime, minGuestCount, maxGuestCount, latitude, longitude } = req.body;
 
     console.log('Received event data:', {
@@ -229,9 +229,37 @@ export const listAllServicesByEventTypeId = async (req, res) => {
 
 export const createEventItem = async (req, res) => {
   try {
-    const { eventId, productId, startTime, endTime, minGuestCount, maxGuestCount } = req.body;
-
+    const { eventId, productId, packageCategoryId, startTime, endTime, minGuestCount, maxGuestCount } = req.body;
     const quantity = req.body.quantity || 1;
+
+    // Check if packageCategoryId is passed or if productId is a package with bundled items in DB
+    const targetCategoryId = packageCategoryId || (typeof productId === 'number' && productId < 10 ? productId : null);
+    const bundledItems = targetCategoryId
+      ? await db.select().from(featuredProdcuts).where(eq(featuredProdcuts.featuredCategoryId, targetCategoryId))
+      : [];
+
+    if (bundledItems.length > 0) {
+      const createdItems = await Promise.all(
+        bundledItems.map((bundled) =>
+          createBookingDraft({
+            source: SOURCE.EVENT,
+            sourceId: eventId,
+            productId: bundled.productId,
+            quantity,
+            startTime,
+            endTime,
+            minGuestCount,
+            maxGuestCount,
+            status: STATUS.HOLD,
+          })
+        )
+      );
+
+      return res.status(201).json({
+        message: `Package with ${createdItems.length} bundled services booked successfully`,
+        data: createdItems,
+      });
+    }
 
     const item = await createBookingDraft({
       source: SOURCE.EVENT,

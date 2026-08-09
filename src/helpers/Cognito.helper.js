@@ -67,6 +67,7 @@ export function cognitoConfirmSignUp({ email, code }) {
 }
 
 export function cognitoInitiateAuth({ email, password }) {
+  console.log('cognitoInitiateAuth called with email:', email ,   `and cognito client id:`, COGNITO_CLIENT_ID); 
   const paramsLogin = {
     AuthFlow: 'USER_PASSWORD_AUTH',
     ClientId: COGNITO_CLIENT_ID,

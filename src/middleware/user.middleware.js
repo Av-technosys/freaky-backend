@@ -13,11 +13,11 @@ export const confirmUserToken = async (req, res, next) => {
     req.user = decoded; // ✅ contains user info (email, sub, etc.)
     next();
   } catch (err) {
-    console.error('Token verification failed:', err);
-    if (err.message === 'Token is required.') {
-      return res.status(400).json({ error: err.message });
-    }
-    return res.status(401).json({ error: 'Invalid or expired token.' });
+    console.error('Token verification failed:', err.message || err);
+    return res.status(401).json({
+      message: err.message || 'Invalid or expired token.',
+      error: err.message || 'Invalid or expired token.'
+    });
   }
 };
 

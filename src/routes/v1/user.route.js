@@ -13,6 +13,7 @@ import {
   updateDetails,
   Notify,
   updateProfilePicture,
+  saveFcmToken,
 } from '../../controllers/User.controllers.js';
 import { confirmUserToken } from '../../middleware/user.middleware.js';
 import addressRouter from './user.address.route.js';
@@ -37,5 +38,6 @@ router.post('/notification/read', confirmUserToken, markNotificationAsRead);
 router.get('/personal_details', confirmUserToken, getPersonalInfo);
 router.put('/update_details', confirmUserToken, updateDetails);
 router.post('/testing_notification', Notify);
+router.post('/save_fcm_token', confirmUserToken, saveFcmToken);
 
 export default router;

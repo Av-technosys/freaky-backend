@@ -428,7 +428,8 @@ export const getBookingItemDetailsById = async (req, res) => {
 
 export const getBookingDetailsById = async (req, res) => {
   try {
-    const bookingId = Number(req.params.bookingId);
+    const rawParam = req.params.bookingId;
+    const bookingId = Number(String(rawParam).replace(/[^0-9]/g, ''));
 
     if (!bookingId) {
       return res.status(400).json({ message: 'Invalid bookingId' });
@@ -480,46 +481,59 @@ export const getBookingDetailsById = async (req, res) => {
 
     const bookingData = bookingResult[0];
 
-    // ✅ 2. FETCH BOOKING ITEMS
-    const items = await db
+    // ✅ 2. FETCH BOOKING ITEMS (Direct from booking_item — all data stored at booking time)
+    const rawItems = await db
       .select({
         id: bookingItem.id,
         bookingId: bookingItem.bookingId,
-
         productId: bookingItem.productId,
         productName: bookingItem.productName,
         productImage: bookingItem.productImage,
         productPrice: bookingItem.productPrice,
-
         quantity: bookingItem.quantity,
-
         contactName: bookingItem.contactName,
         contactNumber: bookingItem.contactNumber,
-
         startTime: bookingItem.startTime,
         endTime: bookingItem.endTime,
-
         minGuestCount: bookingItem.minGuestCount,
         maxGuestCount: bookingItem.maxGuestCount,
-
         latitude: bookingItem.latitude,
         longitude: bookingItem.longitude,
-
         bookingStatus: bookingItem.bookingStatus,
         paymentStatus: bookingItem.paymentStatus,
-
         createdAt: bookingItem.createdAt,
-
-        // optional vendor per item
         vendorId: bookingItem.vendorId,
+        prodTitle: products.title,
+        prodBanner: products.bannerImage,
       })
       .from(bookingItem)
+      .leftJoin(products, eq(bookingItem.productId, products.productId))
       .where(eq(bookingItem.bookingId, bookingId));
 
-    console.log('Fetched booking items:', {
-      booking: bookingData,
-      items: items || [],
-    });
+    const items = rawItems.map((item) => ({
+      id: item.id,
+      bookingId: item.bookingId,
+      productId: item.productId,
+      productName: item.productName || item.prodTitle || 'Booked Service',
+      productImage: item.productImage || item.prodBanner || null,
+      productPrice: item.productPrice ?? 0,
+      quantity: item.quantity,
+      contactName: item.contactName,
+      contactNumber: item.contactNumber,
+      startTime: item.startTime,
+      endTime: item.endTime,
+      minGuestCount: item.minGuestCount,
+      maxGuestCount: item.maxGuestCount,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      bookingStatus: item.bookingStatus,
+      paymentStatus: item.paymentStatus,
+      createdAt: item.createdAt,
+      vendorId: item.vendorId,
+    }));
+
+    console.log(`✅ Booking #${bookingId} — ${items.length} item(s) fetched`);
+
     // ✅ 3. FINAL RESPONSE
     return res.json({
       success: true,

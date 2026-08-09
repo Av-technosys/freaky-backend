@@ -125,9 +125,10 @@ export const confirmController = async (req, res) => {
 
 export const signin = async (req, res) => {
   const { email, password } = req.body;
+  console.log('signin request body:', req.body);
   try {
     const data = await authSingIn({ email, password });
-
+      console.log('signin response data:', data);
     return res.status(200).json(data);
   } catch (err) {
     console.error(err);

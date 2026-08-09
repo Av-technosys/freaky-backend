@@ -1,7 +1,5 @@
-# "org" ensures this Service is used with the correct Serverless Framework Access Key.
-org: freakyt
-# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
-app: my-app
+# org: freakyt
+# app: my-app
 # "service" is the name of this project. This will also be added to your AWS resource names.
 service: my-service
 
@@ -31,3 +29,10 @@ functions:
           method: ANY
 plugins:
   - serverless-offline
+
+custom:
+  serverless-offline:
+    host: 0.0.0.0
+    port: 3000
+    httpPort: 3000
+    noPrependStageInUrl: true
